@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+
+# Environments
+.venv/
+venv/
+env/
+
+# Tests, coverage and tooling
+.pytest_cache/
+pytest-cache-files-*/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+
+# IDE and OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+config/local.*
+config/*.local.*
+*.pem
+*.key
+*.pfx
+*.p12
+
+# Data, models, logs and runtime artifacts
+data/
+models/
+artifacts/
+logs/
+*.log
+*.db
+*.sqlite*
+
+# Notebooks
+.ipynb_checkpoints/
