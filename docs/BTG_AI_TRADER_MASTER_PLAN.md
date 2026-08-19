@@ -1,9 +1,9 @@
 # BTG AI Trader — Plano Mestre Vivo
 
-**Documento de referência principal do projeto**  
-**Status:** ativo e evolutivo  
-**Última consolidação:** 2026-08-18  
-**Repositório local:** `C:\Projetos\btg-ai-trader`  
+**Documento de referência principal do projeto**
+**Status:** ativo e evolutivo
+**Última consolidação:** 2026-08-19
+**Repositório local:** `C:\Projetos\btg-ai-trader`
 **Projeto ChatGPT:** `BTG AI Trader`
 
 ---
@@ -131,119 +131,141 @@ O foco inicial é **trading intradiário em horizonte de minutos**, e não aloca
 
 # 5. Arquitetura-alvo de alto nível
 
+A cadeia abaixo sintetiza a baseline lógica de 0C refinada pelos contratos congelados do Sprint 0D. Ela não constitui implementação nem autorização de operação real.
+
 ```text
 MARKET / DATA SOURCE
         |
         v
-MARKET ADAPTER
+RAW / CAPTURE EVIDENCE
         |
         v
-DATA ENGINE
+QUALITY / ADMISSION
         |
         v
 NORMALIZED MARKET EVENTS
         |
-        +--------------------> RECORDER / STORAGE
+        +--------------------> EVIDENCE ARCHIVE / AUDIT
         |
         +--------------------> MONITORING
         |
         v
-FEATURE ENGINE
+FEATURE / ANALYTICAL PIPELINE
         |
         v
-MARKET STATE
+SIGNAL ENGINE
         |
-        +-----------> REGIME ENGINE
-        |
-        +-----------> SIGNAL ENGINE
-                           |
-                           v
-                       TradeIntent
-                           |
-                           v
-                       RISK ENGINE
-                      /           \
-                  REJECT         APPROVE
-                    |               |
-                 NO_TRADE       OrderIntent
-                                    |
-                                    v
-                            EXECUTION ENGINE
-                                    |
-                                    v
-                              BROKER ADAPTER
-                                    |
-                                    v
-                                BTG / B3
+        v
+StrategyDecision
+   /            \
+NO_TRADE     PROPOSE_TRADE
+                  |
+                  v
+        InstrumentResolution?
+                  |
+                  v
+             TradeIntent
+                  |
+                  v
+             RISK ENGINE
+            /           \
+         REJECT        PERMIT
+                         |
+                         v
+               RiskAuthorization
+                         |
+                         v
+              AuthorizationAllocation
+                         |
+                         v
+                  OrderIntent
+                         |
+                         v
+                    OrderPlan
+                         |
+                         v
+                ExecutionOrder(s)
+                         |
+                         v
+                  EXECUTION ENGINE
+                         |
+                         v
+                   EXTERNAL WORLD
 ```
 
-## 5.1. Invariante central
+## 5.1. Invariantes centrais
 
-A cadeia permitida deverá seguir:
-
-```text
-ML / Signal
-    |
-    v
-TradeIntent
-    |
-    v
-Risk Engine
-    |
-    v
-OrderIntent
-    |
-    v
-Execution Engine
-    |
-    v
-Broker Adapter
-```
+- `NO_TRADE` é resultado explícito de `StrategyDecision` e é distinto de `RiskDecision.REJECT`, `SAFE_HALT` e falha operacional.
+- Todo `TradeIntent` apresentado ao Risk referencia um `TradableInstrument` concreto; `AnalyticalSeries` não chega a Risk/Execution como instrumento negociável.
+- `RiskDecision` julga (`REJECT | PERMIT`); `RiskAuthorization` concede authority normativa limitada.
+- Nenhum novo economic commitment pode contornar `RiskAuthorization` válida e `AuthorizationAllocation` suficiente.
+- Somente Execution pode solicitar efeito externo e somente após satisfazer as authorities e os persistence gates aplicáveis.
+- Nenhum modelo, Signal Engine ou Strategy possui authority para enviar ordem.
 
 É arquiteturalmente proibido:
 
 ```text
 ML Model -> Broker
 Signal Engine -> order_send()
+StrategyDecision -> Execution
+RiskDecision -> external side effect
 ```
 
 ---
 
-# 6. Conceitos arquiteturais a formalizar no Sprint 0C
+# 6. Baseline contratual consolidada até o Sprint 0D
 
-## 6.1. TradeIntent
+## 6.1. StrategyDecision, TradeIntent e Risk
 
-Representa uma intenção econômica, por exemplo:
+A estratégia materializa `StrategyDecision` com resultado semanticamente equivalente a `NO_TRADE` ou `PROPOSE_TRADE`. A ausência acidental de `TradeIntent` não é usada como substituto de `NO_TRADE`.
 
-```text
-instrument_family: WIN
-direction: LONG
-confidence: 0.74
-expected_horizon: 5m
-expected_return: ...
-expected_downside: ...
-```
-
-Não constitui uma ordem.
-
-## 6.2. OrderIntent
-
-Somente pode surgir após avaliação do Risk Engine.
+Quando a proposta ainda referencia subject não executável, `InstrumentResolutionDecision` resolve explicitamente para `TradableInstrument`. Todo `TradeIntent` apresentado ao Risk referencia instrumento concreto e contém `EconomicObjective` com semântica e unidade explícitas.
 
 Exemplo conceitual:
 
 ```text
 tradable_instrument: WINQ26
-side: BUY
-quantity: 1
-order_type: ...
+economic_objective:
+    basis: EXPOSURE_DELTA
+    direction: LONG
+    magnitude: 1
+    unit: CONTRACT
+expected_horizon: ...
+expected_return: ...
+expected_downside: ...
 ```
 
-Ainda assim, somente o Execution Engine poderá convertê-lo em instrução para a infraestrutura da corretora.
+Os nomes físicos, tipos Python e representação numérica permanecem deliberadamente não escolhidos.
 
-## 6.3. Quatro modos
+`RiskDecision` possui semanticamente `REJECT | PERMIT`. `PERMIT` que possa habilitar efeito econômico downstream exige `RiskAuthorization`; antes de `OrderIntent`, uma `AuthorizationAllocation` reserva capacidade. O planejamento segue `OrderIntent → OrderPlan → ExecutionOrder`.
 
-O núcleo deverá ser reutilizável entre:
+## 6.2. Commitment e execução
+
+Criar `ExecutionAttempt` não constitui commitment por si só. Commitment ocorre na primeira fronteira após a qual o sistema já não consegue garantir ausência de side effect externo decorrente da tentativa. Outcome externo `UNKNOWN` permanece committed e exige reconciliation suficiente; timeout não autoriza blind retry.
+
+Expiração de TradeIntent/authorization/allocation bloqueia novos commitments, mas não apaga obrigações já externalizadas.
+
+## 6.3. Execution facts e reconhecimento financeiro
+
+Mensagens externas podem normalizar em `OrderLifecycleObservation` e `FillObservation`. `FillObservation` não possui efeito financeiro direto.
+
+A cadeia financeira é:
+
+```text
+FillObservation
+→ identity / dedup / matching
+→ canonical Fill
+→ EconomicRecognitionIdentity
+→ LedgerTransaction
+→ 1..N LedgerPostings
+→ Position / Cash / Valuation / P&L / Exposure projections
+```
+
+O mesmo fato econômico não pode produzir reconhecimento duplicado em restart ou reprocessing. Observações externas de Position/Cash não sobrescrevem as projeções internas e não geram automaticamente Fill ou Ledger adjustment.
+
+## 6.4. Perfis operacionais
+
+O núcleo é reutilizável por composição entre:
 
 ```text
 REPLAY
@@ -252,25 +274,25 @@ PAPER
 LIVE
 ```
 
-A estratégia deve, tanto quanto tecnicamente possível, receber interfaces equivalentes de dados e decisão nos diferentes modos.
+Os profiles variam providers, clock, execution/persistence/accounting counterparts, sem criar branches de domínio por modo. O Signal Engine não depende de saber se está em `BACKTEST` ou `LIVE`.
 
-O Signal Engine não deve depender de saber se está em `BACKTEST` ou `LIVE`.
+## 6.5. Semântica temporal e conhecimento
 
-## 6.4. Semântica temporal
+Quando aplicável, distinguem-se:
 
-Deverão existir, quando aplicável:
+- `event_time`: tempo sustentado pela fonte externa, com basis/resolution quando disponível;
+- `ingestion_time`: chegada efetiva ao sistema;
+- effective/economic time e knowledge/recognition cutoffs conforme o domínio;
+- tempos de processamento registrados por `ProcessingReceipt`/telemetria por componente, não como `processing_time` universal do evento.
 
-- `event_time`: momento do evento no mercado;
-- `ingestion_time`: momento de chegada ao sistema;
-- `processing_time`: momento de processamento.
+Direção vigente:
 
-Direção preliminar:
+- tempo interno absoluto em UTC quando aplicável;
+- conversão explícita para `America/Sao_Paulo` onde calendário/regras de mercado exigirem;
+- evitar `naive datetime`;
+- conhecimento posterior ao cutoff não pode reescrever decisão histórica.
 
-- tempo interno em UTC;
-- conversão explícita para `America/Sao_Paulo` onde calendário/regras da B3 exigirem;
-- evitar `naive datetime`.
-
-## 6.5. Instrumentos
+## 6.6. Instrumentos
 
 Separar:
 
@@ -279,33 +301,39 @@ InstrumentFamily: WIN
 TradableInstrument: WINQ26
 ```
 
-Rollover deverá ser explícito e auditável.
+Rollover e selection são explícitos, versionados e auditáveis. Analytical series permanecem não executáveis.
 
-## 6.6. Recuperação de estado
+## 6.7. Recovery, reconciliation e readiness
 
-Em reinicialização:
+Recovery e reconciliation são processos distintos e scope-specific. Snapshot + journal só podem sustentar reconstrução quando continuity é demonstrável. Reconciliation afirma consistency apenas em relação a `ReconciliationObservationBoundary` explícito. Matching/lineage precede correction.
+
+Recovery/reconciliation suficientes apenas removem seus blockers; não produzem `READY` automaticamente. `OperationalReadinessAssessment` avalia capabilities específicas.
+
+## 6.8. Runtime e segurança
+
+São semanticamente distintos:
 
 ```text
-BOOT
-  |
-  v
-carregar estado persistido
-  |
-  v
-consultar fonte externa quando disponível
-  |
-  v
-reconciliar posições/ordens
-  |
-  v
-detectar divergências
-  |
-  v
-FAIL SAFE
-  |
-  v
-liberar operação somente após consistência
+RuntimePhase
+≠ SafetyPosture
+≠ OperationalReadinessAssessment
 ```
+
+`SAFE_HALT` é fail-closed para novos commitments, mas não implica auto-flatten. Liveness não equivale a readiness. Saída de postura latched exige prerequisites e authority explícitos.
+
+## 6.9. Runs e provenance
+
+`RunId` identifica uma execução computacional concreta. Restart cria novo `RunId`; continuidade é registrada por `RunRelation` tipada, como `RESUMES_FROM`. Run não é OperationalSession nem Experiment.
+
+Fatos externos não exigem `run_id` intrínseco. `CaptureContext` registra o contexto de captura e pode referenciar o Run capturador; `ProcessingReceipt` registra processamento de um artifact em um Run/componente sem mutá-lo; `ArtifactLineageRecord` representa derivação separadamente.
+
+Run boundary não é economic obligation boundary: obrigações committed antes de crash sobrevivem ao Run e precisam ser reconstruídas/controladas/reconciliadas no Run posterior.
+
+## 6.10. Persistence
+
+Persistência lógica separa `EvidenceArchive`, `AuditJournal` e snapshots. AuditJournal não é Ledger; snapshot é projeção derivada e nunca substitui/corrige journal.
+
+Para novo side effect capaz de criar/ampliar economic commitment, os critical records exigidos pela policy devem satisfazer os `DurabilityRequirement`s antes do dispatch externo. Esse persist-before-act não pressupõe transação ACID distribuída com broker/venue.
 
 ---
 
@@ -586,10 +614,14 @@ SPRINT 0 — FUNDAÇÃO
 0B — Ambiente de desenvolvimento       ✅ CONCLUÍDO/APROVADO
 Baseline Git                           ✅ CONFIGURADA/VALIDADA
 0C — Arquitetura lógica                ✅ CONCLUÍDO/APROVADO
-Baseline arquitetural                 ✅ ADR-0002 a ADR-0014 VIGENTE
-0D — Contratos e modelo de dados       ← PRÓXIMA ETAPA OFICIAL
-0E — Protocolos quantitativos
-0F — Gate do Sprint 0
+Baseline arquitetural                 ✅ ADR-0002 a ADR-0014 + refinamentos 0015–0022
+0D-A a 0D-E                           ✅ FECHADOS/CONGELADOS
+0D-F — Cross-contract Gate            ✅ APROVADO
+Sincronização normativa 0D            ✅ CONCLUÍDA — ADRs 0015–0022
+F1 final de consistência documental   ✅ APROVADO
+Sprint 0D                             ✅ FORMALMENTE FECHADO/APROVADO
+0E — Protocolos quantitativos         ⏳ NÃO INICIADO
+0F — Gate do Sprint 0                 ⏳ FUTURO
 ```
 
 ---
@@ -668,7 +700,7 @@ A baseline lógica foi fechada e materializada nos ADRs 0002–0014. Ela adota m
 
 As 26 decisões permanecem identificáveis individualmente: 0C-01 arquitetura modular; 0C-02 envelope e causalidade; 0C-03 semântica temporal; 0C-04 ordenação contextual e fidelidade; 0C-05 desordem limitada; 0C-06 identidades de instrumento; 0C-07 rollover; 0C-08 resolução de instrumento antes de Risk; 0C-09 Signal informacional; 0C-10 TradeIntent imutável; 0C-11 RiskDecision; 0C-12 Order Planning; 0C-13 expiração de autorização; 0C-14 provider por capacidades; 0C-15 at-least-once/idempotência; 0C-16 backpressure; 0C-17 perfis de composição; 0C-18 determinismo; 0C-19 três planos de persistência; 0C-20 recovery antes de READY; 0C-21 reconciliação para resultado desconhecido; 0C-22 fail-safe explícito; 0C-23 eventos inválidos; 0C-24 erros críticos; 0C-25 ownership de posição/exposição; e 0C-26 provenance e `run_id`.
 
-Ainda não foram escolhidos schema, interfaces Python, armazenamento físico, tecnologia de mensageria, calendário concreto, tolerâncias, mecanismo de reserva ou integração externa. Esses itens pertencem a 0D ou sprints posteriores. O Sprint 0C está formalmente concluído e aprovado; 0D — Contratos e Modelo de Dados é a próxima etapa oficial.
+Na conclusão histórica do 0C ainda não haviam sido escolhidos schema, interfaces Python, armazenamento físico, tecnologia de mensageria, calendário concreto, tolerâncias, mecanismo de reserva ou integração externa. O Sprint 0C permanece formalmente concluído e aprovado. Posteriormente, o Sprint 0D refinou semanticamente a baseline por meio dos ADRs 0015–0022, sem escolher tecnologia física, e foi formalmente fechado em 2026-08-19 após aprovação do F1 final de consistência normativa/documental.
 
 ---
 
@@ -924,18 +956,31 @@ Criados ADRs 0002–0014 para materializar as decisões 0C-01 a 0C-26. A arquite
 
 Após revisão da baseline documental e aprovação humana, o Sprint 0C — Arquitetura Lógica foi marcado como concluído e aprovado. Os ADRs 0002–0014 constituem a baseline arquitetural vigente. A próxima etapa oficial é o Sprint 0D — Contratos e Modelo de Dados; nenhuma implementação de 0D foi iniciada.
 
+## 2026-08-19 — sincronização normativa/documental do Sprint 0D
+
+Os blocos 0D-A a 0D-E foram fechados e congelados, e o 0D-F — Cross-contract Gate foi tecnicamente aprovado sem blocker arquitetural. A auditoria textual integral dos ADRs 0002–0014 identificou deltas normativos específicos, documentados de forma append-only nos ADRs 0015–0022, preservando as decisões históricas de 0C.
+
+A sincronização atualiza também AGENTS.md, o índice de ADRs, a visão de arquitetura, este Plano Mestre e o documento do Sprint 0. Nenhum código funcional, integração financeira, capacidade de negociação ou tecnologia física foi introduzido. O Sprint 0D permanece ainda não formalmente fechado: falta rerodar exclusivamente o gate F1 de consistência entre ADRs e documentação. O Sprint 0E não foi iniciado.
+
+## 2026-08-19 — fechamento formal do Sprint 0D
+
+O F1 final de consistência normativa/documental foi executado sobre a baseline sincronizada e aprovado sem `CURRENT_NORM_CONFLICT`. Foram confirmadas as relações de refinement 0003→0015, 0007→0016, 0008→0017, 0009→0018, 0010→0019, 0011→0020, 0013→0021 e 0014→0022; ADRs 0001–0022 permanecem contínuos e indexados; documentos vivos estão coerentes com a norma vigente; nenhuma decisão física nova ou capacidade financeira foi introduzida.
+
+Com isso, o Sprint 0D — Contratos e Modelo de Dados é formalmente marcado como concluído e aprovado. O Sprint 0E permanece não iniciado.
+
 ---
 
 # 23. Próxima ação oficial
 
-**Iniciar, mediante tarefa autorizada, o Sprint 0D — Contratos e Modelo de Dados.**
+**Aguardar decisão explícita para iniciar o Sprint 0E — Protocolos Quantitativos.**
 
-Antes de qualquer nova implementação funcional:
+O Sprint 0D está formalmente encerrado. Até a abertura explícita do 0E:
 
-1. preservar os ADRs 0002–0014 como baseline arquitetural vigente;
-2. definir o escopo e os critérios de aceite do 0D;
-3. materializar contratos e modelo de dados somente em tarefa autorizada;
-4. manter qualquer capacidade financeira real desabilitada.
+1. tratar ADRs 0002–0014 com seus refinamentos 0015–0022 como baseline normativa vigente;
+2. manter qualquer capacidade financeira real desabilitada;
+3. não implementar integração BTG/MT5, execução, ordens ou dinheiro real;
+4. manter as decisões físicas deliberadamente adiadas fora da baseline até etapa apropriada;
+5. quando a materialização dos contratos 0D for autorizada, exigir que qualquer divergência entre código e ADRs interrompa a tarefa e seja reportada, não resolvida por suposição.
 
 ---
 

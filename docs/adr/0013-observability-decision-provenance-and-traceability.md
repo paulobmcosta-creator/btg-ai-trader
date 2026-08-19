@@ -2,6 +2,7 @@
 
 - **Status:** Aceita
 - **Data:** 2026-08-18
+- **Refinada por:** ADR 0021 — Refinamento de provenance, Runs, capture e lineage
 
 ## Contexto
 

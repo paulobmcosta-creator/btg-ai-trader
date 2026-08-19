@@ -2,6 +2,7 @@
 
 - **Status:** Aceita
 - **Data:** 2026-08-18
+- **Refinada por:** ADR 0017 — Refinamento de determinismo, input boundaries e aleatoriedade
 
 ## Contexto
 

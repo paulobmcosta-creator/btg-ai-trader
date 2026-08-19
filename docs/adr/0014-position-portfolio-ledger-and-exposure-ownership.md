@@ -2,6 +2,7 @@
 
 - **Status:** Aceita
 - **Data:** 2026-08-18
+- **Refinada por:** ADR 0022 — Refinamento de Ledger, projeções financeiras e Exposure
 
 ## Contexto
 

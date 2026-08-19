@@ -40,15 +40,27 @@ Permanece proibida qualquer implementação funcional, Market Observer, integra�
 - nenhum código, dependência ou integração financeira adicionados;
 - aprovação humana explícita registrada em 2026-08-18.
 
-## Próxima etapa — 0D Contratos e Modelo de Dados
+## Etapa 0D — Contratos e Modelo de Dados
 
-**Estado:** próxima etapa oficial; ainda não iniciada.
+**Estado:** ✅ formalmente fechado e aprovado em 2026-08-19 após o F1 final de consistência normativa/documental.
 
-O 0D poderá definir glossário, requisitos, schemas e contratos concretos, respeitando a baseline arquitetural dos ADRs 0002–0014. Nenhuma implementação de 0D está incluída neste fechamento.
+Os blocos 0D-A, 0D-B, 0D-C, 0D-D e 0D-E estão fechados e congelados. O 0D-F — Cross-contract Gate foi aprovado sem blocker arquitetural. A sincronização normativa/documental preservou os ADRs históricos e registrou os refinamentos do Sprint 0D nos ADRs 0015–0022.
 
-## Pendências após a baseline 0C
+O F1 final confirmou que ADRs históricos + refinements e os documentos vivos formam uma baseline normativa única, sem `CURRENT_NORM_CONFLICT`. Nenhuma implementação funcional de 0D foi iniciada e nenhuma tecnologia física foi escolhida.
 
-- definir glossário, requisitos funcionais/não funcionais e contratos/schemas concretos no 0D;
+O Sprint 0E — Protocolos Quantitativos **não foi iniciado**.
+
+### Gate de encerramento 0D — F1
+
+- relações de refinement 0003→0015, 0007→0016, 0008→0017, 0009→0018, 0010→0019, 0011→0020, 0013→0021 e 0014→0022 validadas;
+- ADRs 0001–0022 contínuos e integralmente indexados;
+- nenhum conflito normativo corrente detectado nas buscas transversais;
+- links relativos e referências de refinement válidos;
+- `git diff --check` sem erros;
+- teste estrutural existente aprovado e `compileall` aprovado no ambiente de verificação;
+- 0E confirmado como não iniciado.
+
+## Próximas etapas após o fechamento do 0D
 - definir aquisição, retenção, qualidade mensurável e proveniência física de dados, sem conexão nesta fase;
 - escrever protocolos quantitativos de leakage, validação temporal, backtest/replay e paper trading;
 - definir limites, tolerâncias, calendários concretos, gates mensuráveis e responsáveis por aprovação;

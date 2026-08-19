@@ -2,6 +2,7 @@
 
 - **Status:** Aceita
 - **Data:** 2026-08-18
+- **Refinada por:** ADR 0020 — Refinamento de RuntimePhase, SafetyPosture e Readiness
 
 ## Contexto
 

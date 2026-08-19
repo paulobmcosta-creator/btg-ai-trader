@@ -2,6 +2,7 @@
 
 - **Status:** Aceita
 - **Data:** 2026-08-18
+- **Refinada por:** ADR 0015 — Refinamento do envelope, contexto de processamento e versionamento
 
 ## Contexto
 

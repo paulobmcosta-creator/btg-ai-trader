@@ -2,6 +2,7 @@
 
 - **Status:** Aceita
 - **Data:** 2026-08-18
+- **Refinada por:** ADR 0019 — Refinamento de recovery, reconciliation boundaries e readiness
 
 ## Contexto
 

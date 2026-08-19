@@ -2,6 +2,7 @@
 
 - **Status:** Aceita
 - **Data:** 2026-08-18
+- **Refinada por:** ADR 0018 — Refinamento de persistência, durabilidade e persist-before-act
 
 ## Contexto
 

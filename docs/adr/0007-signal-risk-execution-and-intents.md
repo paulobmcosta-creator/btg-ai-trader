@@ -2,6 +2,7 @@
 
 - **Status:** Aceita
 - **Data:** 2026-08-18
+- **Refinada por:** ADR 0016 — Refinamento da cadeia Strategy, Risk, autorização e Execution
 
 ## Contexto
 
