@@ -2,7 +2,7 @@
 
 Fundação de um futuro sistema quantitativo intradiário em Python, orientado a dados, avaliação de cenários, gestão independente de risco e operação auditável.
 
-> **Estado:** Sprint 0D — Contratos e Modelo de Dados formalmente concluído e aprovado em 2026-08-19. O Sprint 0E — Protocolos Quantitativos não foi iniciado. Este repositório continua sem estratégia operacional, modelo operacional, integração com BTG/MetaTrader 5 ou capacidade de enviar ordens.
+> **Estado:** Sprint 0E — Protocolos Quantitativos com sincronização documental concluída e gate final pendente. 0A–0D formalmente concluídos e aprovados. Este repositório continua sem estratégia operacional, modelo operacional, integração com BTG/MetaTrader 5 ou capacidade de enviar ordens.
 
 ## Segurança nesta fase
 
@@ -50,7 +50,7 @@ armazenamento e integração será decidida no Sprint 0 e registrada por ADR.
 
 ## Próximo marco
 
-O [Sprint 0](docs/sprints/SPRINT_0.md) permanece em andamento: 0A–0D estão concluídos, enquanto 0E e o gate 0F ainda não foram iniciados/concluídos. A próxima etapa só pode ser aberta por decisão explícita e continua sem implementar trading real. Consulte também a [baseline de arquitetura e contratos](docs/architecture/README.md).
+O [Sprint 0](docs/sprints/SPRINT_0.md) permanece em andamento: 0A–0D estão concluídos, 0E concluiu a sincronização documental e o gate 0F ainda não foi iniciado. A próxima etapa só pode ser aberta por decisão explícita e continua sem implementar trading real. Consulte também a [baseline de arquitetura e contratos](docs/architecture/README.md) e os [protocolos quantitativos](docs/protocols/quantitative/README.md).
 
 ## Aviso
 

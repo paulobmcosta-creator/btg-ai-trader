@@ -1,16 +1,32 @@
 # Protocolos
 
-Protocolos transformarão princípios em procedimentos reproduzíveis e evidências auditáveis.
+Protocolos transformam princípios arquiteturais e científicos em procedimentos reproduzíveis, contratos conceituais e evidências auditáveis.
 
-Documentos previstos:
+---
 
-- qualidade, proveniência e versionamento de dados;
-- prevenção de look-ahead bias e data leakage;
-- backtest e replay com custos realistas;
-- validação temporal e fora da amostra;
-- promoção, rollback e monitoramento de modelos;
-- paper trading;
-- risco, falhas seguras, reconciliação e recuperação;
-- gates de produção e aprovação humana.
+## 1. Protocolos de Segurança
 
-Até esses protocolos serem definidos e aprovados, nenhum resultado experimental autoriza negociação.
+- [Protocolo de Segurança — Fase Estrutural](SAFETY.md): Diretrizes e restrições obrigatórias para impedir a introdução de capacidades operacionais ou financeiras nas fases iniciais do projeto.
+
+---
+
+## 2. Protocolos Quantitativos (Sprint 0E)
+
+Os protocolos quantitativos estabelecem a metodologia científica, a integridade temporal, a simulação realista de mercado, os critérios estatísticos de validação e as regras de promoção/rejeição de modelos e estratégias.
+
+- **[Visão Geral e Índice dos Protocolos Quantitativos](quantitative/README.md)**
+- **[0E-A — Semântica Experimental e Hipótese Quantitativa](quantitative/0E-A-experimental-semantics.md)**
+- **[0E-B — Dados, RunInputBoundary e Integridade Temporal](quantitative/0E-B-dataset-temporal-integrity.md)**
+- **[0E-C — Desenho de Validação, Out-of-Sample e Baselines](quantitative/0E-C-validation-oos-baselines.md)**
+- **[0E-D — Backtest e Simulação de Mercado](quantitative/0E-D-backtest-market-simulation.md)**
+- **[0E-E — Validação Estatística e Econômica](quantitative/0E-E-statistical-economic-validation.md)**
+- **[0E-F — Avaliação de Modelos e Estratégias](quantitative/0E-F-strategy-model-evaluation.md)**
+- **[0E-G — Promoção, Paper Trading e Rejeição](quantitative/0E-G-promotion-paper-rejection.md)**
+- **[0E-H — Gate de Consistência Transversal](quantitative/0E-H-cross-protocol-gate.md)**
+- **[Matriz de Rastreabilidade HQI ↔ QPI](quantitative/TRACEABILITY.md)**
+
+---
+
+## 3. Estado Normativo
+
+Os protocolos quantitativos 0E-A a 0E-G foram tecnicamente fechados e aprovados no gate transversal 0E-H. A sincronização documental está concluída e o gate final de consistência documental está pendente. Nenhuma evidência experimental autoriza negociação real sem a superação cumulativa dos gates de produção e aprovação humana explícita.

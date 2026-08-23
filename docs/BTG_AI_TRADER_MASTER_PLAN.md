@@ -2,7 +2,7 @@
 
 **Documento de referência principal do projeto**
 **Status:** ativo e evolutivo
-**Última consolidação:** 2026-08-19
+**Última consolidação:** 2026-08-20
 **Repositório local:** `C:\Projetos\btg-ai-trader`
 **Projeto ChatGPT:** `BTG AI Trader`
 
@@ -593,6 +593,8 @@ Conversas são espaços de raciocínio, não devem ser a única fonte de decisõ
 - Branch local: `main`.
 - Baseline 0A/0B preparada para versionamento.
 - Autor Git configurado localmente.
+- Commit de sincronização normativa do Sprint 0D: `c7e3b24` — `docs: finalize Sprint 0D normative synchronization`.
+- Após esse commit, a árvore canônica local foi verificada com `git status` limpo.
 - Repositório remoto ainda não é requisito para avançar a arquitetura.
 
 ## 13.2. Política futura
@@ -619,9 +621,14 @@ Baseline arquitetural                 ✅ ADR-0002 a ADR-0014 + refinamentos 001
 0D-F — Cross-contract Gate            ✅ APROVADO
 Sincronização normativa 0D            ✅ CONCLUÍDA — ADRs 0015–0022
 F1 final de consistência documental   ✅ APROVADO
+Commit de sincronização 0D            ✅ `c7e3b24`
 Sprint 0D                             ✅ FORMALMENTE FECHADO/APROVADO
-0E — Protocolos quantitativos         ⏳ NÃO INICIADO
-0F — Gate do Sprint 0                 ⏳ FUTURO
+0E-A a 0E-G                           ✅ FECHADOS/CONGELADOS
+0E-H — Cross-Protocol Gate            ✅ APROVADO (PASS)
+Sincronização documental 0E           ✅ CONCLUÍDA
+Gate final de consistência documental ⏳ PENDENTE
+Sprint 0E                             🟠 NÃO FECHADO FORMALMENTE AINDA
+0F — Gate do Sprint 0                 ⏳ NÃO INICIADO
 ```
 
 ---
@@ -846,20 +853,19 @@ Somente se todos os gates forem cumpridos.
 
 ## Gate D — Paper
 
-- número mínimo de pregões;
-- comportamento compatível com backtest;
-- slippage observado;
-- estabilidade operacional;
-- nenhum erro crítico.
+- número mínimo de pregões e oportunidades de decisão;
+- comportamento e distribuição estatística compatíveis com o backtest;
+- discrepância de execução observável no perfil Paper com proveniência declarada (refinando "slippage observado");
+- estabilidade operacional e ausência de erros críticos;
+- decisões prospectivas não financiadas (non-funded) sem equivalência automática a Live.
 
 ## Gate E — Risk Engine
 
-- veto testado;
-- circuit breakers;
-- daily loss;
-- position limits;
-- kill switch;
-- fail-safe.
+- avaliação da suficiência pré-produção completa do Risk Engine (a authority e a fronteira independente de Risk existem na baseline desde 0C/0D, a capability necessária ao Paper deve ser implementada antes do Sprint 8, e o Gate E audita a suficiência final pré-produção);
+- veto testado e poder de veto independente;
+- circuit breakers e limites de perda diária (daily loss);
+- position limits e limites de exposição da carteira;
+- kill switch e fail-safe integrados.
 
 ## Gate F — Recovery
 
@@ -966,21 +972,35 @@ A sincronização atualiza também AGENTS.md, o índice de ADRs, a visão de arq
 
 O F1 final de consistência normativa/documental foi executado sobre a baseline sincronizada e aprovado sem `CURRENT_NORM_CONFLICT`. Foram confirmadas as relações de refinement 0003→0015, 0007→0016, 0008→0017, 0009→0018, 0010→0019, 0011→0020, 0013→0021 e 0014→0022; ADRs 0001–0022 permanecem contínuos e indexados; documentos vivos estão coerentes com a norma vigente; nenhuma decisão física nova ou capacidade financeira foi introduzida.
 
-Com isso, o Sprint 0D — Contratos e Modelo de Dados é formalmente marcado como concluído e aprovado. O Sprint 0E permanece não iniciado.
+Com isso, o Sprint 0D — Contratos e Modelo de Dados é formalmente marcado como concluído e aprovado. A sincronização normativa foi consolidada no commit local `c7e3b24` (`docs: finalize Sprint 0D normative synchronization`). Na árvore canônica local, `pytest`, Ruff, mypy, `compileall`, `pip check` e `git diff --cached --check` passaram; após o commit, `git status` confirmou `working tree clean`. O Sprint 0E permanece não iniciado.
+
+## 2026-08-20 — sincronização normativa/documental do Sprint 0E
+
+Os sub-blocos 0E-A a 0E-G foram tecnicamente fechados e o 0E-H — Cross-Protocol Gate foi aprovado (PASS). A especificação metodológica foi materializada em `docs/protocols/quantitative/` (0E-A a 0E-H) e documentada em `docs/sprints/SPRINT_0E.md`.
+
+Foram formalizados 269 Hard Quantitative Invariants (HQIs) e consolidados sob 15 Invariantes Canônicos Transversais (QPI-01 a QPI-15) com rastreabilidade completa em `TRACEABILITY.md`. Foram resolvidos formalmente os achados documentais H-DOC-01 a H-DOC-06:
+- H-DOC-01: Relação Paper × Risk esclarecida (a authority de Risk existe desde 0C/0D, a capability necessária ao Paper é implementada antes do Sprint 8 e o Gate E avalia a suficiência pré-produção completa do Risk Engine);
+- H-DOC-02: "Slippage observado" em Paper refinado como discrepância observável qualificada pela proveniência da observação;
+- H-DOC-03: Promoção quantitativa formalizada como progressão evidenciária, nunca autoridade de trading;
+- H-DOC-04: Predicados de aplicabilidade (ApplicabilityPredicate) formalizados como não transformadores de HQI em policy;
+- H-DOC-05: Canonicalização transversal dos 269 HQIs sob QPI-01 a QPI-15 em TRACEABILITY.md;
+- H-DOC-06: Conceitos semânticos delimitados como metodológicos, sem constituir schemas físicos de runtime prematuros.
+
+Nenhum código funcional, dependência, ativo, timeframe, modelo ou tecnologia física foi introduzido. O Sprint 0E permanece ainda não formalmente fechado, com o gate final de consistência documental pendente. O Sprint 0F permanece não iniciado.
 
 ---
 
 # 23. Próxima ação oficial
 
-**Aguardar decisão explícita para iniciar o Sprint 0E — Protocolos Quantitativos.**
+**Executar o gate final de consistência documental do Sprint 0E e obter aprovação humana formal.**
 
-O Sprint 0D está formalmente encerrado. Até a abertura explícita do 0E:
+O Sprint 0E concluiu a sincronização documental e aguarda aprovação humana para seu fechamento formal. Até a abertura explícita do Sprint 0F:
 
-1. tratar ADRs 0002–0014 com seus refinamentos 0015–0022 como baseline normativa vigente;
+1. tratar ADRs 0001–0022 e os Protocolos Quantitativos 0E-A a 0E-H como baseline normativa vigente;
 2. manter qualquer capacidade financeira real desabilitada;
 3. não implementar integração BTG/MT5, execução, ordens ou dinheiro real;
-4. manter as decisões físicas deliberadamente adiadas fora da baseline até etapa apropriada;
-5. quando a materialização dos contratos 0D for autorizada, exigir que qualquer divergência entre código e ADRs interrompa a tarefa e seja reportada, não resolvida por suposição.
+4. manter as decisões físicas e numéricas deliberadamente adiadas fora da baseline até etapa apropriada;
+5. não iniciar o Sprint 0F — Gate do Sprint 0 antes do fechamento formal e commit do Sprint 0E.
 
 ---
 

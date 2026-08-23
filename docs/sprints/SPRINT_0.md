@@ -46,9 +46,7 @@ Permanece proibida qualquer implementação funcional, Market Observer, integra�
 
 Os blocos 0D-A, 0D-B, 0D-C, 0D-D e 0D-E estão fechados e congelados. O 0D-F — Cross-contract Gate foi aprovado sem blocker arquitetural. A sincronização normativa/documental preservou os ADRs históricos e registrou os refinamentos do Sprint 0D nos ADRs 0015–0022.
 
-O F1 final confirmou que ADRs históricos + refinements e os documentos vivos formam uma baseline normativa única, sem `CURRENT_NORM_CONFLICT`. Nenhuma implementação funcional de 0D foi iniciada e nenhuma tecnologia física foi escolhida.
-
-O Sprint 0E — Protocolos Quantitativos **não foi iniciado**.
+O F1 final confirmou que ADRs históricos + refinements e os documentos vivos formam uma baseline normativa única, sem `CURRENT_NORM_CONFLICT`. Nenhuma implementação funcional de 0D foi iniciada e nenhuma tecnologia física foi escolhida. A sincronização normativa do 0D foi consolidada no commit local `c7e3b24` (`docs: finalize Sprint 0D normative synchronization`).
 
 ### Gate de encerramento 0D — F1
 
@@ -56,24 +54,49 @@ O Sprint 0E — Protocolos Quantitativos **não foi iniciado**.
 - ADRs 0001–0022 contínuos e integralmente indexados;
 - nenhum conflito normativo corrente detectado nas buscas transversais;
 - links relativos e referências de refinement válidos;
-- `git diff --check` sem erros;
-- teste estrutural existente aprovado e `compileall` aprovado no ambiente de verificação;
-- 0E confirmado como não iniciado.
+- `git diff --cached --check` sem erros na árvore canônica local;
+- `pytest`: 1 teste aprovado;
+- Ruff: aprovado;
+- mypy: aprovado;
+- `compileall`: aprovado;
+- `pip check`: sem requisitos quebrados;
+- commit `c7e3b24` criado com 22 arquivos documentais (`652 insertions`, `158 deletions`);
+- `git status` após o commit: `working tree clean`.
 
-## Próximas etapas após o fechamento do 0D
-- definir aquisição, retenção, qualidade mensurável e proveniência física de dados, sem conexão nesta fase;
-- escrever protocolos quantitativos de leakage, validação temporal, backtest/replay e paper trading;
-- definir limites, tolerâncias, calendários concretos, gates mensuráveis e responsáveis por aprovação;
-- confirmar escopo, instrumentos e horizonte do primeiro observador somente leitura quando o sprint apropriado for autorizado.
+---
+
+## Etapa 0E — Protocolos Quantitativos
+
+**Estado:** 🟠 Sincronização documental concluída / Gate final de consistência documental pendente.
+
+Os sub-blocos 0E-A a 0E-G foram tecnicamente fechados e o 0E-H — Cross-Protocol Gate foi aprovado (PASS). A especificação metodológica foi materializada em [docs/protocols/quantitative/](../protocols/quantitative/README.md) e documentada em [docs/sprints/SPRINT_0E.md](SPRINT_0E.md).
+
+Foram formalizados 269 Hard Quantitative Invariants (HQIs) e consolidados sob 15 Invariantes Canônicos Transversais (QPI-01 a QPI-15) com rastreabilidade completa em [TRACEABILITY.md](../protocols/quantitative/TRACEABILITY.md). Foram resolvidos formalmente os achados documentais H-DOC-01 a H-DOC-06:
+- **H-DOC-01:** Relação Paper × Risk esclarecida (a authority e fronteira independente de Risk existem desde 0C/0D, a capability de Risk para Paper é implementada antes do Sprint 8, e o Gate E avalia a suficiência pré-produção completa do Risk Engine);
+- **H-DOC-02:** "Slippage observado" em Paper refinado como discrepância observável qualificada pela proveniência da observação;
+- **H-DOC-03:** Promoção quantitativa formalizada como progressão evidenciária, nunca autoridade de trading;
+- **H-DOC-04:** Predicados de aplicabilidade (*ApplicabilityPredicate*) formalizados como não transformadores de HQI em policy;
+- **H-DOC-05:** Canonicalização transversal dos 269 HQIs sob QPI-01 a QPI-15 em TRACEABILITY.md;
+- **H-DOC-06:** Conceitos semânticos delimitados como metodológicos, sem constituir schemas físicos de runtime prematuros.
+
+Nenhum código funcional, dependência, ativo, timeframe, modelo ou tecnologia física foi introduzido. O Sprint 0E permanece ainda não formalmente fechado, aguardando o gate final de consistência documental e aprovação humana. O Sprint 0F permanece **não iniciado**.
+
+---
+
+## Próximas etapas após o fechamento do 0E
+
+- Executar o gate final de consistência documental e obter aprovação humana formal do Sprint 0E;
+- Realizar commit de fechamento do Sprint 0E;
+- Abrir formalmente a etapa **0F — Gate do Sprint 0** para consolidação da fundação.
 
 ## Fora de escopo
 
-Estratégias, modelos operacionais, integração BTG/MT5, coleta ao vivo, ordens, dinheiro real, cloud, produção e deploy.
+Estratégias operacionais concretas, modelos em produção, integração BTG/MT5, coleta ao vivo, ordens, dinheiro real, cloud, produção e deploy.
 
 ## Critérios de aceite
 
-- baseline arquitetural e ADRs revisados;
+- baseline arquitetural, ADRs e protocolos quantitativos revisados;
 - riscos, limites não escolhidos e decisões deliberadamente adiadas visíveis;
-- protocolos iniciais com evidências exigidas;
+- protocolos iniciais com evidências exigidas e rastreabilidade total;
 - ferramentas de qualidade escolhidas e executáveis;
 - nenhum segredo ou capacidade de execução financeira no repositório.
