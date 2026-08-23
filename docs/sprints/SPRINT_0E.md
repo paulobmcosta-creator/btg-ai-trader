@@ -1,9 +1,10 @@
 # Sprint 0E — Protocolos Quantitativos
 
-- **Status:** Sincronização documental concluída / Gate final de consistência documental pendente
+- **Status:** ✅ Formalmente fechado e aprovado em 2026-08-22
 - **Data da consolidação técnica:** 2026-08-20
+- **Data do fechamento formal:** 2026-08-22 (FINAL_0E_DOC_GATE: PASS | Human Approval: APPROVED)
 - **Baseline de entrada:** Sprint 0D formalmente fechado (`c7e3b24`) | ADR-0001 a ADR-0022
-- **Próximo passo:** Execução do gate final de consistência documental e aprovação humana (0F permanece não iniciado)
+- **Próximo passo oficial:** Sprint 0F — Gate do Sprint 0 (não iniciado)
 
 ---
 
@@ -49,8 +50,9 @@ Sprint 0E — Protocolos Quantitativos:
 ├── 0E-A a 0E-G: ✅ FECHADOS TECNICAMENTE
 ├── 0E-H Cross-Protocol Gate: ✅ APROVADO (PASS)
 ├── Sincronização documental: ✅ CONCLUÍDA
-├── Gate final de consistência documental: ⏳ PENDENTE
-└── Fechamento formal do Sprint 0E: ⏳ PENDENTE DE APROVAÇÃO HUMANA
+├── FINAL_0E_DOC_GATE: ✅ APROVADO (PASS)
+├── Aprovação Humana Formal: ✅ APROVADO (2026-08-22)
+└── Fechamento formal do Sprint 0E: ✅ FORMALMENTE FECHADO
 
-Sprint 0F — Gate do Sprint 0: ⏳ NÃO INICIADO
+Sprint 0F — Gate do Sprint 0: ⏳ NÃO INICIADO (PRÓXIMO PASSO OFICIAL)
 ```

@@ -149,7 +149,7 @@ A síntese de avaliação resulta em uma das seguintes disposições técnicas:
 | **F-HQI-27** | Lacunas materiais de evidência delimitam o alcance das conclusões da avaliação. | QPI-01, QPI-11 |
 | **F-HQI-28** | O status de componente não avaliado (`NOT_EVALUATED`) não equivale a componente aceitável. | QPI-11 |
 | **F-HQI-29** | As diferentes dimensões do vetor de avaliação não podem ser agregadas por votação simples de maioria. | QPI-07, QPI-10 |
-| **F-HQI-30** | Risco de cauda ou perdas extremas inaceitáveis dominam e anulam métricas de retorno positivo. | QPI-06, QPI-10 |
+| **F-HQI-30** | Risco de cauda e downside material podem dominar métricas de retorno positivo na síntese da estratégia. | QPI-06, QPI-10 |
 | **F-HQI-31** | A existência do Risk Engine não dispensa a estratégia de possuir avaliação de risco prudente. | QPI-08, QPI-06 |
 | **F-HQI-32** | Comparações entre Strategies devem controlar ou explicitar diferenças materiais de policies downstream capazes de determinar o resultado. | QPI-01 |
 | **F-HQI-33** | Degradação estatística do modelo (*model drift*) e perda de edge da estratégia (*decay*) são fenômenos distintos. | QPI-08 |

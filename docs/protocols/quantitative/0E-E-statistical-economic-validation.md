@@ -146,7 +146,7 @@ Estatística sofisticada ou p-values baixos jamais reparam dados contaminados ou
 | **E-HQI-15** | O índice de Sharpe exige especificação completa de taxa livre de risco, frequência e autocorrelação. | QPI-07, QPI-01 |
 | **E-HQI-16** | Fórmulas de anualização de volatilidade e retornos não criam informação empírica nova. | QPI-01 |
 | **E-HQI-17** | Métricas dependentes de trajetória (*path-dependent*) exigem contexto temporal e histórico. | QPI-06, QPI-07 |
-| **E-HQI-18** | O drawdown máximo isolado é insuficiente para caracterizar a severidade e duração de perdas. | QPI-07, QPI-06 |
+| **E-HQI-18** | O drawdown máximo isolado pode ser insuficiente para caracterizar a severidade e duração de perdas. | QPI-07, QPI-06 |
 | **E-HQI-19** | Métricas de quantil simples (ex.: VaR) não caracterizam sozinhas a severidade da cauda extrema. | QPI-06, QPI-07 |
 | **E-HQI-20** | Métricas de cauda não podem aparentar precisão estatística superior aos dados disponíveis na cauda. | QPI-01, QPI-11 |
 | **E-HQI-21** | O cálculo de probabilidade de perda exige definição estrita do evento de perda e do horizonte. | QPI-06 |
@@ -175,7 +175,7 @@ Estatística sofisticada ou p-values baixos jamais reparam dados contaminados ou
 | **E-HQI-44** | Incerteza e limitações do modelo de simulação de execução não podem ser ocultadas por precisão estatística. | QPI-01, QPI-05 |
 | **E-HQI-45** | A escolha da melhor semente aleatória (*best seed*) em simulações estocásticas constitui seleção e viés. | QPI-04, QPI-03 |
 | **E-HQI-46** | Determinismo computacional de um backtest não equivale a certeza empírica de generalização futura. | QPI-01 |
-| **E-HQI-47** | Complexidade arquitetural adicional exige demonstração de ganho incremental estatístico e econômico. | QPI-01, QPI-07 |
+| **E-HQI-47** | Complexidade arquitetural material exige justificativa e evidência incremental quando pertinente à claim. | QPI-01, QPI-07 |
 | **E-HQI-48** | A troca oportunista da métrica de avaliação em função do resultado (*metric shopping*) constitui seleção enviesada. | QPI-04, QPI-07 |
 | **E-HQI-49** | Ser o melhor candidato dentro de um espaço de busca massivo não prova viabilidade absoluta fora da amostra. | QPI-04, QPI-01 |
 | **E-HQI-50** | O teste de robustez deve ser genuinamente capaz de falsificar a hipótese sob condições adversas. | QPI-01 |

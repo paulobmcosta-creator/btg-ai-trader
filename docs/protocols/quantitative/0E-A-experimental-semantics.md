@@ -120,7 +120,7 @@ Os seguintes invariantes são estritamente obrigatórios e não compensatórios:
 | **A-HQI-07** | Evento de mercado, oportunidade de decisão, decisão, trade e observação estatística não são equivalentes. | QPI-08, QPI-05 |
 | **A-HQI-08** | `CandidateModel` e `CandidateStrategy` são entidades conceituais distintas e não intercambiáveis. | QPI-08 |
 | **A-HQI-09** | Sucesso quantitativo em pesquisa nunca cria autoridade operacional ou de trading. | QPI-13 |
-| **A-HQI-10** | Resultado metodologicamente inválido (ex.: contaminação temporal) é nulo e inadmissível. | QPI-10 |
+| **A-HQI-10** | Resultado metodologicamente inválido (ex.: contaminação temporal) não é evidência admissível. | QPI-10 |
 | **A-HQI-11** | Avaliação de evidência (*assessment*), avaliação de candidato (*evaluation*) e promoção (*promotion*) são etapas distintas. | QPI-13 |
 | **A-HQI-12** | O histórico material de pesquisa, hipóteses descartadas e seleção não pode ser ocultado. | QPI-04, QPI-12 |
 | **A-HQI-13** | O processo de seleção entre múltiplos modelos ou estratégias integra formalmente o experimento. | QPI-04 |

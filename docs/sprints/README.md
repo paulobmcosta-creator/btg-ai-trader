@@ -11,5 +11,5 @@ Cada sprint deve registrar objetivo, fora de escopo, critérios de aceite, verif
   - 0B — Ambiente de desenvolvimento (Concluído)
   - 0C — Arquitetura lógica (Concluído)
   - 0D — Contratos e Modelo de Dados (Concluído)
-  - [0E — Protocolos Quantitativos](SPRINT_0E.md) (Sincronização documental concluída / Gate final pendente)
-  - 0F — Gate do Sprint 0 (Não iniciado)
+  - [0E — Protocolos Quantitativos](SPRINT_0E.md) (Concluído)
+  - 0F — Gate do Sprint 0 (Próximo passo oficial / Não iniciado)

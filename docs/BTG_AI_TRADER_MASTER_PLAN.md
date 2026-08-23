@@ -988,19 +988,25 @@ Foram formalizados 269 Hard Quantitative Invariants (HQIs) e consolidados sob 15
 
 Nenhum código funcional, dependência, ativo, timeframe, modelo ou tecnologia física foi introduzido. O Sprint 0E permanece ainda não formalmente fechado, com o gate final de consistência documental pendente. O Sprint 0F permanece não iniciado.
 
+## 2026-08-22 — fechamento formal do Sprint 0E
+
+O gate final de consistência documental (`FINAL_0E_DOC_GATE`) foi executado e aprovado com sucesso (`PASS`) após a canonicalização estrita dos 269 HQIs e 15 QPIs contra o dossiê canônico. Foi removida a coluna individual de aplicabilidade em `TRACEABILITY.md`, preservando a regra transversal de que aplicabilidade não converte Hard Invariant em policy. A aprovação humana formal para o encerramento do Sprint 0E foi concedida em 2026-08-22.
+
+Com isso, o Sprint 0E — Protocolos Quantitativos está formalmente concluído e aprovado. A baseline normativa é composta pelos ADRs 0001–0022 e pelos protocolos quantitativos 0E-A a 0E-H. O Sprint 0F permanece como próximo passo oficial (não iniciado).
+
 ---
 
 # 23. Próxima ação oficial
 
-**Executar o gate final de consistência documental do Sprint 0E e obter aprovação humana formal.**
+**Sprint 0F — Gate do Sprint 0 (NEXT OFFICIAL STEP / NOT STARTED).**
 
-O Sprint 0E concluiu a sincronização documental e aguarda aprovação humana para seu fechamento formal. Até a abertura explícita do Sprint 0F:
+O Sprint 0E está formalmente concluído e aprovado. Até a abertura explícita do Sprint 0F:
 
-1. tratar ADRs 0001–0022 e os Protocolos Quantitativos 0E-A a 0E-H como baseline normativa vigente;
-2. manter qualquer capacidade financeira real desabilitada;
+1. tratar ADRs 0001–0022 e os Protocolos Quantitativos 0E-A a 0E-H como baseline normativa vigente e congelada;
+2. manter qualquer capacidade financeira real estritamente desabilitada;
 3. não implementar integração BTG/MT5, execução, ordens ou dinheiro real;
 4. manter as decisões físicas e numéricas deliberadamente adiadas fora da baseline até etapa apropriada;
-5. não iniciar o Sprint 0F — Gate do Sprint 0 antes do fechamento formal e commit do Sprint 0E.
+5. o Sprint 0F é o próximo marco formal do projeto e permanece não iniciado.
 
 ---
 

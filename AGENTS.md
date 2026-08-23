@@ -6,7 +6,7 @@ Este repositório será a fonte de verdade técnica do BTG AI Trader, um sistema
 
 ## Estado atual
 
-As etapas 0A e 0B, a arquitetura lógica 0C e o Sprint 0D — Contratos e Modelo de Dados estão formalmente concluídos e aprovados. Os contratos 0D-A a 0D-E permanecem congelados, a sincronização normativa foi materializada nos ADRs 0015–0022 e o gate final F1 foi aprovado em 2026-08-19. O Sprint 0E — Protocolos Quantitativos concluiu a sincronização documental e aguarda o gate final de consistência documental para fechamento formal. O Sprint 0F permanece não iniciado.
+As etapas 0A e 0B, a arquitetura lógica 0C, o Sprint 0D — Contratos e Modelo de Dados e o Sprint 0E — Protocolos Quantitativos estão formalmente concluídos e aprovados. Os contratos 0D-A a 0D-E e os protocolos 0E-A a 0E-G permanecem congelados e auditados, o gate final FINAL_0E_DOC_GATE foi aprovado com autorização humana em 2026-08-22 e o Sprint 0F permanece como próximo passo oficial (não iniciado).
 
 Não há autorização para integração com corretora, negociação automática, execução em produção ou uso de dinheiro real.
 

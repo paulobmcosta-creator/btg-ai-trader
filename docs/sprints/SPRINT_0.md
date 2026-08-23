@@ -67,7 +67,7 @@ O F1 final confirmou que ADRs históricos + refinements e os documentos vivos fo
 
 ## Etapa 0E — Protocolos Quantitativos
 
-**Estado:** 🟠 Sincronização documental concluída / Gate final de consistência documental pendente.
+**Estado:** ✅ Formalmente fechado e aprovado em 2026-08-22 após aprovação humana do FINAL_0E_DOC_GATE.
 
 Os sub-blocos 0E-A a 0E-G foram tecnicamente fechados e o 0E-H — Cross-Protocol Gate foi aprovado (PASS). A especificação metodológica foi materializada em [docs/protocols/quantitative/](../protocols/quantitative/README.md) e documentada em [docs/sprints/SPRINT_0E.md](SPRINT_0E.md).
 
@@ -79,15 +79,23 @@ Foram formalizados 269 Hard Quantitative Invariants (HQIs) e consolidados sob 15
 - **H-DOC-05:** Canonicalização transversal dos 269 HQIs sob QPI-01 a QPI-15 em TRACEABILITY.md;
 - **H-DOC-06:** Conceitos semânticos delimitados como metodológicos, sem constituir schemas físicos de runtime prematuros.
 
-Nenhum código funcional, dependência, ativo, timeframe, modelo ou tecnologia física foi introduzido. O Sprint 0E permanece ainda não formalmente fechado, aguardando o gate final de consistência documental e aprovação humana. O Sprint 0F permanece **não iniciado**.
+Nenhum código funcional, dependência, ativo, timeframe, modelo ou tecnologia física foi introduzido. O Sprint 0E está formalmente fechado. O Sprint 0F permanece como próximo passo oficial (**não iniciado**).
+
+### Gate de encerramento 0E — FINAL_0E_DOC_GATE
+
+- 269 Hard Quantitative Invariants (HQIs) e 15 QPIs integralmente auditados e canonicalizados sem semantic drift contra o dossiê canônico;
+- Matriz de rastreabilidade em TRACEABILITY.md atualizada, com remoção da coluna individual de aplicabilidade e adoção da regra transversal unificada;
+- Nenhum conflito normativo corrente (CURRENT_NORM_CONFLICT = NONE);
+- Nenhuma alteração em ADRs, src/, tests/ ou dependências;
+- Aprovação humana formal registrada em 2026-08-22;
+- Status do Sprint 0E: FORMALLY CLOSED.
 
 ---
 
 ## Próximas etapas após o fechamento do 0E
 
-- Executar o gate final de consistência documental e obter aprovação humana formal do Sprint 0E;
-- Realizar commit de fechamento do Sprint 0E;
-- Abrir formalmente a etapa **0F — Gate do Sprint 0** para consolidação da fundação.
+- **Sprint 0F — Gate do Sprint 0** permanece como próximo passo oficial (não iniciado);
+- Nenhuma decisão física, código funcional ou integração com corretora deve ser iniciada antes da abertura e execução do Sprint 0F.
 
 ## Fora de escopo
 

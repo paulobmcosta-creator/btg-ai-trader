@@ -29,4 +29,4 @@ Os protocolos quantitativos estabelecem a metodologia científica, a integridade
 
 ## 3. Estado Normativo
 
-Os protocolos quantitativos 0E-A a 0E-G foram tecnicamente fechados e aprovados no gate transversal 0E-H. A sincronização documental está concluída e o gate final de consistência documental está pendente. Nenhuma evidência experimental autoriza negociação real sem a superação cumulativa dos gates de produção e aprovação humana explícita.
+Os protocolos quantitativos 0E-A a 0E-G e o gate 0E-H foram formalmente concluídos e aprovados (FINAL_0E_DOC_GATE: PASS | Human Approval: APPROVED em 2026-08-22). O Sprint 0E está formalmente fechado e o Sprint 0F permanece como próximo passo oficial (não iniciado). Nenhuma evidência experimental autoriza negociação real sem a superação cumulativa dos gates de produção e aprovação humana explícita.

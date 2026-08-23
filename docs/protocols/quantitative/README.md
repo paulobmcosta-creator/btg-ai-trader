@@ -1,8 +1,8 @@
 # Protocolos Quantitativos — Sprint 0E
 
-**Status:** Sincronização documental concluída / Gate final de consistência documental pendente  
-**Baseline normativa:** ADR-0001 a ADR-0022 | Sprint 0D formalmente fechado (`c7e3b24`)  
-**Data:** 2026-08-20  
+**Status:** Formalmente concluído e aprovado (FINAL_0E_DOC_GATE: PASS | Human Approval: APPROVED)
+**Baseline normativa:** ADR-0001 a ADR-0022 | Sprint 0D formalmente fechado (`c7e3b24`)
+**Data de Fechamento Formal:** 2026-08-22
 
 ---
 
@@ -26,7 +26,7 @@ O Sprint 0E estabeleceu 269 Hard Quantitative Invariants (HQIs) específicos, di
 6. **QPI-06 — ECONOMIC CLAIMS ARE NET AND RISK-AWARE:** Toda claim econômica deve incorporar fricções materiais (custos, taxas, spread, slippage, latência), downside, risco de cauda, risco de trajetória e incerteza amostral/estrutural.
 7. **QPI-07 — NO SINGLE METRIC DEFINES MERIT:** Nenhuma métrica isolada (Sharpe, taxa de acerto, retorno acumulado ou p-value) define a qualidade integral de um candidato.
 8. **QPI-08 — MODEL ≠ STRATEGY ≠ COMPOSED SYSTEM:** Mérito preditivo de um modelo, mérito de uma política decisória (estratégia) e comportamento de um sistema composto sob risco e execução são objetos de avaliação distintos.
-9. **QPI-09 — NO_TRADE IS A FIRST-CLASS DECISION:** A inação deliberada (`NO_TRADE`) é um resultado decisório legítimo, observável e prioritário em condições de incerteza, e não ausência de dado.
+9. **QPI-09 — NO_TRADE IS A FIRST-CLASS DECISION:** Inação legítima permanece parte observável da policy, sendo um resultado decisório legítimo e não ausência de dado.
 10. **QPI-10 — HARD INVALIDITY IS NON-COMPENSATORY:** Violação de invariante metodológico crítico (leakage, contaminação de OOS, look-ahead) anula a admissibilidade da evidência e não pode ser compensada por métricas favoráveis.
 11. **QPI-11 — UNKNOWN MUST REMAIN UNKNOWN:** A ausência de evidência ou dado temporal não pode ser preenchida por suposições otimistas, timestamps fabricados, liquidez presumida ou certezas artificiais.
 12. **QPI-12 — VERSION AND PROVENANCE ARE IMMUTABLE HISTORICALLY:** Qualquer alteração material em código, dados, parâmetros ou políticas gera nova identidade de versão; o passado permanece vinculado ao que foi efetivamente executado.

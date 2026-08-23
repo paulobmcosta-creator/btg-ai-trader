@@ -180,10 +180,10 @@ A transição futura para qualquer operação com dinheiro real permanece absolu
 | **G-HQI-35** | Mudança estrutural no regime de mercado (*domain shift*) pode limitar a validade da evidência de Paper. | QPI-01, QPI-14 |
 | **G-HQI-36** | Regras de interrupção (*stopping rules*) de Paper Trading devem ser pré-especificadas no desenho do teste. | QPI-14 |
 | **G-HQI-37** | A interrupção de Paper Trading por motivos de segurança operacional prevalece sobre a suficiência amostral. | QPI-15, QPI-14 |
-| **G-HQI-38** | Resultado financeiro positivo em Paper Trading, isoladamente, não é suficiente para satisfazer o Paper Gate. | QPI-07, QPI-14 |
+| **G-HQI-38** | Resultado financeiro positivo em Paper Trading, isoladamente, é insuficiente para satisfazer o Paper Gate. | QPI-07, QPI-14 |
 | **G-HQI-39** | O Paper Trading gera novos artefatos de evidência de forma append-only, sem reescrever o histórico. | QPI-12, QPI-14 |
 | **G-HQI-40** | O diagnóstico de falha em Paper Trading exige demonstração empírica baseada em dados e logs. | QPI-01, QPI-14 |
-| **G-HQI-41** | Candidato materialmente modificado em resposta a uma falha de Paper deve retornar aos gates quantitativos aplicáveis à mudança antes de reivindicar nova progressão. | QPI-03, QPI-10 |
+| **G-HQI-41** | Candidato materialmente modificado após falha em Paper Trading deve retornar aos gates do pipeline aplicáveis antes de reivindicar nova progressão. | QPI-03, QPI-10 |
 | **G-HQI-42** | A aprovação humana em comitê não tem poder para validar evidência quantitativamente contaminada. | QPI-10, QPI-13 |
 | **G-HQI-43** | Suposta urgência comercial ou de mercado não autoriza o bypass ou flexibilização de gates normativos. | QPI-15, QPI-10 |
 | **G-HQI-44** | O estado de promoção é plenamente revogável a qualquer momento diante de novas evidências. | QPI-13, QPI-15 |

@@ -115,8 +115,8 @@ Restart cria novo `RunId`; continuidade é registrada por `RunRelation` tipada. 
 - Sincronização normativa/documental: concluída nos ADRs 0015–0022.
 - F1 final de consistência normativa/documental: aprovado em 2026-08-19.
 - Sprint 0D: formalmente fechado e aprovado.
-- Sprint 0E: sincronização documental concluída; gate final de consistência documental pendente.
-- Sprint 0F: não iniciado.
+- Sprint 0E: formalmente fechado e aprovado em 2026-08-22 (FINAL_0E_DOC_GATE: PASS).
+- Sprint 0F: não iniciado (próximo passo oficial).
 
 Os ADRs 0015–0022 refinam explicitamente decisões históricas dos ADRs 0003, 0007–0011 e 0013–0014 sem reescrever o histórico de 0C.
 
