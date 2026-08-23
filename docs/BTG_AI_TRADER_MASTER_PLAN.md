@@ -626,8 +626,8 @@ Sprint 0D                             ✅ FORMALMENTE FECHADO/APROVADO
 0E-A a 0E-G                           ✅ FECHADOS/CONGELADOS
 0E-H — Cross-Protocol Gate            ✅ APROVADO (PASS)
 Sincronização documental 0E           ✅ CONCLUÍDA
-Gate final de consistência documental ⏳ PENDENTE
-Sprint 0E                             🟠 NÃO FECHADO FORMALMENTE AINDA
+Gate final de consistência documental ✅ APROVADO (PASS)
+Sprint 0E                             ✅ FORMALMENTE FECHADO/APROVADO
 0F — Gate do Sprint 0                 ⏳ NÃO INICIADO
 ```
 
