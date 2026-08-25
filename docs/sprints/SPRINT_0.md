@@ -79,7 +79,7 @@ Foram formalizados 269 Hard Quantitative Invariants (HQIs) e consolidados sob 15
 - **H-DOC-05:** Canonicalização transversal dos 269 HQIs sob QPI-01 a QPI-15 em TRACEABILITY.md;
 - **H-DOC-06:** Conceitos semânticos delimitados como metodológicos, sem constituir schemas físicos de runtime prematuros.
 
-Nenhum código funcional, dependência, ativo, timeframe, modelo ou tecnologia física foi introduzido. O Sprint 0E está formalmente fechado. O Sprint 0F permanece como próximo passo oficial (**não iniciado**).
+Nenhum código funcional, dependência, ativo, timeframe, modelo ou tecnologia física foi introduzido. O Sprint 0E está formalmente fechado.
 
 ### Gate de encerramento 0E — FINAL_0E_DOC_GATE
 
@@ -92,10 +92,18 @@ Nenhum código funcional, dependência, ativo, timeframe, modelo ou tecnologia f
 
 ---
 
-## Próximas etapas após o fechamento do 0E
+## Etapa 0F — Foundation Cross-Gate
 
-- **Sprint 0F — Gate do Sprint 0** permanece como próximo passo oficial (não iniciado);
-- Nenhuma decisão física, código funcional ou integração com corretora deve ser iniciada antes da abertura e execução do Sprint 0F.
+**Estado:** ✅ Formalmente fechado e aprovado em 2026-08-25 após aprovação do Foundation Final Gate (0F-F).
+
+Os blocos 0F-A (consistência normativa), 0F-B (triagem de 124 decisões deferidas), 0F-C (matriz canônica de 41 RQMs), 0F-D (20 Negative Capabilities) e 0F-E (Contrato de Entrada do Sprint 1 com 118 cláusulas) foram formalmente auditados e fechados sem Hard Blockers. As quatro ações documentais pré-Sprint 1 (A-F01, A-F02, A-F03 e B-F01) foram materializadas e fechadas.
+
+Com isso, toda a fase de Fundação (Sprint 0, etapas 0A a 0F) está formalmente concluída e aprovada.
+
+## Próximo marco
+
+- **Sprint 1 — Market Observer** é o próximo passo oficial do projeto (**não iniciado**);
+- O início físico do Sprint 1 permanece condicionado à autorização explícita da coordenação humana e ao cumprimento estrito do Contrato de Entrada (0F-E).
 
 ## Fora de escopo
 

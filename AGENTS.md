@@ -6,13 +6,22 @@ Este repositório será a fonte de verdade técnica do BTG AI Trader, um sistema
 
 ## Estado atual
 
-As etapas 0A e 0B, a arquitetura lógica 0C, o Sprint 0D — Contratos e Modelo de Dados e o Sprint 0E — Protocolos Quantitativos estão formalmente concluídos e aprovados. Os contratos 0D-A a 0D-E e os protocolos 0E-A a 0E-G permanecem congelados e auditados, o gate final FINAL_0E_DOC_GATE foi aprovado com autorização humana em 2026-08-22 e o Sprint 0F permanece como próximo passo oficial (não iniciado).
+A fase de Fundação (Sprints 0A a 0F) está formalmente concluída e aprovada. Os contratos 0D-A a 0D-E e os protocolos 0E-A a 0E-G permanecem congelados e auditados, o Foundation Final Gate (0F-F) foi formalmente aprovado e o Sprint 1 — Market Observer permanece como próximo passo oficial (não iniciado).
 
-Não há autorização para integração com corretora, negociação automática, execução em produção ou uso de dinheiro real.
+Não há autorização para negociação automática, envio de ordens, execução em produção ou uso de dinheiro real.
+
+## Autoridade normativa e realidade implementada
+
+- Decisões normativas aprovadas são definidas exclusivamente pelos artefatos normativos vigentes do projeto (ADRs, protocolos quantitativos e contratos de entrada).
+- Código, testes, configurações e estrutura física representam o estado que está efetivamente implementado no repositório.
+- A realidade implementada não pode silenciosamente superseder a autoridade normativa: se implementação e norma divergirem, isso constitui drift/finding a ser reconciliado explicitamente.
+- ADRs históricos aprovados não são reescritos silenciosamente; mudanças normativas exigem o mecanismo formal de refinement ou supersession aplicável.
+- Restrições de integração física vigentes durante a Fundação foram restrições de estágio e não constituem proibição permanente de integração read-only de market data no Sprint 1.
+- Qualquer integração futura de market data no Sprint 1 permanece estritamente subordinada a `SPRINT1_REQUIRED_READ_ONLY_BY_CONSTRUCTION = TRUE` e `SPRINT1_REQUIRED_CAPABILITY_ESCALATION = STRUCTURAL_ESCALATION`.
 
 ## Restrições absolutas nesta fase
 
-- Não conectar ao BTG, MetaTrader 5 ou qualquer corretora/plataforma de execução.
+- Não conectar a corretoras ou plataformas para fins de execução financeira.
 - Não transmitir, criar, alterar ou cancelar ordens.
 - Não usar nem introduzir chamadas a `order_send()`.
 - Não habilitar negociação automática.

@@ -189,3 +189,5 @@ DOCUMENTATION_REFINEMENTS = 6 (H-DOC-01 a H-DOC-06 RESOLVIDOS)
 SPRINT_0E_STATUS = DOCUMENTATION_SYNC_COMPLETED / FINAL_CONSISTENCY_GATE_PENDING
 NEXT_ACTION = RUN_CONSISTENCY_CHECKS_AND_REQUEST_HUMAN_APPROVAL
 ```
+
+> **Nota histórica de encerramento (2026-08-25):** O campo `NEXT_ACTION` acima reflete o estado no momento da emissão deste documento. Posteriormente, o Sprint 0E foi formalmente fechado (commits `4290f1a`, `cb9582c` e `2b786ad`) e a sequência do Sprint 0F (Foundation Cross-Gate) foi executada e adjudicada. Portanto, esta anotação constitui snapshot histórico superado e não representa o estado operacional corrente do projeto.

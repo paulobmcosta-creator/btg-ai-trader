@@ -2,18 +2,17 @@
 
 Fundação de um futuro sistema quantitativo intradiário em Python, orientado a dados, avaliação de cenários, gestão independente de risco e operação auditável.
 
-> **Estado:** Sprint 0E — Protocolos Quantitativos formalmente concluído e aprovado (2026-08-22). 0A–0E formalmente concluídos e aprovados. Próximo passo oficial: Sprint 0F (não iniciado). Este repositório continua sem estratégia operacional, modelo operacional, integração com BTG/MetaTrader 5 ou capacidade de enviar ordens.
+> **Estado:** Fase de Fundação (Sprints 0A a 0F) formalmente concluída e aprovada. Próximo passo oficial: Sprint 1 — Market Observer (não iniciado). Este repositório continua sem estratégia operacional, modelo operacional, capacidade de enviar ordens ou execução financeira real.
 
 ## Segurança nesta fase
 
 - negociação automática: desabilitada e não implementada;
 - dinheiro real: proibido;
-- conexões com corretoras e MT5: não implementadas;
-- transmissão de ordens, inclusive `order_send()`: proibida;
-- credenciais e segredos: não devem ser versionados;
+- transmissão e criação de ordens, inclusive `order_send()`: proibidas;
+- credenciais e segredos de execução: não devem ser versionados;
 - produção e deploy: fora do escopo.
 
-As regras permanentes estão em [AGENTS.md](AGENTS.md). Qualquer evolução futura será promovida por gates explícitos, começando por dados confiáveis e pesquisa reprodutível, passando por validação fora da amostra e paper trading, e somente depois por auditoria e decisão humana.
+As regras permanentes e a distinção canônica entre autoridade normativa e realidade implementada estão em [AGENTS.md](AGENTS.md). Qualquer evolução futura será promovida por gates explícitos, começando por observação passiva de dados e pesquisa reprodutível, passando por validação fora da amostra e paper trading, e somente depois por auditoria e decisão humana.
 
 ## Estrutura
 
@@ -45,12 +44,15 @@ python -m mypy src
 ```
 
 O pacote contém apenas metadados iniciais. As dependências de desenvolvimento são fixadas
-no extra `dev`; não há dependências de runtime. A seleção de bibliotecas de dados, ML,
-armazenamento e integração será decidida no Sprint 0 e registrada por ADR.
+no extra `dev`; não há dependências de runtime. Tecnologias físicas, bibliotecas de dados,
+armazenamento e integração não foram prematuramente fixadas no Sprint 0; decisões técnicas
+adiadas são formalizadas no primeiro estágio em que se tornam materialmente necessárias (para
+decisões `MAY_DECIDE_DURING_SPRINT_1`, antes da primeira capability dependente), com registro
+por ADR quando arquiteturalmente materiais.
 
 ## Próximo marco
 
-O [Sprint 0](docs/sprints/SPRINT_0.md) permanece em andamento: 0A–0E estão formalmente concluídos e aprovados, e o gate 0F permanece como próximo passo oficial (não iniciado). A próxima etapa só pode ser aberta por decisão explícita e continua sem implementar trading real. Consulte também a [baseline de arquitetura e contratos](docs/architecture/README.md) e os [protocolos quantitativos](docs/protocols/quantitative/README.md).
+A fase de [Fundação (Sprint 0)](docs/sprints/SPRINT_0.md) está formalmente concluída e aprovada (0A a 0F). O próximo passo oficial é o **Sprint 1 — Market Observer** (não iniciado), cujo início físico exige autorização explícita da coordenação e observância estrita do Contrato de Entrada (0F-E). Consulte também a [baseline de arquitetura e contratos](docs/architecture/README.md) e os [protocolos quantitativos](docs/protocols/quantitative/README.md).
 
 ## Aviso
 

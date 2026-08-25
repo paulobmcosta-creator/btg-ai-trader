@@ -628,7 +628,17 @@ Sprint 0D                             ✅ FORMALMENTE FECHADO/APROVADO
 Sincronização documental 0E           ✅ CONCLUÍDA
 Gate final de consistência documental ✅ APROVADO (PASS)
 Sprint 0E                             ✅ FORMALMENTE FECHADO/APROVADO
-0F — Gate do Sprint 0                 ⏳ NÃO INICIADO
+Sprint 0F — Foundation Cross-Gate     ✅ FORMALMENTE FECHADO/APROVADO
+0F-A (Consistência Normativa)         ✅ CLOSED
+0F-B (Triagem de 124 DDs)             ✅ CLOSED
+0F-C (Rastreabilidade - 41 RQMs)      ✅ PASS / CLOSED
+0F-D (Segurança - 20 NCs)             ✅ PASS / CLOSED
+0F-E (Contrato de Entrada - 118 Cl.)  ✅ PASS / CLOSED
+0F-F (Foundation Final Gate)          ✅ FOUNDATION_PASS_WITH_PRE_SPRINT1_ACTIONS
+Ações pré-Sprint 1 (A-F01..B-F01)     ✅ MATERIALIZADAS / FECHADAS
+----------------------------------------------------------------------
+Próximo marco oficial: Sprint 1 — Market Observer (NÃO INICIADO)
+----------------------------------------------------------------------
 ```
 
 ---
@@ -992,21 +1002,25 @@ Nenhum código funcional, dependência, ativo, timeframe, modelo ou tecnologia f
 
 O gate final de consistência documental (`FINAL_0E_DOC_GATE`) foi executado e aprovado com sucesso (`PASS`) após a canonicalização estrita dos 269 HQIs e 15 QPIs contra o dossiê canônico. Foi removida a coluna individual de aplicabilidade em `TRACEABILITY.md`, preservando a regra transversal de que aplicabilidade não converte Hard Invariant em policy. A aprovação humana formal para o encerramento do Sprint 0E foi concedida em 2026-08-22.
 
-Com isso, o Sprint 0E — Protocolos Quantitativos está formalmente concluído e aprovado. A baseline normativa é composta pelos ADRs 0001–0022 e pelos protocolos quantitativos 0E-A a 0E-H. O Sprint 0F permanece como próximo passo oficial (não iniciado).
+Com isso, o Sprint 0E — Protocolos Quantitativos está formalmente concluído e aprovado. A baseline normativa é composta pelos ADRs 0001–0022 e pelos protocolos quantitativos 0E-A a 0E-H.
+
+## 2026-08-25 — encerramento formal da Fundação (Sprint 0F) e fechamento das ações pré-Sprint 1
+
+O Sprint 0F — Foundation Cross-Gate consolidou e auditou transversalmente toda a Fundação (0A a 0E) por meio dos blocos 0F-A (consistência normativa), 0F-B (triagem de 124 decisões deferidas), 0F-C (matriz canônica de rastreabilidade com 41 RQMs), 0F-D (gate de segurança negativa com 20 NCs) e 0F-E (Contrato de Entrada do Sprint 1 com 118 cláusulas). O Foundation Final Gate (0F-F) foi formalmente aprovado com o veredito `FOUNDATION_PASS_WITH_PRE_SPRINT1_ACTIONS` e zero Hard Blockers. As quatro ações documentais pré-Sprint 1 (A-F01, A-F02, A-F03 e B-F01) foram materializadas e fechadas. A fase de Fundação (Sprint 0) está formalmente concluída e aprovada. O próximo passo oficial é o Sprint 1 — Market Observer (não iniciado).
 
 ---
 
 # 23. Próxima ação oficial
 
-**Sprint 0F — Gate do Sprint 0 (NEXT OFFICIAL STEP / NOT STARTED).**
+**Sprint 1 — Market Observer (NEXT OFFICIAL STEP / NOT STARTED).**
 
-O Sprint 0E está formalmente concluído e aprovado. Até a abertura explícita do Sprint 0F:
+A fase de Fundação (Sprints 0A a 0F) está formalmente concluída e aprovada. Até a autorização e abertura explícita do Sprint 1:
 
-1. tratar ADRs 0001–0022 e os Protocolos Quantitativos 0E-A a 0E-H como baseline normativa vigente e congelada;
-2. manter qualquer capacidade financeira real estritamente desabilitada;
-3. não implementar integração BTG/MT5, execução, ordens ou dinheiro real;
-4. manter as decisões físicas e numéricas deliberadamente adiadas fora da baseline até etapa apropriada;
-5. o Sprint 0F é o próximo marco formal do projeto e permanece não iniciado.
+1. tratar ADRs 0001–0022, os Protocolos Quantitativos 0E-A a 0E-H e o Contrato de Entrada 0F-E como baseline normativa vigente e congelada;
+2. manter qualquer capacidade de execução financeira estritamente desabilitada e ausente (`READ_ONLY_BY_CONSTRUCTION`);
+3. não implementar envio de ordens, roteamento financeiro, credenciais de negociação ou dinheiro real;
+4. manter as decisões técnicas in-sprint submetidas à disciplina de `DECISION_DEADLINE = BEFORE_FIRST_MATERIAL_DEPENDENCY`;
+5. o Sprint 1 é o próximo marco formal do projeto e permanece não iniciado.
 
 ---
 
