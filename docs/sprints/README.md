@@ -12,4 +12,8 @@ Cada sprint deve registrar objetivo, fora de escopo, critérios de aceite, verif
   - 0C — Arquitetura lógica (Concluído)
   - 0D — Contratos e Modelo de Dados (Concluído)
   - [0E — Protocolos Quantitativos](SPRINT_0E.md) (Concluído)
-  - 0F — Gate do Sprint 0 (Próximo passo oficial / Não iniciado)
+  - 0F — Foundation Cross-Gate (Concluído)
+- **[Sprint 1 — Market Observer](SPRINT_1.md)**
+  - Status: `OPEN`
+  - Fase atual: `PRE-CODE RECONCILIATION GATE`
+  - Primeiro código funcional: `NOT_YET_AUTHORIZED`

@@ -29,4 +29,4 @@ Os protocolos quantitativos estabelecem a metodologia científica, a integridade
 
 ## 3. Estado Normativo
 
-Os protocolos quantitativos 0E-A a 0E-G e o gate 0E-H foram formalmente concluídos e aprovados (FINAL_0E_DOC_GATE: PASS | Human Approval: APPROVED em 2026-08-22). O Sprint 0E está formalmente fechado e o Sprint 0F permanece como próximo passo oficial (não iniciado). Nenhuma evidência experimental autoriza negociação real sem a superação cumulativa dos gates de produção e aprovação humana explícita.
+Os protocolos quantitativos 0E-A a 0E-G e o gate 0E-H foram formalmente concluídos e aprovados (`FINAL_0E_DOC_GATE: PASS` | Human Approval: `APPROVED` em 2026-08-22). A fase de Fundação 0A–0F está formalmente fechada. O Sprint 1 — Market Observer está aberto exclusivamente no `PRE-CODE RECONCILIATION GATE`; implementação funcional permanece `NOT_YET_AUTHORIZED` enquanto a Issue #1 não for revisada e mergeada. Nenhuma evidência experimental ou integração read-only de market data autoriza negociação real sem a superação cumulativa dos gates de produção e aprovação humana explícita.
