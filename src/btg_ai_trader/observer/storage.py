@@ -164,7 +164,7 @@ class TechnicalEvidenceStore:
             except FileExistsError:
                 repeated = self._existing_receipt(root, record.record_id, data)
                 if repeated is None:
-                    raise WriteUncertain(record.record_id, expected_hash)
+                    raise WriteUncertain(record.record_id, expected_hash) from None
                 return repeated
             _sync_directory(root)
             return PersistenceReceipt(

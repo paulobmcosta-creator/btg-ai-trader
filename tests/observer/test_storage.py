@@ -179,7 +179,8 @@ def test_storage_requires_explicit_positive_integer_limit(tmp_path: Path, limit:
 
 
 def test_roots_reject_overlap_symlinks_and_aliases(tmp_path: Path) -> None:
-    archive, nested, other = tmp_path / "archive", tmp_path / "archive" / "nested", tmp_path / "other"
+    archive, other = tmp_path / "archive", tmp_path / "other"
+    nested = archive / "nested"
     archive.mkdir()
     nested.mkdir()
     other.mkdir()
