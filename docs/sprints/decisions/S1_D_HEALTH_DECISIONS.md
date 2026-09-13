@@ -20,7 +20,7 @@ DD-54 is not triggered: no concurrency, threads, async or I/O. DD-22 transport i
 
 HealthSample contains a nonempty clock_scope, monotonic now_ns, and last heartbeat/market-data instants as nonnegative integers or explicit MissingReason. Bool, float, negative instants and timestamps later than now are rejected. There is no UTC conversion or comparison with market event_time. Unknown timestamps remain unknown in output ages, never zero.
 
-monotonic_elapsed_ns computes a duration from two explicit readings and rejects backward time. The caller must establish that its readings belong to the same monotonic scope; the helper cannot attest clock provenance. evaluate_health requires the same scope as its previous assessment and nondecreasing now_ns. It also rejects a known heartbeat/market timestamp moving backwards within the same scope; a missing sample is preserved rather than filled from an earlier sample.
+monotonic_elapsed_ns computes a duration from two explicit readings and rejects backward time. The caller must establish that its readings belong to the same monotonic scope; the helper cannot attest clock provenance. evaluate_health requires the same scope as its previous assessment and nondecreasing now_ns. It also rejects a known heartbeat/market timestamp moving backwards within the same scope; a missing sample is preserved rather than filled from an earlier sample. Separate last-known monotonic watermarks retain ordering evidence across a missing sample, but never replace its unknown age or make readiness succeed.
 
 A restart/new clock scope requires an explicit future continuity/recovery protocol. Callers must thread previous assessments through continuous evaluation; omitting previous starts a new fixture assessment and does not prove restart safety. No production lifecycle, unlatch/recovery authority or persistent state reconstruction is implemented here.
 
@@ -36,7 +36,7 @@ SAFE_HALT and EMERGENCY_STOP return evidence only. No flatten, cancellation, exe
 
 ## Evidence and verification
 
-Each evaluation returns an immutable HealthAssessment with original sample, phase, effective posture, named capability, readiness, reasons, ages and policy_ref. A HealthTransition is returned when phase/posture/readiness changes, recording complete before/after assessments; an initial evaluation has no fabricated predecessor. No transition is persisted by this module. Stable evaluations still preserve fresh assessments.
+Each evaluation returns an immutable HealthAssessment with original sample, phase, effective posture, named capability, readiness, reasons, ages and the immutable policy (including policy_ref and thresholds). A HealthTransition is returned when phase/posture/readiness changes, recording complete before/after assessments; an initial evaluation has no fabricated predecessor. No transition is persisted by this module. Stable evaluations still preserve fresh assessments.
 
 Required fixture tests: exact timeout boundary, stale heartbeat, stale data with live heartbeat, missing values, zero/negative/float/bool thresholds, malformed enums/timestamps, backward readings/sample time and incompatible scopes; RUNNING not ready, RECOVERING/RECONCILING plus SAFE_HALT, no automatic unlatch, escalation, immutable before/after evidence and deterministic repeat evaluation. Six inherited remote checks must pass on the final SHA.
 
