@@ -11,12 +11,13 @@ from pathlib import Path
 from typing import cast
 
 MANIFEST = "docs/program/workstreams/s1-boundary-scope.json"
+COMPOSITION_PATH = "src/btg_ai_trader/observer/composition.py"
 EXTERNAL_IMPORTS = {
     "base64", "hashlib", "json", "os", "re", "stat", "tempfile",
-    "collections.abc.Iterable", "dataclasses.dataclass", "dataclasses.replace",
-    "datetime.UTC", "datetime.datetime", "datetime.timedelta",
+    "collections.abc.Iterable", "dataclasses.dataclass", "dataclasses.fields",
+    "dataclasses.replace", "datetime.UTC", "datetime.datetime", "datetime.timedelta",
     "decimal.Decimal", "decimal.InvalidOperation", "enum.Enum", "pathlib.Path",
-    "typing.Protocol", "typing.cast", "uuid.UUID", "uuid.uuid4",
+    "typing.Any", "typing.Protocol", "typing.cast", "uuid.UUID", "uuid.uuid4",
 }
 MODULE_MEMBERS = {
     "base64": {"b64encode", "b64decode"},
@@ -41,6 +42,10 @@ DUNDER_ESCAPE = {
     "__builtins__", "__getattribute__", "__code__", "__closure__",
 }
 REFLECTION_FIELDS = {
+    "composition": {
+        "provider", "capture_scope", "clock_scope", "queue_capacity", "dedup_capacity",
+        "max_payload_bytes", "heartbeat_timeout_ns", "market_staleness_ns",
+    },
     "envelope": {"envelope_version", "schema_version", "source_sequence", "ingestion_order"},
     "health": {"heartbeat_timeout_ns", "market_staleness_ns", "heartbeat_ns", "market_data_ns"},
     "ingestion": {"depth", "accepted", "dequeued", "backpressure_count"},
@@ -122,7 +127,9 @@ def _reflection_consumer(node: ast.AST, parents: dict[ast.AST, ast.AST]) -> bool
         return True
     return (
         isinstance(parent, ast.Call) and isinstance(parent.func, ast.Name)
-        and parent.func.id in {"type", "isinstance", "require_numeric", "_reading"}
+        and parent.func.id in {
+            "type", "isinstance", "require_numeric", "_reading", "ProvenanceLabel",
+        }
         and bool(parent.args) and parent.args[0] is node
     )
 
@@ -133,6 +140,35 @@ def _function_scope(node: ast.AST, parents: dict[ast.AST, ast.AST]) -> ast.AST:
         if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
             return node
     return node
+
+
+def _trusted_composition_reflection(
+    node: ast.Call, parents: dict[ast.AST, ast.AST], path: str
+) -> bool:
+    """Allow only two reviewed serializer getattr shapes inside pinned composition source."""
+    if path != COMPOSITION_PATH:
+        return False
+    scope = _function_scope(node, parents)
+    if not isinstance(scope, ast.FunctionDef):
+        return False
+    rendered = ast.unparse(node)
+    parent = parents.get(node)
+    if (
+        scope.name == "canonical_bytes"
+        and rendered == "getattr(self, field.name)"
+        and isinstance(parent, ast.DictComp)
+        and parent.value is node
+    ):
+        return True
+    return (
+        scope.name == "_wire"
+        and rendered == "getattr(value, field.name)"
+        and isinstance(parent, ast.Call)
+        and isinstance(parent.func, ast.Name)
+        and parent.func.id == "_wire"
+        and bool(parent.args)
+        and parent.args[0] is node
+    )
 
 
 def check_sources(sources: dict[str, str]) -> list[Finding]:
@@ -222,7 +258,8 @@ def check_sources(sources: dict[str, str]) -> list[Finding]:
                 ):
                     findings.append(Finding(path, node.lineno, "dynamic-type-factory"))
                 if isinstance(node.func, ast.Name) and node.func.id == "getattr":
-                    if not _finite_getattr(node, parents, path):
+                    trusted = _trusted_composition_reflection(node, parents, path)
+                    if not _finite_getattr(node, parents, path) and not trusted:
                         findings.append(Finding(path, node.lineno, "unbounded-reflection"))
                     parent = parents.get(node)
                     if (
@@ -233,7 +270,7 @@ def check_sources(sources: dict[str, str]) -> list[Finding]:
                         reflected_results.append((
                             _function_scope(node, parents), parent.targets[0].id
                         ))
-                    elif not _reflection_consumer(node, parents):
+                    elif not _reflection_consumer(node, parents) and not trusted:
                         findings.append(Finding(path, node.lineno, "reflected-value-escaped"))
                     scope = _function_scope(node, parents)
                     receiver = ast.unparse(node.args[0]).split(".")[0] if node.args else ""
