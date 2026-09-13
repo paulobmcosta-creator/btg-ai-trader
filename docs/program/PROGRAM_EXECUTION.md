@@ -1,5 +1,37 @@
 # Program Execution — BTG AI Trader
 
+## Checkpoint de consolidação S1 — 2026-09-13 22:40 UTC
+
+Este adendo substitui os estados correntes do histórico abaixo. Retomada conferida diretamente em a9f2ee8f6b0d551f5da5b5ea2c9263966dcc5679, sem drift; trabalho exclusivamente GitHub remoto.
+
+MANDATE_STATUS=IN_PROGRESS; STOP_REASON=NONE; NO_READY_WORK=FALSE; CONSOLIDATE_S1=PRIORITY.
+SPRINT1_ACCEPTANCE=NOT_GRANTED; SECURITY_DIFF_SCAN=NOT_EXECUTED; REMOTE_TOOLING_UNAVAILABLE; RISK_RECORDED.
+Main permanece87634d529c32f4f7a564a318323aad2fcd8596d1; nenhum trading/credencial/conexão/deploy.
+
+PR13 integrado após review independente5192530694 no HEAD3f57d3ce758dcd832b2018001530c162ba007253, zero threads e delta9blobs/pins revalidados. Merge d22e73f10d1e0ca21cbd7a0af90b94719debad44, pais3bee60a3d989ac8f1fb6d21ecb1c32fab13cf2de e3f57d3ce758dcd832b2018001530c162ba007253. Tree0705c15ff16a556cc9a29be4da836a4c1f8e0456. Baseline pushCI34787158732 SUCCESS. Integração apenas engenharia.
+
+Pilha reancorada via commits de merge GitData, preservando blobs dos deltas próprios. PR10 usa CI Foundation atual em vez do workflow antigo duplicado; demais deltas byte-idênticos. Merge-base de cada comparação é o novo upstream exato. Nenhum PR funcional foi promovido.
+
+|PR|HEAD atualizado|CI remoto PR / upstream verification|
+|---|---|---|
+|#10|d3c7b61ae8b6691e60d3d981be518f233d733e62|34787198823, 34787198563, 34787198769, 34787197066 SUCCESS|
+|#12|5d1898e388be5b4e7394172bcc409e1383b57e4a|34787203787, 34787203786, 34787201646 SUCCESS|
+|#14|5e8bb83f7bffb9a0ccc1147522982787ebd8027f|34787206400, 34787206403, 34787204291 SUCCESS|
+|#15|063f30b53d616af4990244cc66069b152ed94e2d|34787209530, 34787209423, 34787206513 SUCCESS|
+|#19|1eddcfa4f198cd0b3324a6c4713761510844afec|34787212585, 34787212415, 34787209471 SUCCESS|
+|#20|19200e7e6443227f68521250bc569943be7c5eeb|34787214385, 34787214358, 34787211576 SUCCESS|
+|#22|4a252efabde0dc8aed2fcccc6e62ca2df1860f59|34787216294, 34787216282, 34787214178 SUCCESS|
+
+PR23 implementado em3c3c9f893de8730d2cfa60e1784004583b378508, CI34787109317 144tests/6SUCCESS, dedup100%, total98%; review independente5192535711 sem blocker. Reancoragem sobre novo20 em andamento.
+PR24 decoder/admission/quarantine criado: raw preservado, schema fixture-json-v1 estrito, limites payload/JSON e erros estruturados, sem coerção otimista. Docs1d483088 antes código95bff033. PushCI34787377442 SUCCESS161tests; reancoragem sobre novo22 necessária para CI ampliada Foundation, em andamento.
+PR25 plano NEG01..10 emf8af3febee9b649cbca7d3ef21086fa63eb89908; testes integrados ainda NÃO implementados, contrato de composição pendente.
+Composição Observer, suite integrada exata e atualização matrizRQM16 são os próximos trabalhos. Não somar testes de branches.
+S3–12 preservados, sem nova abertura especulativa; MT5 continua import-only/DD60 indeciso.
+
+## Histórico anterior (estados superados pelo adendo acima)
+
+# Program Execution — BTG AI Trader
+
 ## Checkpoint autoritativo corrente — 2026-09-13
 
 Este documento na branch `s1/00-post-merge-authorization` é a fonte operacional para retomada. O estado abaixo foi conferido diretamente no GitHub. Substitui os estados correntes dos checkpoints anteriores, preservados integralmente no histórico Git (entrada desta rodada `7e547eaf0adb3bb68063e76a97ee6c2f25244bfd`; checkpoint intermediário `0672b8a1545e73949439a1bfbf6df36cce2e9898`).
