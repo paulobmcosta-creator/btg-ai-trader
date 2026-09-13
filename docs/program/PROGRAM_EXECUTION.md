@@ -28,6 +28,19 @@ PR25 plano NEG01..10 emf8af3febee9b649cbca7d3ef21086fa63eb89908; testes integrad
 Composição Observer, suite integrada exata e atualização matrizRQM16 são os próximos trabalhos. Não somar testes de branches.
 S3–12 preservados, sem nova abertura especulativa; MT5 continua import-only/DD60 indeciso.
 
+
+### Assembly isolado e evidência adicional — 22:56 UTC
+
+Assembly S1-only `s1/11-observer-composition` criado em37ff91bc9a86269cd68ddf5537b474f49b7d0510 (tree1f6584c7af6131f328ab89651f511b3b01922ceb), pais23@09d8b1c40a8ae8ce7b78869e40c4f11f3ab82a26,24@dbe89d295f13412efb692e272e8e7934ade8f843,19@1eddcfa4f198cd0b3324a6c4713761510844afec. Comparebase=d22e73f1, somente36pathsS1. Identity usa supersetprovenance, restantesblobs iguais aos módulos revistos. CI34787518943 setechecksSUCCESS,341tests,95%branchcoverage. Esta execução é conjunta de módulos; composição runtime ainda sendo implementada em cima de ADR0025@ab5137e82d86b422045e47b56130e0c81a379ec8. Não houve promoção na sprint/main.
+
+PR23 reancorada09d8b1c4: merge-base novo20,3blobs preservados; CI34787447734 setechecks/159testsSUCCESS. PR24 reancoradadbe89d29: merge-base novo22,3blobs preservados; CI34787472671 setechecks/176testsSUCCESS +upstream34787472673; review independente5192553029 sem blocker.
+
+PR26 `s1/12-observer-properties`@dc145111be639d4858d821fdb1840e2544bc0e60: somente3arquivos testes/docs; CI34787908794 setechecksSUCCESS,378tests,95%; campanha real baseline36casosgerados (6seeds×6grupos),10mutantes/10detectados/0sobreviventes/0errors no catálogo, sourcehashintacto. Review independente5192572508 sem blocker. Integrar delta e repetir na composição final.
+
+PR25 AST/config/secrets subset@53563fe3a1f3408a229d534a8eea0a74623e185d contém findingP2 review5192570702: escape de alias de módulo e de resultado refletido não detectado fora dospins. Correção+regressões em andamento. NEG01..10 runtime ainda NÃO_EXECUTADO; CI subset tem falhas em análise. Não aceitar como prova negativa completa. Duas frentes restantes ativas: composição e NEG; nenhum novo S3–12.
+
+As revisões de ancestry10/12/14/15/19/20/22 foram publicadas5192554218/5192554251/5192554285/5192554313/5192554350/5192554377/5192554410, sem threads abertas ou alteração material própria.
+
 ## Histórico anterior (estados superados pelo adendo acima)
 
 # Program Execution — BTG AI Trader
