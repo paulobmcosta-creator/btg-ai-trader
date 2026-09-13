@@ -455,13 +455,9 @@ e não maximizar simplesmente retorno bruto.
 
 ## 10.1. Desenvolvimento
 
-Projeto local:
+Superfície operacional deste mandato: GitHub remoto `paulobmcosta-creator/btg-ai-trader`. Checkout físico do usuário fora do escopo. Edição e verificação ocorrem via GitHub e CI/cloud, sem dependência de Git local.
 
-```text
-C:\Projetos\btg-ai-trader
-```
-
-Estrutura atual:
+Estrutura versionada remota:
 
 ```text
 btg-ai-trader/
@@ -589,13 +585,12 @@ Conversas são espaços de raciocínio, não devem ser a única fonte de decisõ
 
 ## 13.1. Estado atual
 
-- Git local inicializado.
-- Branch local: `main`.
-- Baseline 0A/0B preparada para versionamento.
-- Autor Git configurado localmente.
-- Commit de sincronização normativa do Sprint 0D: `c7e3b24` — `docs: finalize Sprint 0D normative synchronization`.
-- Após esse commit, a árvore canônica local foi verificada com `git status` limpo.
-- Repositório remoto ainda não é requisito para avançar a arquitetura.
+- Repositório GitHub privado: `paulobmcosta-creator/btg-ai-trader`.
+- Baseline remota de entrada: `sprint/1-market-observer` em `dabce69d92054b77cad72809669d4340c211c328`, merge do PR #5.
+- Issue #1: `closed/completed`; autorização S1-A deriva do mandato humano subsequente.
+- `main` permanece em `87634d529c32f4f7a564a318323aad2fcd8596d1` na inspeção de entrada; não há promoção global implícita.
+- Commit histórico da sincronização 0D: `c7e3b24`. Verificações locais antigas são evidência histórica, não validação corrente desta execução.
+- O estado corrente e os commits posteriores constam de [PROGRAM_EXECUTION](program/PROGRAM_EXECUTION.md).
 
 ## 13.2. Política futura
 
@@ -637,7 +632,7 @@ Sprint 0F — Foundation Cross-Gate     ✅ FORMALMENTE FECHADO/APROVADO
 0F-F (Foundation Final Gate)          ✅ FOUNDATION_PASS_WITH_PRE_SPRINT1_ACTIONS
 Ações pré-Sprint 1 (A-F01..B-F01)     ✅ MATERIALIZADAS / FECHADAS
 ----------------------------------------------------------------------
-Sprint 1 — Market Observer: LIFECYCLE OPEN / PRE_CODE_RECONCILIATION / S1_A_AUTHORIZED = NO
+Sprint 1 — Market Observer: LIFECYCLE OPEN / PRE_CODE_RECONCILIATION = COMPLETE / S1_A_AUTHORIZED = YES
 ----------------------------------------------------------------------
 ```
 
@@ -1015,17 +1010,24 @@ A Issue #1 registrou que a coordenação humana autorizou, em 2026-08-25, a aber
 
 ---
 
+## 2026-09-13 — mandato autônomo pós-merge
+
+O PR #5 foi integrado em `dabce69d92054b77cad72809669d4340c211c328` e a Issue #1 foi fechada como concluída. O mandato humano de execução autônoma de 2026-09-13 autoriza a primeira implementação funcional do Sprint 1 (`PRE_CODE_RECONCILIATION = COMPLETE`; `S1_A_AUTHORIZED = YES`; `FIRST_FUNCTIONAL_CODE = AUTHORIZED`), sob o contrato 0F-E integral e os gates de promoção. Desenvolvimento paralelo e especulativo remoto autorizado, com promoção controlada por gates. Os registros cronológicos anteriores descrevem a autorização limitada vigente à época e permanecem históricos.
+
+---
+
 # 23. Próxima ação oficial
 
-**Sprint 1 — Market Observer (`LIFECYCLE = OPEN`; `CURRENT_GATE = PRE_CODE_RECONCILIATION`; `S1_A_AUTHORIZED = NO`).**
+**Sprint 1 — Market Observer (`LIFECYCLE = OPEN`; `CURRENT_GATE = S1_A_IMPLEMENTATION`; `S1_A_AUTHORIZED = YES`).**
 
-A fase de Fundação (Sprints 0A a 0F) está formalmente concluída e aprovada. A coordenação humana autorizou a abertura do lifecycle do Sprint 1 em 2026-08-25 exclusivamente para o gate documental pré-código. Até a revisão humana e o merge do PR desse gate:
+O PR #5 foi integrado em `dabce69d92054b77cad72809669d4340c211c328` e a Issue #1 foi fechada como concluída. O mandato humano de execução autônoma de 2026-09-13 autoriza a primeira implementação funcional do Sprint 1 (`PRE_CODE_RECONCILIATION = COMPLETE`; `S1_A_AUTHORIZED = YES`; `FIRST_FUNCTIONAL_CODE = AUTHORIZED`), sob o contrato 0F-E integral e os gates de promoção.
 
-1. tratar ADRs 0001–0022, os Protocolos Quantitativos 0E-A a 0E-H e o Contrato de Entrada 0F-E como baseline normativa vigente e congelada;
-2. manter qualquer capacidade de execução financeira estritamente desabilitada e ausente (`READ_ONLY_BY_CONSTRUCTION`);
-3. não implementar envio de ordens, roteamento financeiro, credenciais de negociação ou dinheiro real;
-4. manter as decisões técnicas in-sprint submetidas à disciplina de `DECISION_DEADLINE = BEFORE_FIRST_MATERIAL_DEPENDENCY`;
-5. o Sprint 1 está aberto somente no plano documental de reconciliação; a primeira implementação funcional permanece não autorizada (`FIRST_FUNCTIONAL_CODE = NOT_YET_AUTHORIZED`).
+1. Implementar o Observer provider-agnostic conforme ADRs 0001–0022, protocolos quantitativos e as 118 cláusulas do 0F-E.
+2. Registrar decisões antes da primeira dependência material, preservando os snapshots aprovados e a autoridade QPI de TRACEABILITY.md; Issue #6 permanece a errata histórica de 0F-F.
+3. Executar diretamente no GitHub e CI/cloud; o checkout físico do usuário está fora do mandato.
+4. Desenvolver workstreams independentes em paralelo e sprints futuros em branches SPECULATIVE isoladas. O número do sprint ordena promoção; dependências materiais ordenam desenvolvimento.
+5. Integrar em sprint/staging apenas após todos os checks aplicáveis, revisão e gates. Nenhuma promoção global automática para main nem introdução de capacidade financeira real.
+6. Manter [PROGRAM_EXECUTION](program/PROGRAM_EXECUTION.md) como checkpoint operacional do DAG, progresso, evidência e bloqueios.
 
 ---
 

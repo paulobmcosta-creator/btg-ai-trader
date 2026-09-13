@@ -117,7 +117,7 @@ Restart cria novo `RunId`; continuidade é registrada por `RunRelation` tipada. 
 - Sprint 0D: formalmente fechado e aprovado.
 - Sprint 0E: formalmente fechado e aprovado em 2026-08-22 (FINAL_0E_DOC_GATE: PASS).
 - Sprint 0F: formalmente fechado e aprovado em 2026-08-25.
-- Sprint 1 — Market Observer: lifecycle `OPEN` exclusivamente no gate documental pré-código (`PRE_CODE_RECONCILIATION`); `S1_A_AUTHORIZED = NO` e a primeira implementação funcional permanece bloqueada até revisão humana e merge do PR #5.
+- Sprint 1 — Market Observer: lifecycle `OPEN`; `PRE_CODE_RECONCILIATION = COMPLETE`; `S1_A_AUTHORIZED = YES`, conforme mandato humano de 2026-09-13 após merge do PR #5 e conclusão da Issue #1. Implementação e promoção são estados distintos; acompanhar [PROGRAM_EXECUTION](../program/PROGRAM_EXECUTION.md).
 
 Os ADRs 0015–0022 refinam explicitamente decisões históricas dos ADRs 0003, 0007–0011 e 0013–0014 sem reescrever o histórico de 0C.
 

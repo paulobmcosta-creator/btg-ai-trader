@@ -4,7 +4,7 @@
 - **Data da consolidação técnica:** 2026-08-20
 - **Data do fechamento formal:** 2026-08-22 (FINAL_0E_DOC_GATE: PASS | Human Approval: APPROVED)
 - **Baseline de entrada:** Sprint 0D formalmente fechado (`c7e3b24`) | ADR-0001 a ADR-0022
-- **Estado subsequente vigente:** Sprint 0F formalmente fechado/aprovado em 2026-08-25; Sprint 1 — Market Observer com lifecycle `OPEN` exclusivamente no `PRE_CODE_RECONCILIATION`, com `S1_A_AUTHORIZED = NO`
+- **Estado subsequente vigente:** Sprint 0F formalmente fechado/aprovado em 2026-08-25; Sprint 1 — Market Observer com lifecycle `OPEN`, `PRE_CODE_RECONCILIATION = COMPLETE` e `S1_A_AUTHORIZED = YES` (mandato humano de 2026-09-13; PR #5 integrado; Issue #1 concluída)
 
 ---
 
@@ -55,8 +55,8 @@ Sprint 0E — Protocolos Quantitativos:
 └── Fechamento formal do Sprint 0E: ✅ FORMALMENTE FECHADO
 
 Sprint 0F — Gate do Sprint 0: ✅ FORMALMENTE FECHADO/APROVADO (2026-08-25)
-Sprint 1 — Market Observer: 🔓 LIFECYCLE OPEN / PRE_CODE_RECONCILIATION
-Primeira implementação funcional: ⛔ NÃO AUTORIZADA (S1_A_AUTHORIZED = NO)
+Sprint 1 — Market Observer: 🔓 LIFECYCLE OPEN / PRE_CODE_RECONCILIATION = COMPLETE
+Primeira implementação funcional: AUTORIZADA (S1_A_AUTHORIZED = YES)
 ```
 
-> **Nota de reconciliação (2026-09-13):** este bloco expressa o estado vigente do projeto. Referências históricas anteriores ao fechamento do Sprint 0F permanecem válidas apenas como snapshots de seu momento de emissão; não constituem autoridade corrente para abertura de código funcional.
+> **Nota de reconciliação (2026-09-13):** este bloco expressa o estado vigente após merge do PR #5, conclusão da Issue #1 e novo mandato humano que autoriza S1-A. Referências históricas anteriores ao fechamento do Sprint 0F permanecem válidas apenas como snapshots de seu momento de emissão; não constituem autoridade corrente para abertura de código funcional.
