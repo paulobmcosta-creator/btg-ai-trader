@@ -13,7 +13,7 @@ The UTF-8 JSON root has exactly these keys: envelope_version, schema_version, ev
 
 source has exactly provider/scope/symbol and must equal the RawFrame reference. event_type is TICK or CANDLE and must agree with RawChannel. event_id is fixture-supplied canonical UUID; no ID is generated. instrument_id is {uuid: canonical UUID} or an explicit missing value; this declaration does not perform registry resolution or authenticate identity.
 
-Numeric fields use {decimal: text} with decimal lexical grammar [+-]?(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][+-]?[0-9]+)? (full match; no whitespace, underscore, NaN or Infinity) and finite Decimal, or {missing: reason}. JSON numbers, null, booleans and whitespace/coercions are not numeric values. Missing reasons are UNKNOWN, NOT_PROVIDED or NOT_APPLICABLE and remain distinct.
+Numeric fields use {decimal: text} with decimal lexical grammar [+-]?(0|[1-9][0-9]*)([.][0-9]+)?([eE][+-]?[0-9]+)? (full match; no whitespace, underscore, NaN or Infinity) and finite Decimal, or {missing: reason}. JSON numbers, null, booleans and whitespace/coercions are not numeric values. Missing reasons are UNKNOWN, NOT_PROVIDED or NOT_APPLICABLE and remain distinct.
 
 Temporal values use {utc: YYYY-MM-DDTHH:MM:SS.ffffffZ} or {missing: reason}. The UTC syntax is exact; offsets and naive dates are rejected rather than converted. Candle interval endpoints require known UTC. event_time has exactly value/basis/resolution_us: value is temporal, basis is {text: nonempty text} or missing, resolution_us is positive integer microseconds or missing. effective_time and candle finalized_at/available_at are temporal. No timestamp is inferred from another axis. Model validation enforces known finality/availability and OHLC rules.
 
