@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "assembly_revision": "ad7835c94dd5203bab485cc71533f4636beec8e6",
+  "composition_status": "SCOPED_TESTS_IMPLEMENTED",
+  "files": {
+    ".python-version": "e4fba2183587225f216eeada4c78dfab6b2e65f5",
+    "config/README.md": "099003f199b4f5af58476128e8fd1d12a60b4867",
+    "pyproject.toml": "0a3f274c362a62a477953a4bce466513dc3fe132",
+    "src/btg_ai_trader/__init__.py": "51fe12b40527662de8a62ec04ce0ff39c5591c67",
+    "src/btg_ai_trader/observer/__init__.py": "f1f98d389ddd7b205a6d2969cf8d0f455d728259",
+    "src/btg_ai_trader/observer/admission.py": "372c0f20fb3361193a2b3154422d4990e48806fa",
+    "src/btg_ai_trader/observer/composition.py": "c2823cb754c481ac78ea64d7b41681b7eea24c92",
+    "src/btg_ai_trader/observer/dedup.py": "8da04c84636106a07d6c9d60df7a36e143b081e0",
+    "src/btg_ai_trader/observer/envelope.py": "dd1b1b6831cbfa316f12b4f12bd125d8444bad6a",
+    "src/btg_ai_trader/observer/health.py": "35f80b5d8048799177cbe43ef6bd8f42d85c4b60",
+    "src/btg_ai_trader/observer/identity.py": "b144a2ab1f9edde826bdbabed48a35f0bba49a8f",
+    "src/btg_ai_trader/observer/ingestion.py": "c1820f436a771ad912c462c6eee821aee2e62dcd",
+    "src/btg_ai_trader/observer/instruments.py": "fe28f34a4a5cd46174796db6d26a3047faf2dcfe",
+    "src/btg_ai_trader/observer/lineage.py": "4b0ae9f3e67a690f8d0905973f489ebbf2ffaeeb",
+    "src/btg_ai_trader/observer/market.py": "3bb15aa171de80b21ff67f7abbf641ee1f97b3d8",
+    "src/btg_ai_trader/observer/provenance.py": "11c6280c1069b84c87c65e113cc92cc46bb10b2b",
+    "src/btg_ai_trader/observer/provider.py": "c359738a20e5870069bcf6b266ea43483b7f8c37",
+    "src/btg_ai_trader/observer/raw_source.py": "b9a394743569e4630978a1e042cee7262efa7463",
+    "src/btg_ai_trader/observer/storage.py": "8c495be4e223c33cd9db6a5d39d22b2dbcdbf5c6",
+    "src/btg_ai_trader/observer/storage_records.py": "0a182f00e0470d88141d9613d50bc662901677f3",
+    "src/btg_ai_trader/observer/temporal.py": "6a405cbd162976ab504bc150776e932a1a0c91cd",
+    "src/btg_ai_trader/observer/values.py": "47bb307e565ad251c781e371ff5ad55f8be4b892",
+    "src/btg_ai_trader/py.typed": "8b137891791fe96927ad78e64b0aad7bded08bdc"
+  }
+}

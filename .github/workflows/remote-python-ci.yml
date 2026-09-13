@@ -28,7 +28,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        check: [tests, lint, types, compile, dependencies, diff, foundation]
+        check: [tests, lint, types, compile, dependencies, diff, foundation, boundary]
     steps:
       - name: Check out exact reviewed commit
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4, verified 2026-09-13
@@ -70,6 +70,10 @@ jobs:
       - name: Verify frozen Foundation contracts
         if: matrix.check == 'foundation'
         run: python scripts/check_foundation_contract.py
+
+      - name: Verify scoped S1 boundary, config and possible-secret heuristics
+        if: matrix.check == 'boundary'
+        run: python scripts/check_s1_boundary.py
 
       - name: Check diff against recorded base
         if: matrix.check == 'diff'
