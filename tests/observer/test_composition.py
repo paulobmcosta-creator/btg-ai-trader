@@ -129,7 +129,9 @@ def records(root: Path) -> list[EvidenceRecord]:
     return [item for item in output if isinstance(item, EvidenceRecord)]
 
 
-def test_manifest_configuration_actual_code_pin_and_read_after_start(tmp_path: Path) -> None:
+def test_manifest_configuration_actual_code_pin_and_read_after_start(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     raw = frame()
     observer, _, archive, journal = make(tmp_path, [raw])
     with pytest.raises(ValueError, match="start"):
@@ -163,10 +165,11 @@ def test_manifest_configuration_actual_code_pin_and_read_after_start(tmp_path: P
     assert encoded["processing_completion_time"] == {"missing": "UNKNOWN"}
     assert encoded["derived_availability"] == {"missing": "UNKNOWN"}
     assert result.decision_receipt.record_id == decision.record_id
-    print("OBSERVER_CODE_SHA=" + observer.manifest.code_revision.value)
-    print("OBSERVER_CONFIG_SHA256=" + observer.manifest.config_hash.value)
-    print("OBSERVER_MANIFEST_SHA256=" + manifest.input_identity.content_hash.value)
-    print("OBSERVER_FRAME_DISPOSITION=" + result.status.value)
+    with capsys.disabled():
+        print("OBSERVER_CODE_SHA=" + observer.manifest.code_revision.value)
+        print("OBSERVER_CONFIG_SHA256=" + observer.manifest.config_hash.value)
+        print("OBSERVER_MANIFEST_SHA256=" + manifest.input_identity.content_hash.value)
+        print("OBSERVER_FRAME_DISPOSITION=" + result.status.value)
 
 
 def test_corrupt_quarantine_is_logically_separate_then_valid_feed_continues(tmp_path: Path) -> None:
