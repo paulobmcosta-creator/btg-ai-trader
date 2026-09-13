@@ -10,6 +10,7 @@ on:
     branches:
       - "sprint/1-market-observer"
       - "s1/**"
+      - "s11/**"
     types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
@@ -27,7 +28,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        check: [tests, lint, types, compile, dependencies, diff]
+        check: [tests, lint, types, compile, dependencies, diff, foundation]
     steps:
       - name: Check out exact reviewed commit
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4, verified 2026-09-13
@@ -56,15 +57,19 @@ jobs:
 
       - name: Type check source and tests
         if: matrix.check == 'types'
-        run: python -m mypy src tests
+        run: python -m mypy src tests scripts
 
       - name: Compile source and tests
         if: matrix.check == 'compile'
-        run: python -m compileall -q src tests
+        run: python -m compileall -q src tests scripts
 
       - name: Validate installed dependencies
         if: matrix.check == 'dependencies'
         run: python -m pip check
+
+      - name: Verify frozen Foundation contracts
+        if: matrix.check == 'foundation'
+        run: python scripts/check_foundation_contract.py
 
       - name: Check diff against recorded base
         if: matrix.check == 'diff'
