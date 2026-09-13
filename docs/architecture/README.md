@@ -116,7 +116,8 @@ Restart cria novo `RunId`; continuidade é registrada por `RunRelation` tipada. 
 - F1 final de consistência normativa/documental: aprovado em 2026-08-19.
 - Sprint 0D: formalmente fechado e aprovado.
 - Sprint 0E: formalmente fechado e aprovado em 2026-08-22 (FINAL_0E_DOC_GATE: PASS).
-- Sprint 0F: não iniciado (próximo passo oficial).
+- Sprint 0F: formalmente fechado e aprovado em 2026-08-25.
+- Sprint 1 — Market Observer: lifecycle `OPEN` exclusivamente no gate documental pré-código (`PRE_CODE_RECONCILIATION`); `S1_A_AUTHORIZED = NO` e a primeira implementação funcional permanece bloqueada até revisão humana e merge do PR #5.
 
 Os ADRs 0015–0022 refinam explicitamente decisões históricas dos ADRs 0003, 0007–0011 e 0013–0014 sem reescrever o histórico de 0C.
 
