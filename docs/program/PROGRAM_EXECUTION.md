@@ -1,204 +1,179 @@
 # Program Execution — BTG AI Trader
 
-## Checkpoint remoto
+## Checkpoint autoritativo corrente — 2026-09-13
 
-### Estado corrente após primeira integração da retomada
-
-PR #7 integrado em `df34c2cd0ce142a9805a993bdbdbc30ecbccbf04`; pais `dabce69d...` e `dae6ff6...` verificados pela Git Data API. Branch de checkpoint avançada por fast-forward ao merge antes desta atualização. `main` não foi promovida. Registros abaixo sobre ausência de merges pertencem aos checkpoints anteriores e são históricos.
-
-PR #8 retargetado para `sprint/1-market-observer` e atualizado por merge de upstream em `c11bd71d1be76f76c986e2639812b127b6ca555a`; conserva os mesmos dois blobs de CI/documento, checks do novo ancestry pendentes. PR #13 em `b53efddeaeda56c2a2298ef61251e0b3fe3960e2`: sete jobs de engenharia e dois jobs pinned upstream PASS (runs `34785505914`/`34785505913`). Revalidar/atualizar ancestry de #13 após #8.
-
-Revisões Wave 1: #7 replay P2 corrigido e thread resolvido; review independente `5192455959`. #8 review independente `5192402872`. #13 novo verificador revisto em `5192440737`; ajuste posterior só import. #14 P2 de predecessor watermark corrigido `e7337b57ba02b6342db3cb36beac938969dea074`, re-review independente `5192434073`, thread resolvido, CI `34785241831` 6/6 PASS e102 testes. #15 review independente sem blocker, testes adicionais em `da6dde512beb95bc0a501f4bd65d2267f49443c0`, CI `34785046928` 6/6 PASS e76 testes. Nenhum desses resultados constitui suíte S1 integrada.
-
-Novos PRs: #16 matriz RQM41 IDs em `1420aacf7ed2ec080f5aa31a9e80cfd278bad32d`, somente cobertura parcial/não implementada; #17 S12-A runbooks SPECULATIVE em `56af6993cdd96d15872c625d81739f3c3cebfc8d`, revisão `5192459160`, cenários não executados; #18 S9-A metadados de continuidade SPECULATIVE em `5ca16fe4178ac501734d40959271f25678b06ac5`, CI `34785303952` 6/6 PASS,23 testes100% coverage, não prova bytes/recovery/readiness; #19 S1-E persistência técnica em `03616b0db432fa60e9d8975c740a1a16b9fd98c3`, ADR0024 antes código, revisão/checks finais pendentes; #20 S1-D FIFO/backpressure/health em `5753497ec29048f281260ec61d3c2d6e673ae085`, ADR0023 antes código, revisão/checks finais pendentes. Fixture provider separado iniciado docs-first `67733cb6cc9fb755484bd73bb539bf04cf281c79` na branch `s1/07-fixture-provider`, código ainda pendente.
-
-Security Diff Scan reavaliado pela interface nesta retomada: `targetPath` Git local obrigatório; superfície remote/cloud ausente. `SECURITY_DIFF_SCAN=NOT_EXECUTED`, `REASON=REMOTE_TOOLING_UNAVAILABLE`, `RISK=RECORDED`, `FOLLOWUP=REQUIRED_BEFORE_GATE_WHERE_MANDATORY`. Primeiro PR funcional #10 permanece draft sem promoção. NEG-CAP aplicável foi relido no contrato§14; não inventar aprovação dos dez testes sem integração.
-
-NEXT_READY_ACTIONS correntes: concluir stack8→13 com ancestry/CI/review, revisar19/20, concluir fake provider, admission/quarantine/dedup, compor S1F experimental e preencher evidência de41RQMs/118cláusulas/20NC/10NEG; continuar S2/S7/S10 independentes, revisar18. MT5 permanece spike import somente.
-
-
-MANDATE_STATUS = IN_PROGRESS
-NO_READY_WORK = FALSE
-RESUMPTION_CHECKPOINT = 7e547eaf0adb3bb68063e76a97ee6c2f25244bfd
-REMOTE_DIVERGENCE_AT_RESUMPTION = NONE
-
-Retomada de 2026-09-13: arquivo e branch consultados diretamente no GitHub confirmaram o checkpoint conhecido. A interrupção anterior não encerrou o mandato. A seção histórica de interrupção abaixo é preservada como registro da rodada anterior.
-
-Data: 2026-09-13. Fonte de autorização: Master Autonomous Program Execution Mandate da coordenação humana recebido nesta execução. A autorização nova não é atribuída retroativamente ao PR #5.
+Este documento na branch `s1/00-post-merge-authorization` é a fonte operacional para retomada. O estado abaixo foi conferido diretamente no GitHub. Substitui os estados correntes dos checkpoints anteriores, preservados integralmente no histórico Git (entrada desta rodada `7e547eaf0adb3bb68063e76a97ee6c2f25244bfd`; checkpoint intermediário `0672b8a1545e73949439a1bfbf6df36cce2e9898`).
 
 ```text
+MANDATE_STATUS = IN_PROGRESS
+NO_READY_WORK = FALSE
+STOP_REASON = TOOL_OR_SESSION_LIMIT
 AUTHORITATIVE_STATE = GITHUB_REMOTE
 REPOSITORY = paulobmcosta-creator/btg-ai-trader
 LOCAL_USER_CHECKOUT = OUT_OF_SCOPE
 FOUNDATION_0A_TO_0F = FORMALLY_CLOSED
-LAST_CONFIRMED_REMOTE_STATE = dabce69d92054b77cad72809669d4340c211c328
-SPRINT_BRANCH = sprint/1-market-observer
-MAIN_AT_INITIAL_INSPECTION = 87634d529c32f4f7a564a318323aad2fcd8596d1
-PR_5 = MERGED
-PR_5_MERGE_COMMIT = dabce69d92054b77cad72809669d4340c211c328
-ISSUE_1 = COMPLETED
 PRE_CODE_RECONCILIATION = COMPLETE
-SPRINT_1_LIFECYCLE = OPEN
 S1_A_AUTHORIZED = YES
 FIRST_FUNCTIONAL_CODE = AUTHORIZED
 CANONICAL_PROMOTION = GATE_CONTROLLED
+SPRINT1_ACCEPTANCE = NOT_GRANTED
+MAIN = 87634d529c32f4f7a564a318323aad2fcd8596d1
+SPRINT_BRANCH = sprint/1-market-observer
+LAST_CONFIRMED_REMOTE_STATE = 3bee60a3d989ac8f1fb6d21ecb1c32fab13cf2de
 REAL_MONEY = NO
 LIVE_TRADING = NO
 TRADING_CREDENTIALS = NO
+BROKER_ORDER_SUBMISSION = NO
+BROKER_ORDER_MODIFICATION = NO
+BROKER_ORDER_CANCELLATION = NO
+MODEL_DIRECT_TO_BROKER = NO
+RISK_BYPASS = NO
 ```
 
-Verificação direta: [PR #5](https://github.com/paulobmcosta-creator/btg-ai-trader/pull/5) merged às 19:31:51Z; [Issue #1](https://github.com/paulobmcosta-creator/btg-ai-trader/issues/1) closed/completed às 19:32:15Z. A árvore recursiva de entrada contém 56 blobs, apenas bootstrap em src e um teste de versão, sem workflows. Isso não representa Observer implementado.
+A retomada começou consultando este arquivo e refs remotos: o SHA conhecido `7e547eaf...` correspondia exatamente à branch, sem divergência. Não houve reconstrução a partir de memória nem uso do checkout físico do usuário.
 
-## Autoridade e evidências preservadas
+A parada atual é um novo limite real: os três agentes retornaram explicitamente “You've hit your usage limit” antes de concluir os próximos lotes. Não houve tentativa de contornar o limite. A coordenação encerrou apenas a preservação remota de código, decisões, PRs, reviews e evidências já produzidos. Ainda existe trabalho READY.
 
-Leitura distribuída integral de AGENTS, README, Master Plan, SPRINT_0/0E/1, 0F-B e companion, 0F-E, 0F-F, SAFETY, ADRs 0001–0022 e TRACEABILITY concluída no SHA de entrada antes das alterações. Protocolos quantitativos adicionais são lidos por workstream antes da respectiva implementação.
+## Integrações verificadas
 
-Snapshots preservados sem alteração:
-- 0F-B: blob `819397f0a3fe322ef199d053b2ccbe9a6fdb5747`.
-- 0F-E: blob `b04901dcc5612d3d418a6603a3a51a8e6e18ae08`.
-- 0F-F: blob `7204d409edd1239853ab2282e9a7a4411a068bba`.
-- [Issue #6](https://github.com/paulobmcosta-creator/btg-ai-trader/issues/6) continua aberta como errata histórica: FI-02 → QPI-05; FI-04 → QPI-09/QPI-11; FI-18 → QPI-13.
-- [TRACEABILITY](../protocols/quantitative/TRACEABILITY.md) é a autoridade canônica QPI.
+| PR | HEAD auditado | Merge remoto | Gate e evidência |
+|---|---|---|---|
+| #5 | Fundação histórica | dabce69d92054b77cad72809669d4340c211c328 | Fundação formalmente encerrada; Issue #1 completed. Autorização S1 deriva do mandato posterior, não retroativamente deste merge |
+| [#7](https://github.com/paulobmcosta-creator/btg-ai-trader/pull/7) | dae6ff6e88ebb8c66e06f965224f9ee77f67a74f | df34c2cd0ce142a9805a993bdbdbc30ecbccbf04 | Apenas10 Markdown; review independente5192455959; finding replay resolvido; verificação remota exata34785315591/job103799607911 |
+| [#8](https://github.com/paulobmcosta-creator/btg-ai-trader/pull/8) | c11bd71d1be76f76c986e2639812b127b6ca555a | 3bee60a3d989ac8f1fb6d21ecb1c32fab13cf2de | Workflow+documento;6checks PASS34785604692; reviews5192402872/5192474646; zero threads abertos na revalidação |
 
-Drift identificado: documentos vivos ainda retinham autorização NO e gate pré-código pendente. Esta reconciliação registra o novo mandato e preserva os registros cronológicos anteriores. Nenhuma norma histórica foi silenciosamente substituída por implementação.
+Os pais de #7 foram confirmados como `dabce69d...` e `dae6ff6...`; os de #8 como `df34c2cd...` e `c11bd71d...`. A baseline Sprint1 contém agora bootstrap, documentação e CI; não contém Observer funcional promovido. Main permanece inalterada.
 
-## DAG material
+Após #7, a branch #8 recebeu o upstream por merge Git Data e foi retargetada para sprint. A comparação `df34c2cd...c11bd71d` confirmou merge-base igual ao upstream e exatamente os dois blobs previamente revisados: workflow `6145e4eae0d887ef35d5d92ccb9ab57d3cec4a2d`, documento `66154ec1118265b2c703330a0cab5602e748bc8d`. CI foi reexecutada no novo ancestry antes do merge.
+
+Após #8, #13 recebeu upstream e foi retargetado para sprint; comparação `3bee60a3...3f57d3ce` confirmou merge-base e os mesmos9 paths/blobSHAs do delta anterior. Sua integração ainda não ocorreu.
+
+O gate aplicado a #7/#8 é estritamente documental/engenharia: revisão do delta e checks de escopo/ausência de mudança em aplicação/config/dependências, contratos congelados, bootstrap, lint/types/compile/pip/diff. Não é aprovação de Security oficial ou NEG-CAP runtime. Nenhuma promoção funcional ou financeira foi concedida.
+
+## Autoridade e snapshots
+
+A leitura integral distribuída de AGENTS, README, Master Plan, SPRINT0/0E/1, 0F-B/companion, 0F-E, 0F-F, SAFETY, ADRs0001–0022 e TRACEABILITY ocorreu antes da implementação inicial; o histórico do checkpoint registra essa evidência. Nesta rodada foram relidos os contratos relevantes a cada incremento. Decisões novas precedem suas dependências em código.
+
+Snapshots permanecem:
+- 0F-B `819397f0a3fe322ef199d053b2ccbe9a6fdb5747`.
+- Companion `25d14e7baad1746ea864d328db3438eb663729cd`.
+- 0F-E `b04901dcc5612d3d418a6603a3a51a8e6e18ae08`.
+- 0F-F `7204d409edd1239853ab2282e9a7a4411a068bba`.
+- TRACEABILITY `e7a263a4b576290ab2809f8a7630146ee0e512ed`.
+
+O verificador remoto confirma os cinco blobs e118cláusulas sem duplicidade/oito classes,41RQMs,26DDs exatas,20NC e10NEG-CAP. Isso prova integridade documental, não cumprimento runtime. [Issue #6](https://github.com/paulobmcosta-creator/btg-ai-trader/issues/6) mantém errata histórica FI02→QPI05, FI04→QPI09/QPI11, FI18→QPI13; TRACEABILITY é autoridade QPI.
+
+## DAG material corrente
 
 ```mermaid
 flowchart TD
-    F[Fundação fechada e mandato] --> D[Decisões mínimas S1-A]
-    F --> CI[CI e coleta de evidência]
-    D --> M[Identidades, tempo e envelope]
-    M --> IP[InstrumentRegistry e provider contracts]
-    M --> PC[CaptureContext e RunManifest]
-    IP --> IN[Ingestão, qualidade e quarantine]
-    PC --> EA[EvidenceArchive e AuditJournal]
-    IN --> OBS[Observer integrado]
-    EA --> OBS
+    F[Fundação e mandato] --> A[S1-A modelos PR10]
+    F --> CI[CI PR8 integrado e guard PR13]
+    A --> B[Registry/provider metadata PR12]
+    A --> C[Provenance PR15]
+    A --> H[Health PR14]
+    B --> FP[Raw fixture provider PR22]
+    C --> E[Technical storage PR19]
+    H --> Q[FIFO e backpressure PR20]
+    Q --> DD[Dedup e late PR23 somente decisões]
+    FP --> AD[Decoder admission e quarantine pendente]
+    DD --> OBS[Composição experimental Observer pendente]
+    AD --> OBS
+    Q --> OBS
+    E --> OBS
     CI --> OBS
-    OBS --> GS1[Gate S1: RQM e NEG-CAP]
-    F --> RK[S2-R: kernel causal de replay experimental]
-    EA --> S2[Data Platform e retrieval causal]
+    OBS --> GS1[Gate S1 41RQM 118EC 20NC 10NEG]
+    F --> RK[S2-R kernel replay PR9]
+    E --> S2DEV[S2-A propostas independentes]
+    S2DEV --> S2[Data platform e replay formal Sprint2]
+    RK --> S2
     GS1 --> S2
-    RK --> S2R[Sprint 2: replay formal de market data]
-    S2 --> S2R
-    S2R --> S3[Backtest econômico Sprint 3]
-    S2 --> S3
-    R[Risk e authorization experimental] --> S3
-    L[Ledger e simulação experimental] --> S3
+    S2 --> S3[Backtest econômico Sprint3]
+    R[Risk experimental READY] --> S3
+    L[Ledger simulado futuro] --> S3
     S3 --> S4[Baselines OOS]
-    S4 --> S5[ML informacional]
-    S3 --> S6[Scenarios]
-    S4 --> S6
-    S4 --> CAND[Candidato exato e elegível]
-    S5 -. quando candidato usa ML .-> CAND
-    S6 -. conforme claim e materialidade .-> CAND
-    CAND --> P[Paper integrado]
-    R --> P
-    L --> P
-    OBS --> P
-    RT[Runtime e recovery experimental] --> P
-    P --> S9[Cloud runtime gate]
-    RT --> UI[Dashboard sobre telemetry]
-    S9 --> AU[Auditoria formal]
-    UI --> AU
-    CI --> AU
-    AU --> H[Gate G e autorização humana]
+    S4 --> CAND[Candidato exato elegível]
+    S4 --> ML[ML opcional]
+    ML -. quando material ao candidato .-> CAND
+    S3 --> SC[Scenarios conforme claim]
+    SC -. conforme materialidade .-> CAND
+    CAND --> PAPER[Paper formal]
+    R --> PAPER
+    L --> PAPER
+    OBS --> PAPER
+    RT[S9 contracts PR18] --> PAPER
+    RT --> UI[S10 mocks READY]
+    PAPER --> AUD[Auditoria formal futura]
+    UI --> AUD
+    CI --> AUD
+    PD[S12 runbooks PR17] --> AUD
+    AUD --> G[GateG e novo mandato humano]
 ```
 
-As arestas de desenvolvimento não substituem os marcos de promoção 1–12. S3 já precisa de Risk suficiente e cadeia econômica simulada; não pode adiar todo veto até o marco S7. S8 não exige cloud S9 para desenvolver seu núcleo. Risk/ledger/replay de sprints futuros não entram na baseline S1.
+Arestas de desenvolvimento não equivalem a promoção. S2-A pode desenvolver contratos isolados sobre upstream não promovido; integrar/aceitar S2 exige seus gates. S3 econômico não avança como se dados/Risk/ledger existissem. ML não é dependência universal de Paper. O motor causal formal pertence ao Sprint2; reprocessar fixtures no S1 não autoriza incorporá-lo.
 
-## Workstreams e classificação
+## Persistência remota e revisão
 
-READY indica trabalho executável, não aprovação. Cada branch e SHA confirmado está na tabela de persistência; PRs continuam separados e sem merge.
+Todos os PRs desta tabela permanecem abertos/draft, salvo indicação. Os SHAs são os últimos revalidados, não projeções locais.
 
-| ID | Sprint | Trabalho | Classe | Estado / dependência material |
-|---|---|---|---|---|
-| P-01 | transversal | Reconciliação viva e checkpoint | CANONICAL | IMPLEMENTED em PR #7; revisão independente encontrou duas arestas excessivas do DAG, corrigidas neste checkpoint |
-| A-01 | 11 transversal | CI Python e evidência por commit | CANONICAL | IMPLEMENTED em PR #8; seis checks remotos PASS no SHA registrado |
-| S1-A | 1 | Tipos imutáveis, IDs, temporalidade, envelope, tick/candle, instrumento | CANONICAL | IMPLEMENTED no PR #10; 6 checks PASS e re-review concluída; não equivale ao Sprint 1 completo |
-| S1-B | 1 | Registry scoped point-in-time e capabilities provider | CANONICAL | IMPLEMENTED em PR #12 empilhado sobre #10; DD-33/58 registrados antes do código, 6 checks PASS |
-| S1-C | 1 | Proveniência, manifestos, configuração | CANONICAL | PARTIALLY_IMPLEMENTED em PR #15 (modelos em memória); DD-01/40/41 registrados; sem config concreta ou serialização; revisão independente pendente |
-| S1-D | 1 | Ingestão, filas finitas, dedupe, quarantine e liveness | CANONICAL | Health puro em PR #14; ingestão/filas/quarantine ainda não implementados; DD-22/54/57/59/62 conforme trigger |
-| S1-E | 1 | EvidenceArchive e AuditJournal técnicos | CANONICAL | BLOCKED por envelope/contexto; DD-02/21/26; DD-20 só se banco |
-| S1-F | 1 | Integração e matriz 41 RQMs/118 cláusulas/10 NEG-CAP | CANONICAL | BLOCKED por S1-A..E e CI; não declarar aprovação parcial integral |
-| SP-01 | spike | Provider real / MT5 candidato | SPECULATIVE | PR #11: instalação/import remoto PASS; conexão/coleta não executadas; 11 condições não provadas; DD-60 permanece indefinido |
-| S2-A | 2 | Dataset identities, lineage, storage/retrieval | SPECULATIVE | BLOCKED para integração por envelope/persistência; propostas reversíveis permitidas |
-| S2-R | 2 | Clock controlado e scheduler causal de fixtures; precursor do replay formal | SPECULATIVE | IMPLEMENTED em PR #9 draft, seis checks PASS; não integrar S1 |
-| S3-A | 3 | Custos, fills, liquidez e backtest econômico | SPECULATIVE | BLOCKED por dados causais, Risk e cadeia econômica simulada |
-| S4-A | 4 | Baselines simples, nulos, OOS/walk-forward | SPECULATIVE | BLOCKED por replay mínimo e protocolo ex ante |
-| S5-A | 5 | Features/registry/treino/validação | SPECULATIVE | Contratos reversíveis possíveis; integração BLOCKED por S2/S3/S4 |
-| S6-A | 6 | Stress/scenario identity e perturbações | SPECULATIVE | Contratos reversíveis possíveis; integração BLOCKED por S2/S3 |
-| S7-A | 7 | Veto, limites e autorização com snapshots fictícios | SPECULATIVE | READY para proposta; DDs do estágio antes de concretizar policies; sem promoção S1 |
-| S8-A | 8 | Vertical offline Risk/Paper/portfolio/ledger | SPECULATIVE | BLOCKED por contratos Market/Signal/Risk e ledger/recovery |
-| S9-A | 9 | Lifecycle/watchdog/health/recovery sem integração financeira | SPECULATIVE | READY para contratos e fixtures; integração depende dos componentes |
-| S10-A | 10 | Telemetry view models e UI sobre mocks | SPECULATIVE | READY para contrato mock declarado; integração depende telemetry |
-| S11-A | 11 | Auditoria formal | BLOCKED | Evidência verificável do sistema ainda inexistente |
-| S12-A | 12 | Arquitetura/runbooks/dry-run/capability gates | SPECULATIVE | READY para documentação; sem provisão ou compromisso financeiro |
-| S12-G | 12 | Promoção/ativação financeira real | HUMAN_ONLY | Novo mandato humano após Gate G |
-| LIVE | transversal | Ordens broker, credenciais trading, real money, bypass Risk | FORBIDDEN_OPERATIONAL | Não executar neste mandato |
-
-`MUST_REMAIN_UNDECIDED_NOW` não vira escolha canônica por existir uma branch. Propostas futuras devem manter estado experimental e explicitar suas DDs. Forks arquiteturais não catalogados exigem classificação antes de código dependente.
-
-## Decisões operacionais desta execução
-
-- GitHub Git Data/Contents API para edição; nada depende do checkout do usuário.
-- Reconciliação documental antecede commits funcionais.
-- S1 começa com stdlib, modelos puros e testes; provider real DD-60 não bloqueia modelos e fakes.
-- Representações físicas mínimas serão registradas em documento de decisões antes do código. ADR se material; nenhum status humano APPROVED será inventado.
-- Integração sintética/histórica é harness de engenharia offline, não evidência Paper prospectiva. Paper formal exige mercado contemporâneo, candidato exato versionado, protocolo ex ante e Risk suficiente.
-- QPI-13/14/15: desenvolvimento, avaliação, promoção e autoridade são estados distintos.
-
-## Persistência remota
-
-| Workstream | Branch remota | Commit / PR | Estado |
+| PR | Branch | HEAD | Estado verificável |
 |---|---|---|---|
-| Entrada | sprint/1-market-observer | dabce69d92054b77cad72809669d4340c211c328 / #5 merged | Confirmado |
-| Fundação global | main | 87634d529c32f4f7a564a318323aad2fcd8596d1 | Confirmado; sem promoção automática |
-| P-01 | s1/00-post-merge-authorization | 183203307169f41ce40e035fe19f1d0a570e3e16 / [#7](https://github.com/paulobmcosta-creator/btg-ai-trader/pull/7) | Persistido; checkpoint evolui nesta branch |
-| A-01 | s11/01-remote-ci | 3bbdcefee96a9d3662112cac97feeb86d7cc7093 / [#8](https://github.com/paulobmcosta-creator/btg-ai-trader/pull/8) | Aberto; 6 checks PASS |
-| S1-A | s1/01-observation-domain | 5158dc3375fd9ed0a311dd745a981fadf2ea643a / [#10](https://github.com/paulobmcosta-creator/btg-ai-trader/pull/10) | Draft; 6 checks PASS; dois findings temporais corrigidos e re-revistos |
-| S2-R | s3/01-causal-replay-kernel (nome histórico preservado) | ad969b48e0cfbc5e942755cbbebeab89e5085aa4 / [#9](https://github.com/paulobmcosta-creator/btg-ai-trader/pull/9) | Draft; SPECULATIVE; 6 checks PASS |
-| S1-B | s1/02-registry-provider-contracts | a594a85cc41efab773e5d56d68560f3d281eda19 / [#12](https://github.com/paulobmcosta-creator/btg-ai-trader/pull/12) | Draft; 6 checks PASS; base #10 |
-| A-02 | s11/02-foundation-integrity | 99714c4df1abbb58daca9f9c19c5eb4737e2c316 / [#13](https://github.com/paulobmcosta-creator/btg-ai-trader/pull/13) | Draft; 7 checks PASS; base #8 |
-| SP-01 | spike/mt5-import-surface | 8c81980205a9b934af39614b67083a03b6695f6b / [#11](https://github.com/paulobmcosta-creator/btg-ai-trader/pull/11) | Draft; import Windows PASS |
-| S1-C | s1/03-capture-provenance | 146bec8a5a63255cd710c78ad6f663710d5cf72e / [#15](https://github.com/paulobmcosta-creator/btg-ai-trader/pull/15) | Draft; 6 checks PASS; revisão independente pendente |
-| S1-health | s1/04-observer-health | 40a9b5788504dd8620fab74f6c04d4618422217e / [#14](https://github.com/paulobmcosta-creator/btg-ai-trader/pull/14) | Draft; 6 checks PASS; revisão independente pendente |
-| Staging experimental | integration/research | 183203307169f41ce40e035fe19f1d0a570e3e16 | Base do PR #9; nenhum merge |
-| Staging de spike | integration/provider-spikes | 183203307169f41ce40e035fe19f1d0a570e3e16 | Base do PR #11; nenhum merge |
+| [#9](https://github.com/paulobmcosta-creator/btg-ai-trader/pull/9) | s3/01-causal-replay-kernel | 84c050f09dc40b3fecb9895265ac65513ccbf458 | S2-R SPECULATIVE; nome de branch histórico preservado; base integration/research; CI34784982491 SUCCESS |
+| [#10](https://github.com/paulobmcosta-creator/btg-ai-trader/pull/10) | s1/01-observation-domain | 5158dc3375fd9ed0a311dd745a981fadf2ea643a | S1-A;6checks/45tests; doisP2 temporais corrigidos/revistos; Security oficial pendente; atualizar ancestry após engenharia |
+| [#11](https://github.com/paulobmcosta-creator/btg-ai-trader/pull/11) | spike/mt5-import-surface | 8c81980205a9b934af39614b67083a03b6695f6b | Instalação/import Windows PASS somente; base integration/provider-spikes |
+| [#12](https://github.com/paulobmcosta-creator/btg-ai-trader/pull/12) | s1/02-registry-provider-contracts | a594a85cc41efab773e5d56d68560f3d281eda19 | Registry/provider metadata;6checks/70tests; base10 |
+| [#13](https://github.com/paulobmcosta-creator/btg-ai-trader/pull/13) | s11/02-foundation-integrity | 3f57d3ce758dcd832b2018001530c162ba007253 | Base sprint atual;7jobs/16tests PASS34785810279;2upstream jobs PASS34785810256; merge pendente |
+| [#14](https://github.com/paulobmcosta-creator/btg-ai-trader/pull/14) | s1/04-observer-health | e7337b57ba02b6342db3cb36beac938969dea074 | P2 watermark corrigido; review5192434073;6checks/102tests PASS34785241831 |
+| [#15](https://github.com/paulobmcosta-creator/btg-ai-trader/pull/15) | s1/03-capture-provenance | da6dde512beb95bc0a501f4bd65d2267f49443c0 | Revisão independente sem blocker;76tests/6checks PASS34785046928 |
+| [#16](https://github.com/paulobmcosta-creator/btg-ai-trader/pull/16) | codex/rqm-execution-status | 1420aacf7ed2ec080f5aa31a9e80cfd278bad32d | Matriz41RQMs criada; snapshot parcial anterior a19/20/22; precisa atualização/integrar comparação |
+| [#17](https://github.com/paulobmcosta-creator/btg-ai-trader/pull/17) | s12/01-dry-run-runbooks | 56af6993cdd96d15872c625d81739f3c3cebfc8d | S12-A SPECULATIVE; review5192459160;12cenários só especificados, nenhum dry-run/deploy executado |
+| [#18](https://github.com/paulobmcosta-creator/btg-ai-trader/pull/18) | s9/01-recovery-continuity-fixtures | 5ca16fe4178ac501734d40959271f25678b06ac5 | S9-A SPECULATIVE; review5192465788;23tests/6checks PASS34785303952 |
+| [#19](https://github.com/paulobmcosta-creator/btg-ai-trader/pull/19) | s1/05-technical-evidence-storage | 03616b0db432fa60e9d8975c740a1a16b9fd98c3 | S1-E; review5192474539 sem blocker;111tests/6checks PASS34785569132; base15 |
+| [#20](https://github.com/paulobmcosta-creator/btg-ai-trader/pull/20) | s1/06-observer-ingestion | 673bf6b1f4230c2207a29791841f31836b92c223 | S1-D FIFO/health; review5192474566 sem blocker;125tests/6checks PASS34785652719; base14 |
+| [#21](https://github.com/paulobmcosta-creator/btg-ai-trader/pull/21) | s1/00-post-merge-authorization | O commit deste arquivo, obtido no histórico Git | Checkpoint vivo após7/8; somente documento; não aceitar como gate funcional |
+| [#22](https://github.com/paulobmcosta-creator/btg-ai-trader/pull/22) | s1/07-fixture-provider | 94c6181bb50fc7393d2b3a7b98844edca5ab4d38 | Raw fixture source; review5192506737 sem blocker;90tests/6checks PASS34785799429; base12 |
+| [#23](https://github.com/paulobmcosta-creator/btg-ai-trader/pull/23) | s1/08-observation-dedup | 13d470e9a58a7647503a8d0f8b1c473725c68319 | Somente decisão DD59/57; código/testes NÃO iniciados; base20; preservado após limite |
 
-## Verificações, findings e gates
+Bases experimentais `integration/research` e `integration/provider-spikes` permanecem em `183203307169f41ce40e035fe19f1d0a570e3e16`, sem merges. As branches #8/#13 preservam seus commits de ancestry; #8 HEAD final é `c11bd71d...`, integrado. Não apagar branches históricas durante retomada.
 
-- Inspeção remota de refs, árvore, PR #5, Issue #1/#6 e bootstrap: executada.
-- Revisão documental: fonte da nova autorização explícita, snapshots excluídos da alteração, registros cronológicos históricos preservados.
-- Verificação textual em memória: substituições exatas e ausência de whitespace final nos documentos alterados; não equivale a `git diff --check`.
-- CI existente na baseline: nenhum workflow, run ou check-run encontrado.
-- `pytest`, coverage, Ruff, mypy, compileall, pip check, git diff --check, scans security/static, NEG-CAP/config/secrets: `NOT_EXECUTED` nesta reconciliação.
-- REASON: sem runner remoto configurado ainda; execução no computador físico do usuário excluída.
-- RISK: ausência de evidência de execução; nenhum gate de implementação ou promoção satisfeito por isso.
-- REQUIRED_FOLLOWUP: publicar CI remota, executar contra SHA exato e associar evidência. Primeiro PR funcional exige Codex Security Security Diff Scan conforme Issue #1; esse scan não é substituído por lint ou testes negativos.
-- Gates satisfeitos por evidência/autorização: Fundação encerrada; PR #5 integrado; Issue #1 concluída; S1-A autorizado.
-- Gates ainda não satisfeitos: implementação/aceitação S1, promoção S2–S12, aprovação financeira.
+Não somar testes de branches irmãs:102health/76provenance/70registry compartilham45 S1-A;111storage inclui provenance e125FIFO inclui health;90fixture inclui registry. Não existe suíte Observer integrada.
 
-## Evidência remota coletada após o checkpoint inicial
+## Findings e higiene
 
-- CI bootstrap no PR #8, SHA `3bbdcefee96a9d3662112cac97feeb86d7cc7093`: [run 34779510876](https://github.com/paulobmcosta-creator/btg-ai-trader/actions/runs/34779510876) SUCCESS, seis jobs (tests, lint, types, compile, dependencies, diff). Python 3.12.14; 1 teste bootstrap, 100% de apenas 2 statements. Não comprova Observer funcional.
-- S2-R fixture kernel (classificação S3 anterior corrigida), SHA `ad969b48e0cfbc5e942755cbbebeab89e5085aa4`: [run 34779661666](https://github.com/paulobmcosta-creator/btg-ai-trader/actions/runs/34779661666) SUCCESS, seis checks, 24 testes totais; kernel 85 statements/30 branches com 100% de cobertura. Primeira falha de lint nos testes corrigida; não é evidência de Backtester econômico ou Paper.
-- S1-A final, SHA `5158dc3375fd9ed0a311dd745a981fadf2ea643a`: [run 34780036474](https://github.com/paulobmcosta-creator/btg-ai-trader/actions/runs/34780036474) SUCCESS, seis checks, 45 testes, cobertura agregada 94%. Dois findings P2 corrigidos: knowledge_time interno anterior à ingestão e candle final disponível cedo. Adendo de decisão `75ae4f35bbf112fe94292e3ac85df5813ea9a64b` precedeu o código corretivo. Re-review independente confirmou resolução; nenhuma claim de S1 integral.
-- S1-B, SHA `a594a85cc41efab773e5d56d68560f3d281eda19`: [run 34780412293](https://github.com/paulobmcosta-creator/btg-ai-trader/actions/runs/34780412293) SUCCESS, seis checks, 70 testes totais incluindo S1-A. Módulos novos registry/provider com 100% de cobertura; agregado 96%. DD-33/58 em `bf5d07cf` antes do código; nenhum provider concreto.
-- Foundation guard, SHA `99714c4df1abbb58daca9f9c19c5eb4737e2c316`: [run 34780763204](https://github.com/paulobmcosta-creator/btg-ai-trader/actions/runs/34780763204) SUCCESS, sete jobs. Implementação `d1eebe9d` testou sete testes (seis de integridade + bootstrap) e validou bytes/counters; atualização final só documenta evidência. Revisão independente sem blocker; verificação de documentos não comprova NEG-CAP runtime.
-- Spike MT5, SHA `8c81980205a9b934af39614b67083a03b6695f6b`: [run 34780543045](https://github.com/paulobmcosta-creator/btg-ai-trader/actions/runs/34780543045) SUCCESS. Windows 2022, Python 3.12.10, MT5 5.0.6180 e NumPy 1.26.4 instalados em venv descartável via wheels/hash fixados. O probe importou pacotes e constatou símbolos sem invocar função SDK. A instalação/importação não prova isolamento do SDK, conexão, timestamps, heartbeat ou reconnect. Nenhuma mudança em dependências de runtime da aplicação.
-- Resultados de branches diferentes não são uma suíte integrada: os 70 testes S1-B incluem os 45 S1-A; não somar contadores como cobertura única do sistema.
-- Blobs de 0F-B/E/F e companion comparados novamente após PR #7: idênticos à entrada.
-- Revisão independente documental corrigiu dependência artificial do kernel causal nos modelos S1 e dependência universal indevida de Paper em ML/Scenario. ML é opcional; robustez/scenarios dependem da claim. Nenhum outro gate foi concedido por essa correção.
+- #7 thread `PRRT_kwDOUDTxZM6h7mU8` estava outdated=true e resolved=false; finding realmente ainda existia. Corrigido em `dae6ff6...` e doc/título #9 em `84c050f...`, relidos antes de resposta4001011827 e resolução. Atribuição S2-R agora explícita; histórico Git preservado.
+- #14 review5192403625 encontrou P2: predecessor público com sample conhecido e watermark ausente/incoerente permitia regressão. Adendo `a037d031...` precedeu `e7337b57...`; valida tipo,limites/coerência antes da avaliação. Regressões UNKNOWN/carryforward preservadas. Re-review5192434073, resposta4001033009 e thread `PRRT_kwDOUDTxZM6h8VEX` resolvido.
+- #15 não teve bug bloqueante no escopo limitado; regressões extras validam RunId relacionado, hashes tipados e UTC. Reviews5192400261/5192408936. Provenance88%,lineage94%,agregado92%; referências SHA são inicialmente sintáticas, não prova de bytes.
+- #19 revisão independente de todos arquivos: sem blocker no contrato filesystem controlado/single-writer. Storage91%,codec85%,agregado91%. Falha inicial de lintB904/linha longa corrigida, sem relaxar checks.
+- #20 revisão independente integral: sem blocker; ingestion100%,agregado98%. Falhas iniciais eram fixtures EventTime e lint/narrowing, corrigidas antes CI final.
+- #22 revisão independente integral: sem blocker; raw_source48statements/18branches100%,agregado97%,90tests. Nenhum decoder ou admission implementado.
+- #13 review independente original5192398043 e extensão5192440737. Ajuste subsequente import-only `b53efdde...`; ancestry `3f57d3ce...` mantém exatamente os9blobs do delta auditado. Revalidar HEAD/reviews/threads e concluir ready/merge na retomada. Na última consulta threads=[].
+- #10/#12/#15 e demais heads antigos não receberam novos findings nesta rodada. Uma review normal não é scan oficial. Reviews produzidas por agentes independentes da implementação aparecem na conta GitHub conectada; não são aprovação humana externa.
 
-## Workstreams preservados durante o encerramento
+## Decisões e limites dos incrementos
 
-- PR #14: health puro, branch `s1/04-observer-health`, SHA `40a9b5788504dd8620fab74f6c04d4618422217e`; [run 34780944239](https://github.com/paulobmcosta-creator/btg-ai-trader/actions/runs/34780944239) SUCCESS, seis checks, 83 testes incluindo S1-A; health.py 99% de cobertura, agregado 96%. Decisões DD-36/37 em commits anteriores. Não integra coleta real, fila ou persistência. Revisão independente do código novo ainda pendente; CI não substitui essa revisão.
-- PR #15: modelos de captura/proveniência e lineage em memória, SHA `146bec8a5a63255cd710c78ad6f663710d5cf72e`; [run 34780999514](https://github.com/paulobmcosta-creator/btg-ai-trader/actions/runs/34780999514) SUCCESS, seis checks, 69 testes (inclui S1-A), cobertura agregada 90%; provenance.py 82%, lineage.py 94%. Decisões DD-01/40/41 em `94df106a2ce4d67b86427cb344f3cc8161a6644a` antes do código. Configuração concreta/serialização/persistência não implementadas. Revisão independente ainda pendente; cobertura incompleta deve ser examinada antes de promover.
-- S1-B (#12), S1-C (#15) e health (#14) são branches irmãs sobre S1-A (#10), não uma composição integrada. Não somar contadores de teste. Todas permanecem draft.
+S1-A DD01/03/04/67: UUIDs tipados, frozen dataclasses, Decimal finito sem coerção, missing explícito, envelope/schema1, tempos UTC separados. Knowledge interno não precede ingestão; candle FINAL não fica disponível antes do fim/finalização conhecida. Nenhum RunId ou ordem global inventado.
 
-## Bloqueio de ferramenta para Security Diff Scan
+S1-B DD33/58: resolução scoped point-in-time com corte de conhecimento; NOT_FOUND/AMBIGUOUS sem escolher símbolo arbitrário; capabilities são declarações, não autoridade. Fixture #22 estende DD33 em `67733cb6...` antes código: rawbytes+referência+canal, leitura finita síncrona. Repetições/ordem preservadas, None só exhaustion, UNKNOWN não concede suporte. DD60 não selecionado.
+
+S1-C DD01/40/41 em `94df106a...` antes código: RunManifest/CaptureContext/receipts/lineage N→M em memória; restart cria RunId novo, completion separado. Configuração concreta e serialização integral de manifest continuam pendentes.
+
+S1-E ADR0024 `529614da0b9a49f91e5747f4c065a321ec151d46` antes código: DD02 codecJSON técnico estrito e rawbase64; DD21 rootsfilesystem separados; DD26 publicação exclusiva de arquivo completo por hardlink. Mesmo ID/bytes é idempotente; conflito não sobrescreve; resultado incerto resolve pelo mesmo ID/hash. Hashes de bytes são calculados/verificados neste adapter. Fsync técnico NÃO decide DD24 financeiro. Sem DB/WAL/replication/snapshot/retention, sem JournalPosition, sem claim de power-loss universal. Não é ledger/admission e não resiste a filesystem hostil concorrente; testes executados no Ubuntu descartável do CI.
+
+S1-D ADR0023+decisões `f77225759b4be24725bb79c49c97dad8ce92bea9` antes código: DD22 FIFOtuple finita com proprietário síncrono único; DD59 backpressure explícito sem eviction, item rejeitado permanece com caller; health preserva latch/UNKNOWN. Nenhum I/OconcorrenteDD54 ou dedup efetivo ainda. ADRs0023/0024 são decisões técnicas limitadas sob mandato, não aprovação humana de produção.
+
+Dedup #23: DD59 chave=session scope+EventId, comparação factual exclui receipt ingest/knowledge/order mas preserva ambas observações. Primeiro original nunca muda; capacidade cheia rejeita novoID sem evicção; conflicts não viram NEW. DD57 late exige mesmo provider/scope/symbol+instrumento resolvido e EventTime/basis/resolution conhecidos compatíveis; demais casosUNKNOWN. Documento38linhas somente; implementação é NEXT_READY.
+
+S9 #18 decisão `9a193fb...` antes código: metadados de intervalos de journal por scope; gaps/overlap/corruption/unknown/missingtail falham fechado. VERIFIED é assertion do chamador; não autentica bytes, reconstrói estado ou fornece READY. Sem watchdog/clock/network/recovery real.
+
+S12 #17: proposta documental com fronteiras lógicas, startup/incidente/rollback e12cenários DR01..12. Não escolhe cloud/DB/OS/SLO/thresholds, não provisiona nem executa cenários. Recovery/reconciliation só removem blockers; SAFE_HALT não flatten; Run novo após restart.
+
+## S2-A: desenho pronto, ainda não materializado em branch
+
+Leitura0E-B/ADRs0017/0021/DDs concluída pelo agente; limite surgiu antes da branch/código. Próximo lote SPECULATIVE sugerido: `s2/01-causal-dataset-contracts` com comparação em nova `integration/data-platform` baseada em19@`03616b0...` para nunca promover automaticamente emS1.
+
+Desenho aceito para elaboração docs-first: revisão imutável de memberships de evidências externasEventId, referências PersistenceRecordId+hash resolvidas pela API19, identidade/revisão separadas de hash físico, seleção e conhecimentos explícitos. DD83 limitado ao manifesto canônico de referência; DD15 apenas boundary declarado. Retrieval de revisão exata com cutoff exclui UNKNOWN/futuro na seleção e membros; preserva ordem declarada do manifesto sem alegar cronologia global. Não inferir conhecimento de event_time nem retroagir seleção. Referências ArtifactId derivadas devem falhar explicitamente enquanto herança temporal dos ancestrais não estiver modelada, para não contornar B-HQI08. DD17/20/28/78/82 ficam abertos; sem DB/retention/normalização/replay duplicado. Necessário registrar decisões antes de código. Nada desse desenho é implementação ou evidência de dataset pronto.
+
+## Security, NEG-CAP e MT5
 
 ```text
 SECURITY_DIFF_SCAN = NOT_EXECUTED
@@ -206,41 +181,43 @@ SCAN_ID = NOT_CREATED
 REASON = REMOTE_TOOLING_UNAVAILABLE
 RISK = RECORDED
 FOLLOWUP = REQUIRED_BEFORE_GATE_WHERE_MANDATORY
-TECHNICAL_DETAIL = DESKTOP_SCAN_REQUIRES_LOCAL_GIT_TARGET
-RISK_DETAIL = REQUIRED_FUNCTIONAL_SECURITY_REVIEW_EVIDENCE_MISSING
-REQUIRED_FOLLOWUP = RUN_OFFICIAL_SCAN_ON_EXACT_REMOTE_BASE_AND_HEAD_IN_AUTHORIZED_CLOUD_OR_REMOTE_CODEX_ENVIRONMENT
+TECHNICAL_DETAIL = DESKTOP_TOOL_REQUIRES_LOCAL_GIT_TARGETPATH_AND_REVISIONS
+FUNCTIONAL_PROMOTION_GATE = CLOSED_PENDING_REQUIRED_SECURITY_EVIDENCE
+NEG_CAP_INTEGRATED_SUITE = NOT_IMPLEMENTED
 ```
 
-Inspeção da interface `start_codex_security_prompt_only_scan` confirmou `targetPath` local obrigatório e `diffTarget` de revisões Git locais. A skill security-diff-scan exige usar scanId/contexto autoritativo antes de análise substantiva; a alternativa terminal também exige checkout e scripts locais. Esta sessão desktop não oferece alvo cloud para esse plugin. Nenhum checkout do usuário será usado para contornar o mandato remoto; nenhum scan não oficial será rotulado Codex Security. Revisões comuns de código não substituem o scan exigido pela Issue #1.
+A interface foi reconsultada nesta rodada: start_codex_security_prompt_only_scan exige targetPath local e revisões Git locais. Não foi oferecido target remoto/cloud compatível. Não usar o checkout do usuário nem inventar scanId/PASS. A exigência oficial do primeiro PR funcional da Issue1 continua pendente; não bloqueia desenvolvimento isolado autorizado.
 
-O status consultivo TAC foi `not_granted`; não foi usado como autorização nem como causa deste bloqueio técnico. Os gates de promoção funcional permanecem fechados enquanto esse requisito faltar. Não houve merge em main, sprint ou staging.
+0F-E§14 foi relido: NEG01 conversão OrderIntent;02 injeção executora;03 ingestão→efeito;04 configtrading;05 credenciais;06 adapter read-only/dual-use;07 SAFE_HALT semflatten;08 rotasCLI/UI;09 persistência semledger;10 ausênciaPaper. Cada uma precisa de evidência real do sistema integrado, além das20NC e118cláusulas. As inspeções/guardas atuais não completam essa suíte. Flags ou credenciais de execução não podem ser introduzidas como fallback.
 
-## Continuação
+MT5 #11 mantém exclusivamente instalação/import Python3.12 PASS e presença de24callables OBSERVED no run34780543045. Windows2022, Python3.12.10, MT5 5.0.6180, NumPy1.26.4, wheels/hashpinned. Nenhuma funçãoSDK invocada, inclusive initialize/login. Conexão read-only, autoridade segura, discovery/ticks/candles/heartbeat/reconnect,11condições dual-use eDD60 NÃO_PROVADOS. Não usar terminal do usuário, conta real ou tradingcredentials. Base integration/provider-spikes isolada.
 
-CURRENT_BLOCKERS: Security Diff Scan oficial sem alvo remoto compatível nesta sessão; suíte NEG-CAP integral ainda não implementada; provider real condicionado a DD-60/11 condições e ambiente isolado; ativação financeira HUMAN_ONLY/FORBIDDEN neste mandato. CI Python está disponível.
+## Gates e próximos trabalhos
+
+| Workstream | Classe | Estado |
+|---|---|---|
+| S1-A/B/C/health | CANONICAL development | Implementado parcialmente em branches; promoção funcional bloqueada pelo gate |
+| S1-D | CANONICAL development | FIFO/backpressure/health em20; dedup/late somente decisões23; decoder/admission/quarantine faltantes |
+| S1-E | CANONICAL development | Mecanismo técnico em19; integração com captura/manifest/journal completo faltante |
+| S1-F | CANONICAL development | Composição experimental ainda não criada; matrizRQM16 existe mas precisa atualizar; gate integral pendente |
+| S2-R | SPECULATIVE | Kernel9 reclassificado Sprint2; precursor não satisfaz motor formal |
+| S2-A | SPECULATIVE READY | Desenho documentado acima; branch/código ainda não criados |
+| S7-A | SPECULATIVE READY | Proposta Risk experimental ainda não iniciada; DDs antes de policies e nenhuma rota financeira |
+| S9-A | SPECULATIVE | Contrato metadata-only18 implementado/revisto; runtime real/recovery continuam pendentes |
+| S10-A | SPECULATIVE READY | Contratos de telemetry/mocks ainda não iniciados; nenhuma UI/interface operacional implementada |
+| S12-A | SPECULATIVE | Runbooks17 revistos; DRcenários não executados |
+| S3 econômico/S4/S5/S6/S8 | BLOCKED para integração | Upstreams causais/econômicos/candidato ainda insuficientes; não fabricar prontidão |
+| S11 formal/S12-G | BLOCKED / HUMAN_ONLY | Sistema/evidências integrais e novo mandato humano antes de ativação |
+| Live/realmoney/orders/credentials | FORBIDDEN_OPERATIONAL | Ausentes do trabalho autorizado |
 
 NEXT_READY_ACTIONS:
-1. Revisar independentemente PRs #14/#15 (health/provenance), completar casos ausentes e revalidar HEADs; S1-A já teve seus dois findings temporais corrigidos/re-revistos.
-2. Integrar apenas quando gates permitirem; desenvolver contrato/provider fake, ingestão, quarantine e persistência com decisões registradas antes do código. Registry/provenance/health ainda estão em branches distintas.
-3. Provider real permanece DD-60 indefinido; instalação/import MT5 concluídas no spike isolado não autorizam conexão nem provam as 11 condições.
-4. Executar Security Diff Scan oficial em superfície permitida quando disponível; manter promoção bloqueada sem evidência.
-5. Manter branches futuras isoladas, revisar cada diff e atualizar este checkpoint antes de qualquer interrupção.
-
-## Interrupção desta rodada — limite real de sessão
-
-STOP_REASON = TOOL_OR_SESSION_LIMIT. Em 2026-09-13, um worker retornou explicitamente “You've hit your usage limit”; nenhuma tentativa de contornar limite ou aumentar consumo foi feita. Encerramento restringe-se a preservar branches, PRs, resultados e pendências. O mandato inteiro não está concluído e ainda existem nós READY; não registrar NO_READY_WORK.
-
-Matriz consolidada RQM_EXECUTION_STATUS foi planejada, mas o worker atingiu o limite antes de produzi-la: NOT_CREATED. As 41 obrigações continuam no contrato canônico; documentos de decisões dos PRs declaram cobertura parcial. A tabela geral não substitui essa matriz nem os testes NEG-CAP.
-
-LAST_CONFIRMED_REMOTE_STATE: baseline sprint/1-market-observer = dabce69d92054b77cad72809669d4340c211c328; main = 87634d529c32f4f7a564a318323aad2fcd8596d1. Novos commits residem somente nas branches/PRs identificados acima. O commit que contém este checkpoint é obtido no histórico Git do próprio arquivo; seu hash não é autorreferenciado.
-
-CURRENT_PRS: #7–#15 abertos, sem merge; #9 e #11 têm bases próprias de integração experimental; #14/#15 foram persistidos com CI verde durante o encerramento. Nenhum trading, segredo, conexão a conta, deploy ou compromisso econômico realizado. O checkout físico do usuário não foi usado como superfície de desenvolvimento ou evidência.
-
-NEXT_READY_ACTIONS após reposição de capacidade de sessão: carregar este checkpoint, revalidar refs remotos, concluir workstreams parciais, revisar e testar seus HEADs, compor fake provider/ingestão/quarantine/evidência somente após decisões materiais registradas, e obter Security Diff Scan oficial em ambiente permitido. Qualquer arquitetura material nova (incluindo escolha de transporte DD-22 quando ativada) exige o ADR aplicável antes do código dependente.
-
-## Retomada — higiene Wave 1 em andamento
-
-- PR #7: thread `PRRT_kwDOUDTxZM6h7mU8` encontrado `is_outdated=true`, `is_resolved=false`. O finding P2 não estava corrigido: a tabela ainda atribuía replay ao Sprint 3. Esta alteração move o workstream para S2-R, explicita replay formal no marco Sprint 2 e reserva S3-A ao backtester econômico conforme 0F-E seção 18. O precursor não satisfaz o entregável formal de S2.
-- PR #9 será apresentado como S2-R; o nome histórico `s3/01-causal-replay-kernel` será preservado para não destruir commits ou recriar o PR. Sua base continua `integration/research`; nunca S1. A resolução do thread ocorrerá apenas após readback das duas correções.
-- Revalidação de PRs #7/#8/#10/#12/#13/#14/#15 confirmou todos abertos e sem merge. Threads #8/#10/#12/#13/#14/#15: zero no instante consultado. Revisões independentes atuais de #14/#15 e da stack #8/#13 foram distribuídas; evidências serão anexadas aos respectivos HEADs.
-- Prioridade: corrigir/revisar Wave 1, avaliar gates sem converter CI em aprovação, continuar S1-D/E/F e propostas futuras READY. Nenhum gate funcional promovido.
+1. Ler este checkpoint na branch indicada e revalidar refs/PRs/threads. Não reiniciar planejamento; main e sprint apenas nos SHAs confirmados. O hash deste checkpoint vem do histórico Git do próprio arquivo.
+2. Concluir higiene #13: HEAD3f57d3ce, CI34785810279(7jobs/16tests) e34785810256(2upstreamjobs) PASS, delta9blobs preservado. Revalidar review/checks/threads e marcar ready antes de merge permitido. Não fazer merge cego. Atualizar checkpoint e downstreams após qualquer merge.
+3. #10 continua upstreamfuncional de12/14/15. Ajustar ancestry/comparação após engenharia sem misturar futures, rerodarCI; reconfirmar reviews/NEG aplicável. Security oficial permanece NOT_EXECUTED enquanto remoto indisponível, sem promoção formal.
+4. Implementar dedup/late a partir das decisões já versionadas noPR23, testes e revisão. #20 é base; não declarar código existente.
+5. Sobre rawfixture22, registrar DD02/62 e implementar decoder/admission/quarantine em lote separado. Desenho ainda não decidido: preferir schemaJSON de fixture explícito e limitado (tick primeiro se necessário, candleunsupported explicitamente quarantined), ingestão fornecida pelo caller, EventId fornecido pela fixture, missing/UTC/scope/channel validados, bytescorruptos preservados e erro isolado. Sem callbacks executores. Coordenar com dedup23 e storage19.
+6. Compor branchS1-F experimental usando apenas upstreamsS1 revisados (10/12/14/15/19/20/22 e seguintes), sem promover gates. GitData/CIremota pode unir deltas controlados; verificar conflitos deidentity.py/CI e preservar decisões/artefatos. Implementar coleta→admission→fila→evidência/journal com falhas observáveis, sem drop/ackfalso. Ainda não existe essa composição.
+7. Atualizar matrizRQM16 para novo estado e materializar evidência de41RQMs/118EC/20NC/10NEG/ExitCriteria. Contadores íntegros não significam PASSsemântico.
+8. Avançar S2-A conforme desenho acima, em stagingisolado e docsfirst; S7riskexperimental/S10telemetrymocks continuam READYpara proposta independente. S9/S12 têm incrementos reais mas não runtime/deploy.
+9. Manter MT5 spike e blockers reais. Nenhuma conta/credencial/trading/deploy financeiro. Paperformal exige candidato exato, mercado contemporâneo, protocolo exante eRisk; harnesssyntético não o substitui.
+10. Persistir SHAs/PRs/reviews/checks/merges/gates e NEXT_READY_ACTIONS aqui antes de outra interrupção. O encerramento atual é somente TOOL_OR_SESSION_LIMIT, não NO_READY_WORK nem conclusão do mandato.
