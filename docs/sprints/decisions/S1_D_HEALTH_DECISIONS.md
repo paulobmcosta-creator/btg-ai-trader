@@ -41,3 +41,13 @@ Each evaluation returns an immutable HealthAssessment with original sample, phas
 Required fixture tests: exact timeout boundary, stale heartbeat, stale data with live heartbeat, missing values, zero/negative/float/bool thresholds, malformed enums/timestamps, backward readings/sample time and incompatible scopes; RUNNING not ready, RECOVERING/RECONCILING plus SAFE_HALT, no automatic unlatch, escalation, immutable before/after evidence and deterministic repeat evaluation. Six inherited remote checks must pass on the final SHA.
 
 Traceability: ADR-0004/0011/0020; 0F-E S1-EC-017/018/055/056/091 and RQM-022/023/032/033/034. RQM-022/023 receive fixture arithmetic/decision evidence only, not a real heartbeat, real feed staleness, transit latency measurement or complete integration proof. Full NEG-CAP suite and formal Security Diff Scan remain pending; no Sprint 1 acceptance is claimed.
+
+## Review correction addendum — 2026-09-13
+
+The common independent review of HEAD `40a9b5788504dd8620fab74f6c04d4618422217e` identified a P2 input-consistency defect: a public HealthAssessment may contain a known sample timestamp but an absent or contradictory last-known watermark. Trusting that watermark can admit a subsequent backward reading. This addendum is recorded before its corrective code; the preceding decision text remains historical.
+
+At the previous-assessment boundary, validate its sample type and each watermark against that sample. A supplied watermark must be an exact nonnegative integer no later than the sample's now_ns. For a known heartbeat/market sample timestamp, the corresponding watermark must equal that known timestamp. For an explicitly missing timestamp, None or a valid bounded retained watermark remains legal. Contradictions must raise ValueError before evaluation, rather than repair or reinterpret the predecessor.
+
+This is local consistency checking of public typed values. It does not authenticate historical evidence, detect a coherent forged history, introduce rehydration, or convert absence of previous into an authorization claim. UNKNOWN ages remain missing; retained watermarks still serve only ordering checks. No new DD, lifecycle, unlatch, transport or recovery protocol is selected.
+
+Required regressions cover heartbeat and market predecessors with missing, stale, future, negative, bool and float watermarks, followed by a backward sample; valid UNKNOWN carryforward and nonregressive return to known evidence must remain accepted. Re-run the six remote checks on the corrected HEAD before re-review.
