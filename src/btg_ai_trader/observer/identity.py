@@ -53,3 +53,23 @@ class ProviderInstrumentRef:
         require_text(self.provider, "provider")
         require_text(self.scope, "scope")
         require_text(self.symbol, "symbol")
+
+
+@dataclass(frozen=True, slots=True)
+class RunId(_UuidId):
+    """A concrete execution identity; restart requires a new value."""
+
+
+@dataclass(frozen=True, slots=True)
+class ArtifactId(_UuidId):
+    """Identity of an artifact, separate from its producing or processing run."""
+
+
+@dataclass(frozen=True, slots=True)
+class ReceiptId(_UuidId):
+    """Identity of a processing observation, never the identity of its input."""
+
+
+@dataclass(frozen=True, slots=True)
+class LineageRecordId(_UuidId):
+    """Identity of a derivation record, separate from processing receipts."""
