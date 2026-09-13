@@ -85,9 +85,9 @@ def test_input_boundary_is_copied_and_records_are_immutable() -> None:
     source.append(entry("fixture:b", 2, 2))
     assert schedule.entries == (entry(),)
     with pytest.raises(FrozenInstanceError):
-        setattr(schedule.entries[0], "knowledge_time", START)
+        schedule.entries[0].knowledge_time = START  # type: ignore[misc]
     with pytest.raises(FrozenInstanceError):
-        setattr(schedule, "entries", ())
+        schedule.entries = ()  # type: ignore[misc]
     assert schedule.entries == (entry(),)
 
 
