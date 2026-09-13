@@ -57,7 +57,7 @@ jobs:
 
       - name: Type check source and tests
         if: matrix.check == 'types'
-        run: python -m mypy src tests scripts/check_foundation_contract.py
+        run: python -m mypy src tests scripts
 
       - name: Compile source and tests
         if: matrix.check == 'compile'
