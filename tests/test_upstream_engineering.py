@@ -1,7 +1,6 @@
 """Negative scope cases for the exact upstream engineering verifier."""
 
 import pytest
-
 from scripts.check_upstream_engineering import TARGETS, validate_delta
 
 
