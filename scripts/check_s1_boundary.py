@@ -116,6 +116,25 @@ def _finite_getattr(
     return False
 
 
+def _reflection_consumer(node: ast.AST, parents: dict[ast.AST, ast.AST]) -> bool:
+    parent = parents.get(node)
+    if isinstance(parent, ast.Compare):
+        return True
+    return (
+        isinstance(parent, ast.Call) and isinstance(parent.func, ast.Name)
+        and parent.func.id in {"type", "isinstance", "require_numeric", "_reading"}
+        and bool(parent.args) and parent.args[0] is node
+    )
+
+
+def _function_scope(node: ast.AST, parents: dict[ast.AST, ast.AST]) -> ast.AST:
+    while node in parents:
+        node = parents[node]
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            return node
+    return node
+
+
 def check_sources(sources: dict[str, str]) -> list[Finding]:
     """Check syntax and import/member boundaries independently of production blob pins."""
     findings: list[Finding] = []
@@ -158,9 +177,9 @@ def check_sources(sources: dict[str, str]) -> list[Finding]:
                 if bound in bindings and bindings[bound] != imported:
                     findings.append(Finding(path, node.lineno, "ambiguous-import-alias"))
                 bindings[bound] = imported
-        reflected_results: set[str] = set()
+        reflected_results: list[tuple[ast.AST, str]] = []
         for node in ast.walk(tree):
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
                 if node.name in FORBIDDEN_NAMES:
                     findings.append(Finding(path, node.lineno, "prohibited-capability-definition"))
             if isinstance(node, ast.arg) and node.arg in bindings:
@@ -170,12 +189,24 @@ def check_sources(sources: dict[str, str]) -> list[Finding]:
                     findings.append(Finding(path, node.lineno, "prohibited-capability-name"))
                 if isinstance(node.ctx, ast.Store) and node.id in bindings:
                     findings.append(Finding(path, node.lineno, "import-alias-rebound"))
+                parent = parents.get(node)
+                if (
+                    isinstance(node.ctx, ast.Load)
+                    and bindings.get(node.id) in {
+                        "base64", "hashlib", "json", "os", "re", "stat", "tempfile"
+                    }
+                    and not (isinstance(parent, ast.Attribute) and parent.value is node)
+                ):
+                    findings.append(Finding(path, node.lineno, "external-module-escape"))
                 if node.id == "getattr":
                     parent = parents.get(node)
                     if not isinstance(parent, ast.Call) or parent.func is not node:
                         findings.append(Finding(path, node.lineno, "indirect-reflection"))
             if isinstance(node, ast.Attribute):
-                if node.attr in FORBIDDEN_NAMES or node.attr in DUNDER_ESCAPE:
+                if (
+                    (node.attr in FORBIDDEN_NAMES or node.attr in DUNDER_ESCAPE)
+                    and _qualified(node, bindings) != "re.compile"
+                ):
                     findings.append(Finding(path, node.lineno, "prohibited-capability-attribute"))
                 base = _qualified(node.value, bindings)
                 if base in MODULE_MEMBERS and node.attr not in MODULE_MEMBERS[base]:
@@ -183,7 +214,7 @@ def check_sources(sources: dict[str, str]) -> list[Finding]:
                 if isinstance(node.ctx, ast.Store) and base is not None:
                     findings.append(Finding(path, node.lineno, "import-member-mutated"))
             if isinstance(node, ast.Call):
-                if not isinstance(node.func, (ast.Name, ast.Attribute)):
+                if not isinstance(node.func, ast.Name | ast.Attribute):
                     findings.append(Finding(path, node.lineno, "dynamic-call-target"))
                 if (
                     isinstance(node.func, ast.Name) and node.func.id == "type"
@@ -194,10 +225,23 @@ def check_sources(sources: dict[str, str]) -> list[Finding]:
                     if not _finite_getattr(node, parents, path):
                         findings.append(Finding(path, node.lineno, "unbounded-reflection"))
                     parent = parents.get(node)
-                    if isinstance(parent, ast.Assign):
-                        reflected_results.update(
-                            target.id for target in parent.targets if isinstance(target, ast.Name)
-                        )
+                    if (
+                        isinstance(parent, ast.Assign) and parent.value is node
+                        and len(parent.targets) == 1
+                        and isinstance(parent.targets[0], ast.Name)
+                    ):
+                        reflected_results.append((
+                            _function_scope(node, parents), parent.targets[0].id
+                        ))
+                    elif not _reflection_consumer(node, parents):
+                        findings.append(Finding(path, node.lineno, "reflected-value-escaped"))
+                    scope = _function_scope(node, parents)
+                    receiver = ast.unparse(node.args[0]).split(".")[0] if node.args else ""
+                    if any(
+                        isinstance(part, ast.Name) and isinstance(part.ctx, ast.Store)
+                        and part.id == receiver for part in ast.walk(scope)
+                    ):
+                        findings.append(Finding(path, node.lineno, "reflection-receiver-rebound"))
                 if isinstance(node.func, ast.Attribute) and node.func.attr == "__setattr__":
                     if not (
                         Path(path).stem == "instruments"
@@ -207,10 +251,13 @@ def check_sources(sources: dict[str, str]) -> list[Finding]:
                         and node.args[1].value in {"matches", "mappings"}
                     ):
                         findings.append(Finding(path, node.lineno, "unapproved-frozen-field-write"))
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
-                if node.func.id in reflected_results:
-                    findings.append(Finding(path, node.lineno, "reflected-value-invoked"))
+        for scope, name in reflected_results:
+            for node in ast.walk(scope):
+                if (
+                    isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)
+                    and node.id == name and not _reflection_consumer(node, parents)
+                ):
+                    findings.append(Finding(path, node.lineno, "reflected-value-escaped"))
     return findings
 
 
@@ -241,14 +288,15 @@ def possible_secrets(path: str, text: str) -> list[Finding]:
                 if node.value is not None:
                     pairs = [(node.target.id, node.value)]
             elif isinstance(node, ast.Dict):
-                pairs = [(key.value, value) for key, value in zip(node.keys, node.values)
+                pairs = [(key.value, value)
+                         for key, value in zip(node.keys, node.values, strict=True)
                          if isinstance(key, ast.Constant) and isinstance(key.value, str)]
             for name, value in pairs:
                 if (
                     SECRET_NAME.search(name) and isinstance(value, ast.Constant)
-                    and isinstance(value.value, (str, bytes)) and bool(value.value)
+                    and isinstance(value.value, str | bytes) and bool(value.value)
                 ):
-                    findings.append(Finding(path, node.lineno, "possible-credential-literal"))
+                    findings.append(Finding(path, value.lineno, "possible-credential-literal"))
     return findings
 
 
@@ -295,21 +343,21 @@ def verify(root: Path) -> list[Finding]:
                 actual[path.relative_to(root).as_posix()] = path
     for name in ("pyproject.toml", ".python-version"):
         actual[name] = root / name
-    for path in sorted(set(actual) ^ set(pins)):
-        findings.append(Finding(path, 1, "scope-inventory-mismatch"))
+    for relative in sorted(set(actual) ^ set(pins)):
+        findings.append(Finding(relative, 1, "scope-inventory-mismatch"))
     sources: dict[str, str] = {}
-    for path, location in actual.items():
+    for relative, location in actual.items():
         try:
             data = location.read_bytes()
             text = data.decode("utf-8")
         except (OSError, UnicodeError):
-            findings.append(Finding(path, 1, "unreadable-scope-file"))
+            findings.append(Finding(relative, 1, "unreadable-scope-file"))
             continue
-        if pins.get(path) != _blob(data):
-            findings.append(Finding(path, 1, "scope-blob-mismatch"))
-        if path.startswith("src/") and path.endswith(".py"):
-            sources[path] = text
-        findings.extend(possible_secrets(path, text))
+        if pins.get(relative) != _blob(data):
+            findings.append(Finding(relative, 1, "scope-blob-mismatch"))
+        if relative.startswith("src/") and relative.endswith(".py"):
+            sources[relative] = text
+        findings.extend(possible_secrets(relative, text))
     findings.extend(check_sources(sources))
     findings.extend(check_packaging((root / "pyproject.toml").read_text(encoding="utf-8")))
     for path in (root / ".github/workflows").glob("*"):

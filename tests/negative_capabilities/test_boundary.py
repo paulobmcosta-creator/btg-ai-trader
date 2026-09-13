@@ -58,6 +58,13 @@ def test_reviewed_inventory_ast_config_and_secret_subset() -> None:
     [
         "import subprocess as innocent\ninnocent.run(['x'])\n",
         "import os as harmless\nrunner = harmless.system\nrunner('x')\n",
+        "import os as harmless\nother = harmless\nother.system('x')\n",
+        "import os\nbox = [os]\nbox[0].system('x')\n",
+        "import os\ndef hidden():\n    return os\n",
+        "import os\nconsume(os)\n",
+        "import os\nget = lambda: os\n",
+        "import os\nbox = {'module': os}\n",
+        "import os\nother, = (os,)\n",
         "from os import system as harmless\nharmless('x')\n",
         "from btg_ai_trader.research.replay import clock\n",
         "from json import *\n",
@@ -198,3 +205,44 @@ def test_workflow_literal_findings_are_separate_from_main_ast(fixture_root: Path
     findings = verify(fixture_root)
     assert any(f.rule == "possible-credential-literal" for f in findings)
     assert all("synthetic-tripwire" not in str(f) for f in findings)
+
+
+@pytest.mark.parametrize("replacement", [
+    "run = value\n        run()",
+    "box = [value]\n        box[0]()",
+    "return value",
+    "consume(value)",
+    "return lambda: value",
+    "run: object = value\n        run()",
+])
+def test_reflected_escape_fails_after_repinning(fixture_root: Path, replacement: str) -> None:
+    path = "src/btg_ai_trader/observer/envelope.py"
+    source = (
+        "def validate(self):\n"
+        "    for field in ('schema_version',):\n"
+        "        value = getattr(self, field)\n"
+        f"        {replacement}\n"
+    )
+    (fixture_root / path).write_text(source, encoding="utf-8")
+    repin(fixture_root)
+    findings = verify(fixture_root)
+    assert any(item.rule == "reflected-value-escaped" for item in findings)
+    assert not any(item.rule == "scope-blob-mismatch" for item in findings)
+
+
+def test_reflection_receiver_reassignment_is_rejected() -> None:
+    source = (
+        "def validate(self):\n"
+        "    self = factory()\n"
+        "    for field in ('schema_version',):\n"
+        "        if getattr(self, field) != 1: raise ValueError('version')\n"
+    )
+    assert any(item.rule == "reflection-receiver-rebound" for item in check_sources({
+        "src/btg_ai_trader/observer/envelope.py": source,
+    }))
+
+
+def test_regex_compile_is_resolved_separately_from_dynamic_compile() -> None:
+    source = "import re as expression\npattern = expression.compile('x')\n"
+    assert check_sources({PATH: source}) == []
+    assert check_sources({PATH: "code = compile('x', '<fixture>', 'exec')\n"})
