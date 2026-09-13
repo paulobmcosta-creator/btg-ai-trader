@@ -38,7 +38,7 @@ class EventTime:
 
 @dataclass(frozen=True, slots=True)
 class ObservationTimes:
-    """No clock reads, derived timestamps, or assumed ordering of these axes."""
+    """Internal knowledge follows ingestion; other axes retain their source evidence."""
 
     event_time: EventTime
     ingestion_time: datetime
@@ -50,4 +50,6 @@ class ObservationTimes:
             raise ValueError("event_time must include source basis and resolution")
         require_utc(self.ingestion_time, "ingestion_time")
         require_temporal(self.knowledge_time, "knowledge_time")
+        if isinstance(self.knowledge_time, datetime) and self.knowledge_time < self.ingestion_time:
+            raise ValueError("internal knowledge_time must not precede ingestion_time")
         require_temporal(self.effective_time, "effective_time")

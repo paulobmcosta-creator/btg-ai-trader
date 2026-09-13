@@ -62,6 +62,11 @@ class Candle:
                 raise ValueError("known finalization time requires FINAL evidence")
             if self.finalized_at < self.interval_end:
                 raise ValueError("candle cannot finalize before its interval ends")
+        if self.finality is CandleFinality.FINAL and isinstance(self.available_at, datetime):
+            if self.available_at < self.interval_end:
+                raise ValueError("final candle availability must not precede interval end")
+            if isinstance(self.finalized_at, datetime) and self.available_at < self.finalized_at:
+                raise ValueError("final candle availability must not precede finalization")
         for field in ("open", "high", "low", "close"):
             require_numeric(getattr(self, field), field)
         require_numeric(self.volume, "volume", quantity=True)

@@ -244,3 +244,48 @@ def test_frozen_value_objects_preserve_original_observation() -> None:
     )
     assert original.payload == tick()
     assert corrected != original
+
+
+def test_internal_knowledge_cannot_precede_ingestion() -> None:
+    with pytest.raises(ValueError, match="knowledge_time.*ingestion_time"):
+        replace(times(), knowledge_time=T0 + timedelta(seconds=1))
+    observed = replace(times(), knowledge_time=times().ingestion_time)
+    assert observed.knowledge_time == observed.ingestion_time
+    for reason in MissingReason:
+        assert replace(times(), knowledge_time=reason).knowledge_time is reason
+
+
+def test_final_candle_cannot_be_available_before_interval_end() -> None:
+    observed = candle()
+    with pytest.raises(ValueError, match="availability.*interval end"):
+        replace(
+            observed,
+            finalized_at=MISSING,
+            available_at=observed.interval_end - timedelta(microseconds=1),
+        )
+    # Even without a finalization timestamp, interval end remains a known lower bound.
+    boundary = replace(observed, finalized_at=MISSING, available_at=observed.interval_end)
+    assert boundary.available_at == boundary.interval_end
+    assert boundary.finalized_at is MISSING
+
+
+def test_final_candle_cannot_be_available_before_known_finalization() -> None:
+    observed = candle()
+    with pytest.raises(ValueError, match="availability.*finalization"):
+        replace(observed, available_at=observed.interval_end)
+    boundary = replace(observed, available_at=observed.finalized_at)
+    assert boundary.available_at == boundary.finalized_at
+    simultaneous = replace(
+        observed, finalized_at=observed.interval_end, available_at=observed.interval_end
+    )
+    assert simultaneous.finalized_at == simultaneous.available_at == simultaneous.interval_end
+
+
+def test_final_candle_unknown_availability_is_not_inferred() -> None:
+    for reason in MissingReason:
+        observed = replace(candle(), available_at=reason)
+        assert observed.available_at is reason
+        assert observed.finalized_at == candle().finalized_at
+    both_unknown = replace(candle(), finalized_at=MISSING, available_at=MISSING)
+    assert both_unknown.finalized_at is MISSING
+    assert both_unknown.available_at is MISSING
