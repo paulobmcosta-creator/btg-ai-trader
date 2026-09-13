@@ -1,9 +1,11 @@
 # Causal replay kernel — SPECULATIVE engineering harness
 
-- Status: SPECULATIVE; isolated S3 branch; not promoted into S1.
+- Status: SPECULATIVE; Sprint 2 workstream S2-R; isolated research branch; not promoted into S1.
 - Base: `183203307169f41ce40e035fe19f1d0a570e3e16`.
 - Authority: remote autonomous mandate 2026-09-13; bounded independent engineering work.
-- Merge boundary: review against `s1/00-post-merge-authorization` is comparison only. DO NOT MERGE into the S1 baseline.
+- Merge boundary: PR #9 targets `integration/research`. DO NOT MERGE into the S1 baseline.
+- Normative classification: 0F-E section 18 assigns formal causal market-data replay to Sprint 2. This limited fixture kernel is its experimental precursor, not completion of that deliverable. Sprint 3 is reserved for economic backtesting built over Data Platform/replay.
+- Historical branch `s3/01-causal-replay-kernel` is retained to preserve Git ancestry and PR review history; its name conveys no Sprint 3 classification or promotion authority.
 - Scope: finite in-memory fixture scheduling and a controllable causal clock. No provider, normalization, market-event schema, financial artifacts, strategy, Paper, Ledger or production capability.
 
 ## Decisions recorded before implementation
