@@ -99,10 +99,12 @@ def test_empty_take_and_immutable_result_are_explicit() -> None:
     result = take(queue)
     assert result.item is None
     assert result.queue is queue
+    item_field = "item"
+    capacity_field = "capacity"
     with pytest.raises(FrozenInstanceError):
-        setattr(result, "item", event(0))
+        setattr(result, item_field, event(0))
     with pytest.raises(FrozenInstanceError):
-        setattr(queue.snapshot, "capacity", 100)
+        setattr(queue.snapshot, capacity_field, 100)
 
 
 @pytest.mark.parametrize("capacity", [1, 2, 7, 31])
@@ -150,6 +152,7 @@ def test_transport_preserves_duplicates_and_supplied_arrival_order_without_claim
     assert queue.items[0] is queue.items[2]
     assert older.ingestion_order == 0
     assert newer.correlation_id is None
+    assert isinstance(newer.payload, Tick)
     assert newer.payload.last is UNKNOWN
 
 
