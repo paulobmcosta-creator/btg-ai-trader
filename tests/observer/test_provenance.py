@@ -1,7 +1,7 @@
 """Provenance preserves external identity and explicit immutable context."""
 
 from dataclasses import FrozenInstanceError, fields, replace
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from itertools import permutations
 from typing import cast
 from uuid import UUID
@@ -266,3 +266,67 @@ def test_lineage_refuses_mutable_container_and_empty_derivations() -> None:
     graph = LineageGraph((record,))
     with pytest.raises(FrozenInstanceError):
         setattr(graph, field_name, ())
+
+
+def test_manifest_relation_must_belong_to_the_described_run() -> None:
+    run = manifest()
+    foreign = RunRelation(
+        RunId(uuid_text(2)), RunId(uuid_text(3)), RunRelationKind.RESUMES_FROM
+    )
+    with pytest.raises(ValueError, match="identify this run"):
+        replace(run, relation=foreign)
+    assert run.relation is None
+    assert foreign.run_id == RunId(uuid_text(2))
+
+
+def test_pinned_reference_wrappers_cannot_be_interchanged() -> None:
+    run = manifest()
+    context = CaptureContext.from_manifest(run, ProvenanceLabel("fixture"))
+    content_hash = ContentHash(CONFIG.value)
+    for value in (run, context):
+        with pytest.raises(ValueError, match="pinned CodeRevision"):
+            replace(value, code_revision=cast(CodeRevision, CONFIG))
+        with pytest.raises(ValueError, match="pinned ConfigHash"):
+            replace(value, config_hash=cast(ConfigHash, content_hash))
+    with pytest.raises(ValueError, match="pinned ContentHash"):
+        InputIdentity(run.inputs[0].artifact_id, cast(ContentHash, CONFIG))
+    assert context.config_hash == run.config_hash == CONFIG
+
+
+@pytest.mark.parametrize(
+    "invalid",
+    [
+        T0.replace(tzinfo=None),
+        T0.astimezone(timezone(timedelta(hours=-3))),
+        None,
+        "2026-09-13T12:00:00Z",
+    ],
+)
+def test_lifecycle_factories_reject_non_utc_and_unparsed_timestamps(invalid: object) -> None:
+    run = manifest()
+    timestamp = cast(datetime, invalid)
+    with pytest.raises(ValueError, match="UTC-aware"):
+        start_run(started_at=timestamp, code_revision=CODE, config_hash=CONFIG, inputs=())
+    with pytest.raises(ValueError, match="UTC-aware"):
+        restart_run(
+            run, started_at=timestamp, code_revision=CODE, config_hash=CONFIG, inputs=()
+        )
+    with pytest.raises(ValueError, match="UTC-aware"):
+        complete_run(run, completed_at=timestamp, outcome=RunOutcome.STOPPED)
+    original = receipt(run, 100)
+    with pytest.raises(ValueError, match="UTC-aware"):
+        replace(original, started_at=timestamp)
+    with pytest.raises(ValueError, match="UTC-aware"):
+        replace(original, completed_at=timestamp)
+    assert run == manifest()
+    assert original.started_at == T0
+
+
+def test_run_relation_rejects_other_identity_and_untyped_relation_kind() -> None:
+    run_id = RunId(uuid_text(1))
+    with pytest.raises(ValueError, match="RunId identities"):
+        RunRelation(
+            run_id, cast(RunId, EventId(uuid_text(2))), RunRelationKind.RESUMES_FROM
+        )
+    with pytest.raises(ValueError, match="relation kind"):
+        RunRelation(run_id, RunId(uuid_text(2)), cast(RunRelationKind, "RESUMES_FROM"))
