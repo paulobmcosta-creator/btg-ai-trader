@@ -2,6 +2,21 @@
 
 ## Checkpoint remoto
 
+### Estado corrente após primeira integração da retomada
+
+PR #7 integrado em `df34c2cd0ce142a9805a993bdbdbc30ecbccbf04`; pais `dabce69d...` e `dae6ff6...` verificados pela Git Data API. Branch de checkpoint avançada por fast-forward ao merge antes desta atualização. `main` não foi promovida. Registros abaixo sobre ausência de merges pertencem aos checkpoints anteriores e são históricos.
+
+PR #8 retargetado para `sprint/1-market-observer` e atualizado por merge de upstream em `c11bd71d1be76f76c986e2639812b127b6ca555a`; conserva os mesmos dois blobs de CI/documento, checks do novo ancestry pendentes. PR #13 em `b53efddeaeda56c2a2298ef61251e0b3fe3960e2`: sete jobs de engenharia e dois jobs pinned upstream PASS (runs `34785505914`/`34785505913`). Revalidar/atualizar ancestry de #13 após #8.
+
+Revisões Wave 1: #7 replay P2 corrigido e thread resolvido; review independente `5192455959`. #8 review independente `5192402872`. #13 novo verificador revisto em `5192440737`; ajuste posterior só import. #14 P2 de predecessor watermark corrigido `e7337b57ba02b6342db3cb36beac938969dea074`, re-review independente `5192434073`, thread resolvido, CI `34785241831` 6/6 PASS e102 testes. #15 review independente sem blocker, testes adicionais em `da6dde512beb95bc0a501f4bd65d2267f49443c0`, CI `34785046928` 6/6 PASS e76 testes. Nenhum desses resultados constitui suíte S1 integrada.
+
+Novos PRs: #16 matriz RQM41 IDs em `1420aacf7ed2ec080f5aa31a9e80cfd278bad32d`, somente cobertura parcial/não implementada; #17 S12-A runbooks SPECULATIVE em `56af6993cdd96d15872c625d81739f3c3cebfc8d`, revisão `5192459160`, cenários não executados; #18 S9-A metadados de continuidade SPECULATIVE em `5ca16fe4178ac501734d40959271f25678b06ac5`, CI `34785303952` 6/6 PASS,23 testes100% coverage, não prova bytes/recovery/readiness; #19 S1-E persistência técnica em `03616b0db432fa60e9d8975c740a1a16b9fd98c3`, ADR0024 antes código, revisão/checks finais pendentes; #20 S1-D FIFO/backpressure/health em `5753497ec29048f281260ec61d3c2d6e673ae085`, ADR0023 antes código, revisão/checks finais pendentes. Fixture provider separado iniciado docs-first `67733cb6cc9fb755484bd73bb539bf04cf281c79` na branch `s1/07-fixture-provider`, código ainda pendente.
+
+Security Diff Scan reavaliado pela interface nesta retomada: `targetPath` Git local obrigatório; superfície remote/cloud ausente. `SECURITY_DIFF_SCAN=NOT_EXECUTED`, `REASON=REMOTE_TOOLING_UNAVAILABLE`, `RISK=RECORDED`, `FOLLOWUP=REQUIRED_BEFORE_GATE_WHERE_MANDATORY`. Primeiro PR funcional #10 permanece draft sem promoção. NEG-CAP aplicável foi relido no contrato§14; não inventar aprovação dos dez testes sem integração.
+
+NEXT_READY_ACTIONS correntes: concluir stack8→13 com ancestry/CI/review, revisar19/20, concluir fake provider, admission/quarantine/dedup, compor S1F experimental e preencher evidência de41RQMs/118cláusulas/20NC/10NEG; continuar S2/S7/S10 independentes, revisar18. MT5 permanece spike import somente.
+
+
 MANDATE_STATUS = IN_PROGRESS
 NO_READY_WORK = FALSE
 RESUMPTION_CHECKPOINT = 7e547eaf0adb3bb68063e76a97ee6c2f25244bfd
