@@ -55,7 +55,8 @@ def test_registry_uses_both_validity_and_knowledge_boundaries() -> None:
     registry = InstrumentRegistry([late])
     hidden = registry.resolve(REF, valid_at=T0, knowledge_cutoff=T0)
     assert hidden.status is ResolutionStatus.NOT_FOUND
-    assert hidden.instrument_id is hidden.family_id is None
+    assert hidden.instrument_id is None
+    assert hidden.family_id is None
     assert hidden.matches == ()
     visible = registry.resolve(REF, valid_at=T0, knowledge_cutoff=T1)
     assert visible.status is ResolutionStatus.RESOLVED
@@ -110,7 +111,8 @@ def test_conflicts_fail_closed_instead_of_selecting_first_or_latest() -> None:
     assert registry.resolve(REF, valid_at=T0, knowledge_cutoff=T0).instrument_id == ID_A
     result = registry.resolve(REF, valid_at=T0, knowledge_cutoff=T1)
     assert result.status is ResolutionStatus.AMBIGUOUS
-    assert result.instrument_id is result.family_id is None
+    assert result.instrument_id is None
+    assert result.family_id is None
     assert result.matches == (first, conflict)
 
 
