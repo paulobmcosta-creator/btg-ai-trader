@@ -93,6 +93,7 @@ def test_admission_preserves_exact_frame_context_identity_and_domain(channel: Ra
     assert result.envelope.instrument_id is MissingReason.UNKNOWN
     if channel is RawChannel.TICK:
         assert isinstance(result.envelope.payload, Tick)
+        assert isinstance(result.envelope.payload.bid, Decimal)
         assert result.envelope.payload.bid == Decimal("10.00")
         assert result.envelope.payload.bid.as_tuple().exponent == -2
         assert result.envelope.payload.last is MissingReason.NOT_PROVIDED
