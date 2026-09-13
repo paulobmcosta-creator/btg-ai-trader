@@ -26,7 +26,7 @@ O escopo positivo e os critérios de aceitação são governados integralmente p
 
 O Sprint 1 deve ser conduzido em conformidade cumulativa com:
 
-- 0F-B — registro canônico de 124 decisões deferidas;
+- 0F-B — registro canônico de 124 decisões deferidas; para navegação portátil das fontes de proveniência, usar [0F-B — Portable Provenance Navigation](../foundation/0F-B_provenance_navigation.md), sem alterar o snapshot canônico;
 - 0F-C — 41 RQMs, 27 HQIs aplicáveis ao Sprint 1 e 7 QPIs aplicáveis;
 - 0F-D — 20 Negative Capabilities e 10 obrigações de testes negativos;
 - 0F-E — 118 cláusulas `S1-EC-001` a `S1-EC-118`;
@@ -57,24 +57,3 @@ MUST_REMAIN_UNDECIDED_NOW = 48
 ```
 
 Este documento não seleciona nem congela antecipadamente provider, vendor, SDK, MT5, ticker, instrumento definitivo, timeframe, resolução definitiva, storage, database, schema físico, cloud, thresholds quantitativos finais, broker, Paper, Live, ML ou Strategy.
-
-Qualquer decisão `MAY_DECIDE_DURING_SPRINT_1` somente pode ser tomada no ponto permitido pelo contrato, antes da primeira dependência material e sem decisão silenciosa.
-
-## Fronteira absoluta de segurança
-
-Durante todo o Sprint 1:
-
-```text
-REAL_MONEY_PATH = ABSENT
-ORDER_SUBMISSION = IMPOSSIBLE
-ORDER_MODIFICATION = IMPOSSIBLE
-ORDER_CANCELLATION = IMPOSSIBLE
-ECONOMIC_COMMITMENT = IMPOSSIBLE
-STRATEGY_OPERATIONAL_PATH = ABSENT
-ML_OPERATIONAL_PATH = ABSENT
-PAPER_PATH = ABSENT
-LIVE_PATH = ABSENT
-TRADING_CAPABILITY = ABSENT
-```
-
-A introdução de qualquer capability financeira exige `STRUCTURAL_ESCALATION`, novo código auditado e gate futuro explicitamente competente; não pode ser habilitada por flag, configuração, troca de credencial ou rewiring já existente.
