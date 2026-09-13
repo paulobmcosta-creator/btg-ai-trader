@@ -40,7 +40,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "$env:RUNNER_TEMP\mt5-import-venv\Scripts" >> $env:GITHUB_PATH
       - name: Install hash-locked wheels in experiment environment only
-        run: python -m pip install --require-hashes --only-binary=:all: -r spikes/mt5-import/requirements.txt
+        run: |
+          python -m pip install --require-hashes --only-binary=:all: -r spikes/mt5-import/requirements.txt
       - name: Check experiment package requirements
         run: python -m pip check
       - name: Import and inspect symbol presence without calling SDK functions
