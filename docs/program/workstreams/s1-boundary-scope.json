@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "assembly_revision": "ad7835c94dd5203bab485cc71533f4636beec8e6",
+  "assembly_revision": "b00f052a2339b516da52b20611bc3479c7c46db0",
   "composition_status": "SCOPED_TESTS_IMPLEMENTED",
   "files": {
     ".python-version": "e4fba2183587225f216eeada4c78dfab6b2e65f5",
@@ -12,7 +12,7 @@
     "src/btg_ai_trader/observer/composition.py": "c2823cb754c481ac78ea64d7b41681b7eea24c92",
     "src/btg_ai_trader/observer/dedup.py": "8da04c84636106a07d6c9d60df7a36e143b081e0",
     "src/btg_ai_trader/observer/envelope.py": "dd1b1b6831cbfa316f12b4f12bd125d8444bad6a",
-    "src/btg_ai_trader/observer/health.py": "35f80b5d8048799177cbe43ef6bd8f42d85c4b60",
+    "src/btg_ai_trader/observer/health.py": "9930dcca73385e76773c501766602b9a0f2604ba",
     "src/btg_ai_trader/observer/identity.py": "b144a2ab1f9edde826bdbabed48a35f0bba49a8f",
     "src/btg_ai_trader/observer/ingestion.py": "c1820f436a771ad912c462c6eee821aee2e62dcd",
     "src/btg_ai_trader/observer/instruments.py": "fe28f34a4a5cd46174796db6d26a3047faf2dcfe",
