@@ -8,13 +8,13 @@ This workstream provides engineering checks on GitHub-hosted runners without dep
 WORKSTREAM = REMOTE_ENGINEERING_CI
 BASELINE = 183203307169f41ce40e035fe19f1d0a570e3e16
 IMPLEMENTATION = WORKFLOW_DEFINED
-REMOTE_EXECUTION = PENDING_VERIFIED_RUN
+REMOTE_EXECUTION = VERIFIED_FOR_RECORDED_HEAD
 SECURITY_DIFF_SCAN = NOT_RUN
 NEGATIVE_CAPABILITY_TESTS = NOT_IMPLEMENTED
 TRADING_CAPABILITY = ABSENT
 ```
 
-A workflow definition is not passing evidence. The implementation state above does not assert successful execution. Run results are authoritative only for their recorded head SHA and comparison base; later commits require new results.
+A workflow definition alone is not passing evidence. The verified execution below is authoritative only for its recorded head SHA and comparison base; later commits require new results on the pull request.
 
 ## Execution contract
 
@@ -49,3 +49,9 @@ The following official action tag references and their action metadata were read
 Before requesting promotion, record in the pull request the tested head SHA, run URL, actual conclusion of all six checks, and unresolved limitations. Missing or unavailable workflow execution is not a pass; keep the PR draft when checks cannot run. CI success does not authorize merge or any trading capability.
 
 The first functional Sprint 1 pull request still requires the mandated Codex Security Security Diff Scan over its exact diff and the applicable 0F-E negative-capability tests. This engineering workflow neither implements nor substitutes those obligations. Full contract conformance remains governed by [0F-E](../../foundation/0F-E_sprint1_entry_contract.md) and [Sprint 1](../../sprints/SPRINT_1.md).
+
+## Recorded remote execution
+
+[PR #8 run 34779421001](https://github.com/paulobmcosta-creator/btg-ai-trader/actions/runs/34779421001) executed on 2026-09-13 against head `ab41bc1fe027e752fd9c17fbf881f316a476465b` and comparison base `183203307169f41ce40e035fe19f1d0a570e3e16`. All six jobs and their applicable check steps completed successfully. Logs confirmed Python 3.12.14, pytest 8.3.5 with one bootstrap test passing, 100% coverage of two bootstrap statements, Ruff success, mypy success on two source files, compileall success, and no broken installed requirements. The diff log recorded both exact SHAs.
+
+This is a historical execution record for that head, not a claim that later commits passed. [PR #8](https://github.com/paulobmcosta-creator/btg-ai-trader/pull/8) records current-head results. Security Diff Scan and negative-capability obligations remain outstanding as specified above.
