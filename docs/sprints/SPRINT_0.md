@@ -102,8 +102,8 @@ Com isso, toda a fase de Fundação (Sprint 0, etapas 0A a 0F) está formalmente
 
 ## Próximo marco
 
-- **Sprint 1 — Market Observer** é o próximo passo oficial do projeto (**não iniciado**);
-- O início físico do Sprint 1 permanece condicionado à autorização explícita da coordenação humana e ao cumprimento estrito do Contrato de Entrada (0F-E).
+- O lifecycle do **Sprint 1 — Market Observer** está `OPEN` desde a autorização explícita da coordenação humana em 2026-08-25, exclusivamente para o gate documental pré-código (`PRE_CODE_RECONCILIATION`);
+- A primeira implementação funcional permanece não autorizada (`S1_A_AUTHORIZED = NO`) até revisão humana e merge do PR desse gate, sob cumprimento estrito do Contrato de Entrada (0F-E).
 
 ## Fora de escopo
 
