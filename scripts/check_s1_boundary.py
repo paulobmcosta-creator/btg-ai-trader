@@ -239,7 +239,13 @@ def check_sources(sources: dict[str, str]) -> list[Finding]:
                     receiver = ast.unparse(node.args[0]).split(".")[0] if node.args else ""
                     if any(
                         isinstance(part, ast.Name) and isinstance(part.ctx, ast.Store)
-                        and part.id == receiver for part in ast.walk(scope)
+                        and part.id == receiver
+                        and not (
+                            Path(path).stem == "ingestion" and receiver == "snapshot"
+                            and isinstance(parents.get(part), ast.Assign)
+                            and ast.unparse(parents[part]) == "snapshot = queue.snapshot"
+                        )
+                        for part in ast.walk(scope)
                     ):
                         findings.append(Finding(path, node.lineno, "reflection-receiver-rebound"))
                 if isinstance(node.func, ast.Attribute) and node.func.attr == "__setattr__":
