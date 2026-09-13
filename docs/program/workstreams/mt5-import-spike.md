@@ -43,3 +43,13 @@ Before any future terminal-connected experiment, provision a separately authoriz
 ## Evidence policy
 
 The draft PR must link the exact head, GitHub Actions run, installation/import results and actual surface report. A successful import is only partial evidence for the tested Windows/Python/NumPy/package combination. It cannot prove market discovery, subscription, timestamps, ticks, candles, heartbeat, reconnect, execution impossibility or dual-use admission. Keep this PR draft and unmerged; preserve all eleven conditions as NOT_PROVEN.
+
+## Recorded evidence — 2026-09-13
+
+[Run 34780123929](https://github.com/paulobmcosta-creator/btg-ai-trader/actions/runs/34780123929), [job 103785485461](https://github.com/paulobmcosta-creator/btg-ai-trader/actions/runs/34780123929/job/103785485461), tested exact head `7e725a5aaa5e68ccb165157221f8883c2fc8e823` successfully. The runner reported Windows-2022Server-10.0.20348-SP0 and Python 3.12.10. Both hash-locked wheels installed, `pip check` reported no broken requirements, and the import probe reported MetaTrader5 module/distribution 5.0.6180 with NumPy 1.26.4 inside the disposable venv.
+
+All 24 enumerated symbols were callable-present: eleven observation symbols, five connection/account symbols and eight financial symbols, including `order_send`. No SDK function is invoked by the probe source; its empty invocation field is a source-declared boundary, not independent syscall instrumentation. Native vendor import behavior was not traced. No terminal connection or data retrieval is established by these observations.
+
+The initial [run 34780050837](https://github.com/paulobmcosta-creator/btg-ai-trader/actions/runs/34780050837) failed before jobs started because the binary-only pip argument needed a YAML block scalar. Commit `7e725a5` corrected the workflow representation; no check or hash enforcement was removed. Current-head evidence is maintained on the draft [PR #11](https://github.com/paulobmcosta-creator/btg-ai-trader/pull/11). Later commits are not covered by the historical run cited above.
+
+The spike stops here. All eleven admissibility conditions remain NOT_PROVEN, DD-60 remains UNDECIDED, and no remote terminal/read-only credential environment has been provisioned for the next experiment. Connection, discovery, ticks, candles, heartbeat and real reconnect remain NOT_EXECUTED.
