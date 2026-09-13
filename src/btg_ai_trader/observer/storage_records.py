@@ -63,6 +63,7 @@ class EvidenceRecord:
 
 
 class TechnicalEventKind(Enum):
+    OBSERVATION_RECORDED = "OBSERVATION_RECORDED"
     STARTED = "STARTED"
     STOPPED = "STOPPED"
     ANOMALY = "ANOMALY"
