@@ -131,7 +131,10 @@ def _execute_variant(
     environment["PYTEST_ADDOPTS"] = ""
     environment["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
     environment.pop("PYTEST_PLUGINS", None)
-    environment.pop("COVERAGE_PROCESS_START", None)
+    # pytest-cov's startup hook must not mix child statement data into branch coverage.
+    for key in tuple(environment):
+        if key.startswith(("COV_CORE_", "COVERAGE_")):
+            environment.pop(key)
     completed = subprocess.run(
         arguments, cwd=directory, env=environment, capture_output=True,
         text=True, timeout=60, check=False,

@@ -17,8 +17,13 @@ from btg_ai_trader.observer.admission import (
     RejectionReason,
     admit_fixture,
 )
-from btg_ai_trader.observer.dedup import DedupState, DedupStatus, LateStatus
-from btg_ai_trader.observer.dedup import annotate_late, classify_duplicate
+from btg_ai_trader.observer.dedup import (
+    DedupState,
+    DedupStatus,
+    LateStatus,
+    annotate_late,
+    classify_duplicate,
+)
 from btg_ai_trader.observer.envelope import EventEnvelope, EventType
 from btg_ai_trader.observer.identity import (
     ArtifactId,
@@ -98,9 +103,9 @@ def test_generated_queue_state_machine(seed: int) -> None:
         assert queue.snapshot.backpressure_count == rejected
         assert accepted - dequeued == len(model)
     while model:
-        result = take(queue)
-        queue = result.queue
-        assert result.item is model.pop(0)
+        drained = take(queue)
+        queue = drained.queue
+        assert drained.item is model.pop(0)
     assert take(queue).item is None
 
 
