@@ -2,7 +2,7 @@
 
 Fundação de um futuro sistema quantitativo intradiário em Python, orientado a dados, avaliação de cenários, gestão independente de risco e operação auditável.
 
-> **Estado:** Fase de Fundação (Sprints 0A a 0F) formalmente concluída e aprovada. Próximo passo oficial: Sprint 1 — Market Observer (não iniciado). Este repositório continua sem estratégia operacional, modelo operacional, capacidade de enviar ordens ou execução financeira real.
+> **Estado:** Fase de Fundação (Sprints 0A a 0F) formalmente concluída e aprovada. O lifecycle do Sprint 1 — Market Observer está `OPEN` exclusivamente no gate documental pré-código (`PRE_CODE_RECONCILIATION`); a primeira implementação funcional permanece não autorizada (`S1_A_AUTHORIZED = NO`). Este repositório continua sem estratégia operacional, modelo operacional, capacidade de enviar ordens ou execução financeira real.
 
 ## Segurança nesta fase
 
@@ -52,7 +52,7 @@ por ADR quando arquiteturalmente materiais.
 
 ## Próximo marco
 
-A fase de [Fundação (Sprint 0)](docs/sprints/SPRINT_0.md) está formalmente concluída e aprovada (0A a 0F). O próximo passo oficial é o **Sprint 1 — Market Observer** (não iniciado), cujo início físico exige autorização explícita da coordenação e observância estrita do Contrato de Entrada (0F-E). Consulte também a [baseline de arquitetura e contratos](docs/architecture/README.md) e os [protocolos quantitativos](docs/protocols/quantitative/README.md).
+A fase de [Fundação (Sprint 0)](docs/sprints/SPRINT_0.md) está formalmente concluída e aprovada (0A a 0F). A abertura do **Sprint 1 — Market Observer** foi autorizada pela coordenação humana em 2026-08-25 apenas para o gate documental pré-código. O primeiro código funcional continua bloqueado até revisão humana e merge do PR desse gate, sob observância estrita do Contrato de Entrada (0F-E). Consulte também a [baseline de arquitetura e contratos](docs/architecture/README.md) e os [protocolos quantitativos](docs/protocols/quantitative/README.md).
 
 ## Aviso
 

@@ -6,7 +6,7 @@ Este repositório será a fonte de verdade técnica do BTG AI Trader, um sistema
 
 ## Estado atual
 
-A fase de Fundação (Sprints 0A a 0F) está formalmente concluída e aprovada. Os contratos 0D-A a 0D-E e os protocolos 0E-A a 0E-G permanecem congelados e auditados, o Foundation Final Gate (0F-F) foi formalmente aprovado e o Sprint 1 — Market Observer permanece como próximo passo oficial (não iniciado).
+A fase de Fundação (Sprints 0A a 0F) está formalmente concluída e aprovada. Os contratos 0D-A a 0D-E e os protocolos 0E-A a 0E-G permanecem congelados e auditados, e o Foundation Final Gate (0F-F) foi formalmente aprovado. A abertura do Sprint 1 — Market Observer foi autorizada pela coordenação humana em 2026-08-25, e seu lifecycle está `OPEN` exclusivamente no gate documental pré-código (`CURRENT_GATE = PRE_CODE_RECONCILIATION`). A primeira implementação funcional permanece não autorizada (`S1_A_AUTHORIZED = NO`; `FIRST_FUNCTIONAL_CODE = NOT_YET_AUTHORIZED`) até revisão humana e merge do PR deste gate.
 
 Não há autorização para negociação automática, envio de ordens, execução em produção ou uso de dinheiro real.
 
