@@ -19,6 +19,7 @@ from btg_ai_trader.observer.dedup import (
     DedupState,
     DedupStatus,
     LateAnnotation,
+    LateStatus,
     annotate_late,
     classify_duplicate,
 )
@@ -193,6 +194,29 @@ class StepStatus(Enum):
     STORAGE_BLOCKED = "STORAGE_BLOCKED"
 
 
+class FrontierAvailability(Enum):
+    NO_FRONTIER = "NO_FRONTIER"
+    KNOWN_AT_CUTOFF = "KNOWN_AT_CUTOFF"
+    UNKNOWN = "UNKNOWN"
+
+
+def _frontier_availability(
+    frontier: EventEnvelope | None, cutoff: datetime
+) -> FrontierAvailability:
+    if frontier is None:
+        return FrontierAvailability.NO_FRONTIER
+    values = [frontier.times.ingestion_time, frontier.times.knowledge_time]
+    if isinstance(frontier.payload, Candle):
+        values.append(frontier.payload.available_at)
+    if any(isinstance(value, datetime) and value > cutoff for value in values):
+        raise ValueError("frontier availability cannot exceed the explicit knowledge cutoff")
+    return (
+        FrontierAvailability.UNKNOWN
+        if any(isinstance(value, MissingReason) for value in values)
+        else FrontierAvailability.KNOWN_AT_CUTOFF
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class ObservationDecision:
     admission: Admitted | Quarantined
@@ -200,6 +224,7 @@ class ObservationDecision:
     dedup: DedupResult | None
     late: LateAnnotation | None
     disposition: StepStatus
+    frontier_availability: FrontierAvailability
 
 
 @dataclass(frozen=True, slots=True)
@@ -235,6 +260,7 @@ class _Pending:
     waiting_capacity: bool = False
     pressure_reported: bool = False
     previous_health: QueueHealthAssessment | None = None
+    frontier_availability: FrontierAvailability = FrontierAvailability.NO_FRONTIER
 
 
 class FixtureObserver:
@@ -399,6 +425,7 @@ class FixtureObserver:
             raise ValueError("registry cutoff cannot exceed observed ingestion boundary")
         if frontier is not None and type(frontier) is not EventEnvelope:
             raise TypeError("frontier must be an explicit EventEnvelope or None")
+        availability = _frontier_availability(frontier, knowledge_cutoff)
         if ingress.ingestion_time < self._last_ingestion:
             raise ValueError("ingestion chronology cannot regress")
         if ingress.ingestion_order is not None and self._last_order is not None:
@@ -424,7 +451,7 @@ class FixtureObserver:
         self._pending = _Pending(
             frame, ingress, valid_at, knowledge_cutoff, frontier, health_sample,
             _artifact(frame.payload, ingress.ingestion_time, self.capture),
-            previous_health=self._health,
+            previous_health=self._health, frontier_availability=availability,
         )
         self._refresh_health(health_sample)
         return self._progress()
@@ -452,10 +479,14 @@ class FixtureObserver:
                 )
                 if compatible:
                     duplicate = classify_duplicate(self._dedup, admission.envelope)
-                    late = (
-                        annotate_late(admission.envelope, pending.frontier)
-                        if pending.frontier is not None else None
-                    )
+                    if pending.frontier is not None:
+                        late = (
+                            annotate_late(admission.envelope, pending.frontier)
+                            if pending.frontier_availability is FrontierAvailability.KNOWN_AT_CUTOFF
+                            else LateAnnotation(
+                                LateStatus.UNKNOWN, admission.envelope, pending.frontier
+                            )
+                        )
                     disposition = {
                         DedupStatus.NEW: StepStatus.ADMITTED,
                         DedupStatus.DUPLICATE: StepStatus.DUPLICATE,
@@ -483,7 +514,9 @@ class FixtureObserver:
             self._posture = SafetyPosture.SAFE_HALT
             self._refresh_health(pending.sample)
         pending.waiting_capacity = False
-        decision = ObservationDecision(admission, resolution, duplicate, late, disposition)
+        decision = ObservationDecision(
+            admission, resolution, duplicate, late, disposition, pending.frontier_availability
+        )
         planned_health = evaluate_queue_health(
             pending.sample, queue=staged_queue, phase=RuntimePhase.RUNNING,
             requested_posture=self._posture, policy=self._policy, previous=self._health,
@@ -505,6 +538,7 @@ class FixtureObserver:
                 "status": duplicate.status.value, "canonical": _wire(duplicate.canonical),
                 "incoming": _wire(duplicate.incoming),
             },
+            "frontier_availability": pending.frontier_availability.value,
             "late": None if late is None else {
                 "status": late.status.value, "frontier": _wire(late.frontier),
             },

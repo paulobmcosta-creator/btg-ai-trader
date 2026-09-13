@@ -12,8 +12,14 @@ from uuid import UUID
 import pytest
 
 from btg_ai_trader.observer.admission import IngressMetadata
-from btg_ai_trader.observer.composition import FixtureObserver, ObserverConfig, StepStatus
+from btg_ai_trader.observer.composition import (
+    FixtureObserver,
+    FrontierAvailability,
+    ObserverConfig,
+    StepStatus,
+)
 from btg_ai_trader.observer.dedup import LateStatus
+from btg_ai_trader.observer.envelope import EventType
 from btg_ai_trader.observer.health import HealthSample, ReadinessStatus, SafetyPosture
 from btg_ai_trader.observer.identity import (
     ArtifactId,
@@ -23,6 +29,7 @@ from btg_ai_trader.observer.identity import (
     TradableInstrumentId,
 )
 from btg_ai_trader.observer.instruments import InstrumentMapping, InstrumentRegistry
+from btg_ai_trader.observer.market import Candle, CandleFinality
 from btg_ai_trader.observer.provenance import CodeRevision, InputIdentity
 from btg_ai_trader.observer.provider import (
     CapabilitySupport,
@@ -381,3 +388,62 @@ def test_candle_ancestral_availability_sidecars_and_readonly_config(tmp_path: Pa
     assert decision["envelope"]["payload"]["available_at"]["value"] == "UNKNOWN"
     assert decision["envelope"]["times"]["knowledge_time"]["value"] == "UNKNOWN"
     assert decision["derived_availability"] == {"missing": "UNKNOWN"}
+
+
+@pytest.mark.parametrize("axis", ["ingestion", "knowledge"])
+def test_frontier_known_in_future_rejected_before_read(tmp_path: Path, axis: str) -> None:
+    observer, _, _, _ = make(tmp_path, [frame(), frame(2)])
+    observer.start()
+    first = advance(observer)
+    original = first.decision.admission.envelope
+    future = NOW + timedelta(seconds=2)
+    if axis == "ingestion":
+        times = replace(original.times, ingestion_time=future, knowledge_time=MissingReason.UNKNOWN)
+    else:
+        times = replace(original.times, knowledge_time=future)
+    frontier = replace(original, times=times)
+    with pytest.raises(ValueError, match="frontier availability"):
+        advance(observer, 1, frontier=frontier)
+    assert observer.pending_raw is None
+    result = advance(observer, 1, frontier=original)
+    assert result.raw.payload == frame(2).payload
+    assert result.decision.frontier_availability is FrontierAvailability.UNKNOWN
+    assert result.decision.late.status is LateStatus.UNKNOWN
+
+
+def test_known_frontier_has_explicit_availability_sidecar(tmp_path: Path) -> None:
+    observer, _, archive, _ = make(tmp_path, [frame(), frame(2)])
+    observer.start()
+    first = advance(observer)
+    original = first.decision.admission.envelope
+    frontier = replace(original, times=replace(original.times, knowledge_time=NOW))
+    result = advance(observer, 1, frontier=frontier)
+    assert result.decision.frontier_availability is FrontierAvailability.KNOWN_AT_CUTOFF
+    assert result.decision.late.status is LateStatus.ON_OR_AFTER_FRONTIER
+    decision = json.loads(next(
+        item.raw for item in records(archive)
+        if b'"frontier_availability":"KNOWN_AT_CUTOFF"' in item.raw
+    ))
+    assert decision["derived_availability"] == {"missing": "UNKNOWN"}
+    assert decision["late"]["frontier"]["times"]["knowledge_time"]["utc"].startswith("2026-09-13")
+
+
+def test_frontier_candle_availability_does_not_derive_from_event_time(tmp_path: Path) -> None:
+    observer, _, _, _ = make(tmp_path, [frame(), frame(2)])
+    observer.start()
+    first = advance(observer).decision.admission.envelope
+    missing = MissingReason.UNKNOWN
+    candle = Candle(
+        NOW - timedelta(minutes=1), NOW, CandleFinality.FINAL, NOW,
+        NOW + timedelta(seconds=2), missing, missing, missing, missing, missing,
+    )
+    frontier = replace(
+        first, event_type=EventType.CANDLE, payload=candle,
+        times=replace(first.times, knowledge_time=NOW),
+    )
+    with pytest.raises(ValueError, match="frontier availability"):
+        advance(observer, 1, frontier=frontier)
+    unknown = replace(frontier, payload=replace(candle, available_at=missing))
+    result = advance(observer, 1, frontier=unknown)
+    assert result.decision.frontier_availability is FrontierAvailability.UNKNOWN
+    assert result.decision.late.status is LateStatus.UNKNOWN
