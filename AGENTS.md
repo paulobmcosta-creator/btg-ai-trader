@@ -6,7 +6,7 @@ Este repositório será a fonte de verdade técnica do BTG AI Trader, um sistema
 
 ## Estado atual
 
-A fase de Fundação (Sprints 0A a 0F) está formalmente concluída e aprovada. Os contratos 0D-A a 0D-E e os protocolos 0E-A a 0E-G permanecem congelados e auditados, e o Foundation Final Gate (0F-F) foi formalmente aprovado. A abertura do Sprint 1 — Market Observer foi autorizada pela coordenação humana em 2026-08-25, e seu lifecycle está `OPEN` exclusivamente no gate documental pré-código (`CURRENT_GATE = PRE_CODE_RECONCILIATION`). A primeira implementação funcional permanece não autorizada (`S1_A_AUTHORIZED = NO`; `FIRST_FUNCTIONAL_CODE = NOT_YET_AUTHORIZED`) até revisão humana e merge do PR deste gate.
+A fase de Fundação (Sprints 0A a 0F) está formalmente concluída e aprovada. Os contratos 0D-A a 0D-E e os protocolos 0E-A a 0E-G permanecem congelados e auditados, e o Foundation Final Gate (0F-F) foi formalmente aprovado. O PR #5 foi integrado em `dabce69d92054b77cad72809669d4340c211c328` e a Issue #1 foi fechada como concluída. O mandato humano de execução autônoma de 2026-09-13 autoriza a primeira implementação funcional do Sprint 1 (`PRE_CODE_RECONCILIATION = COMPLETE`; `S1_A_AUTHORIZED = YES`; `FIRST_FUNCTIONAL_CODE = AUTHORIZED`), sob o contrato 0F-E integral e os gates de promoção.
 
 Não há autorização para negociação automática, envio de ordens, execução em produção ou uso de dinheiro real.
 
@@ -66,3 +66,11 @@ Nenhuma execução real pode ser criada até aprovação explícita, no mínimo,
 ## Definição de pronto
 
 Uma mudança só está pronta quando escopo, testes, documentação, implicações de segurança e pendências estão claros. Para componentes críticos futuros, evidências auditáveis são obrigatórias.
+
+## Mandato de execução remota — 2026-09-13
+
+O GitHub remoto é a superfície operacional e a fonte do estado implementado. O checkout físico do usuário está fora do escopo. Branches, commits e PRs remotos estão autorizados. Trabalhos independentes podem avançar em paralelo; desenvolvimento de sprints futuros permanece SPECULATIVE em branches isoladas até seus gates. A baseline do Sprint 1 preserva todas as Negative Capabilities do 0F-E, inclusive ausência de Risk, Paper e replay formal.
+
+Integração automática apenas em branches de sprint/staging após testes, typing, lint, checks de segurança e capacidades negativas aprovados, dependências satisfeitas e nenhum finding bloqueante; revalidar o HEAD remoto antes de cada merge. Promoção global em main não é automática. Dinheiro real, credenciais de negociação, ordens de broker e ativação financeira permanecem proibidos. Arquitetura e dry-run de produção podem avançar isoladamente; ativação financeira exige novo mandato humano após Gate G.
+
+Decisões in-sprint são registradas antes da primeira dependência material; mudanças arquiteturais materiais seguem ADR. Snapshots históricos aprovados não são reescritos. A Issue #6 preserva a errata do 0F-F; TRACEABILITY.md continua autoridade canônica das QPIs. O checkpoint vivo é [PROGRAM_EXECUTION.md](docs/program/PROGRAM_EXECUTION.md).

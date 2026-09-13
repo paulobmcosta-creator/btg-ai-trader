@@ -15,5 +15,6 @@ Cada sprint deve registrar objetivo, fora de escopo, critérios de aceite, verif
   - 0F — Foundation Cross-Gate (Concluído)
 - **[Sprint 1 — Market Observer](SPRINT_1.md)**
   - Status: `OPEN`
-  - Fase atual: `PRE-CODE RECONCILIATION GATE`
-  - Primeiro código funcional: `NOT_YET_AUTHORIZED`
+  - Reconciliação pré-código: `COMPLETE` (PR #5 integrado; Issue #1 concluída)
+  - Primeiro código funcional: `AUTHORIZED` (`S1_A_AUTHORIZED = YES`)
+  - [Execução remota do programa](../program/PROGRAM_EXECUTION.md)

@@ -4,16 +4,19 @@
 
 ```text
 SPRINT_1_STATUS = OPEN
-CURRENT_GATE = PRE_CODE_RECONCILIATION
-ISSUE = #1
-FIRST_FUNCTIONAL_CODE = NOT_YET_AUTHORIZED
+CURRENT_GATE = S1_A_IMPLEMENTATION
+PR_5 = MERGED
+ISSUE_1 = COMPLETED
+PRE_CODE_RECONCILIATION = COMPLETE
+S1_A_AUTHORIZED = YES
+FIRST_FUNCTIONAL_CODE = AUTHORIZED
 ```
 
-O Sprint 1 está aberto apenas para o gate documental pré-código da Issue #1. A primeira implementação funcional permanece proibida até revisão humana e merge do PR deste gate.
+O PR #5 foi integrado em `dabce69d92054b77cad72809669d4340c211c328` e a Issue #1 foi fechada como concluída. O mandato humano de execução autônoma de 2026-09-13 autoriza a primeira implementação funcional do Sprint 1 (`PRE_CODE_RECONCILIATION = COMPLETE`; `S1_A_AUTHORIZED = YES`; `FIRST_FUNCTIONAL_CODE = AUTHORIZED`), sob o contrato 0F-E integral e os gates de promoção.
 
 ## Objetivo
 
-Implementar, após autorização do primeiro código, um **Market Observer** estritamente:
+Implementar, conforme autorização humana vigente, um **Market Observer** estritamente:
 
 ```text
 READ_ONLY_BY_CONSTRUCTION
@@ -34,16 +37,13 @@ O Sprint 1 deve ser conduzido em conformidade cumulativa com:
 
 A cardinalidade de **28 Decision Gate Clauses** do 0F-E não é equivalente à cardinalidade de **26 decisões `MAY_DECIDE_DURING_SPRINT_1`** do 0F-B. Esses universos permanecem distintos.
 
-## Gate pré-código
+## Gate pré-código concluído e implementação
 
-O gate corrente permite exclusivamente reconciliação e materialização documental. Até seu merge:
+O PR #5 concluiu o gate documental; a Issue #1 está fechada. Seu escopo histórico permanece documental. O mandato humano subsequente autoriza agora código, testes e configuração seguros do Observer. Esta autorização não declara S1-A implementado nem Sprint 1 aceito.
 
-```text
-S1_A_AUTHORIZED = NO
-FUNCTIONAL_IMPLEMENTATION = NOT_YET_AUTHORIZED
-```
+Implementação começa por modelos de domínio, contratos provider-agnostic e providers de teste. Risk, replay formal, ML e Paper de sprints futuros ficam em branches SPECULATIVE separadas e não podem entrar na baseline S1. As 118 cláusulas S1-EC, 41 RQMs e 10 obrigações NEG-CAP continuam integrais. O primeiro PR funcional exige Security Diff Scan do diff exato conforme Issue #1.
 
-Nenhum arquivo em `src/`, `tests/`, dependência ou configuração funcional deve ser alterado por este gate.
+Consulte [PROGRAM_EXECUTION](../program/PROGRAM_EXECUTION.md) para DAG, evidências, branches, PRs e próximos nós prontos.
 
 ## Disciplina de decisões deferidas
 
