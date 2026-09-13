@@ -40,7 +40,7 @@ Este companion não altera nenhuma decisão, contador, classificação, ownershi
 - [ADR-0021 — Provenance, Runs, Capture and Lineage](../adr/0021-refinement-provenance-runs-capture-and-lineage.md)
 - [ADR-0022 — Ledger, Financial Projections and Exposure](../adr/0022-refinement-ledger-financial-projections-and-exposure.md)
 
-## Protocolos quantitativos 0E-A–0E-G
+## Protocolos quantitativos 0E-A–0E-H
 
 - [0E-A — Experimental Semantics](../protocols/quantitative/0E-A-experimental-semantics.md)
 - [0E-B — Dataset and Temporal Integrity](../protocols/quantitative/0E-B-dataset-temporal-integrity.md)
@@ -49,11 +49,13 @@ Este companion não altera nenhuma decisão, contador, classificação, ownershi
 - [0E-E — Statistical and Economic Validation](../protocols/quantitative/0E-E-statistical-economic-validation.md)
 - [0E-F — Strategy and Model Evaluation](../protocols/quantitative/0E-F-strategy-model-evaluation.md)
 - [0E-G — Promotion, Paper and Rejection](../protocols/quantitative/0E-G-promotion-paper-rejection.md)
+- [0E-H — Cross-Protocol Gate](../protocols/quantitative/0E-H-cross-protocol-gate.md)
 
 ## Demais fontes citadas pelo inventário
 
 - [README.md da raiz](../../README.md)
 - [Plano Mestre](../BTG_AI_TRADER_MASTER_PLAN.md)
+- [SPRINT_0.md](../sprints/SPRINT_0.md)
 - [SAFETY.md](../protocols/SAFETY.md)
 - [config/README.md](../../config/README.md)
 
