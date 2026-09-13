@@ -54,3 +54,17 @@ DD-02/20/21/22/26/33/36/37/40/41/43/54/56/57/58/59/60/61/62/65/68/79 não são r
 Testes planejados: `pytest tests/observer`, `ruff check src tests` e `mypy src tests` no ambiente Python 3.12 já declarado. Execução local não foi realizada: o fluxo autorizado é remoto via GitHub. Não afirmar sucesso até existir resultado dos checks no SHA do código.
 
 A revisão deve conferir os arquivos alterados, as limitações acima, a ancestralidade deste registro e a ausência de dependências inesperadas. Este registro não modifica snapshots 0F-B/0F-E/0F-F. A [Issue #6](https://github.com/paulobmcosta-creator/btg-ai-trader/issues/6) continua como errata histórica de rastreabilidade; nenhuma correção retroativa foi aplicada.
+
+## Adendo de revisão temporal — 2026-09-13
+
+- Registro posterior à revisão independente do HEAD `134e6d7916f9b2a3409ecf6ebef35fd715a5d99c`, anterior ao commit corretivo dependente.
+- Classificação: correção de concretização em DD-03; não altera a semântica normativa nem o histórico das decisões originais.
+- Dois findings P2 confirmados pela coordenação identificaram aceitação de evidência temporal contraditória nos DTOs.
+
+**Conhecimento interno após ingestão.** Conforme 0F-E §17.1, `knowledge_time` neste DTO é o momento de validação e disponibilização interna pelo Observer. Quando conhecido, deve ser maior ou igual a `ingestion_time`. A construção passa a rejeitar a inversão. Igualdade continua permitida e `UNKNOWN` permanece desconhecido. Event time e effective time não são deduzidos nem ordenados artificialmente. Conhecimento histórico de uma fonte externa não deve ser inserido neste campo com semântica interna.
+
+**Disponibilidade de candle final.** Conforme B-HQI-11 e 0E-B §§4–5, quando o estado é FINAL e `available_at` é conhecido, a disponibilidade deve ser maior ou igual ao fim do intervalo e, se `finalized_at` for conhecido, maior ou igual a esse instante. A construção passa a rejeitar disponibilização prematura da versão final. Uma atualização OPEN pode continuar disponível antes do fim do intervalo. Instantes desconhecidos não são sintetizados nem promovidos a conhecidos; igualdade nos limites é válida.
+
+O registro original permanece acima como histórico. Este adendo restringe somente combinações de evidência contraditórias e não transforma intervalos temporais em ordem total.
+
+Verificação obrigatória da correção: testes negativos para conhecimento antes da ingestão e candle FINAL disponível antes do fim/finalização, testes de igualdade nos limites, preservação de UNKNOWN e atualização OPEN antecipada; repetir os seis checks remotos no novo HEAD. Os resultados do HEAD anterior não serão apresentados como validação do código corrigido.
