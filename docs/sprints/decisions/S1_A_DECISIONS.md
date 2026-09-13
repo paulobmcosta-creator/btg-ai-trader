@@ -2,7 +2,7 @@
 
 - Data: 2026-09-13.
 - Estado: DECISIONS_RECORDED_BEFORE_FIRST_MATERIAL_DEPENDENCY.
-- Autoridade: mandato humano de execução autônoma reconciliado em `docs/sprints/PROGRAM_EXECUTION.md`; este registro não inventa aprovação de ADR nem adjudica gates.
+- Autoridade: mandato humano de execução autônoma reconciliado em `docs/program/PROGRAM_EXECUTION.md`; este registro não inventa aprovação de ADR nem adjudica gates.
 - Base documental: `183203307169f41ce40e035fe19f1d0a570e3e16`.
 - Escopo: primeiro incremento de modelos puros do Market Observer. Não conclui S1-A integralmente nem o Sprint 1.
 - Fontes: [0F-E](../../foundation/0F-E_sprint1_entry_contract.md), [0F-B](../../foundation/0F-B_deferred_decision_register.md), ADRs [0003](../../adr/0003-event-envelope-causality-and-ordering.md), [0004](../../adr/0004-temporal-semantics-and-historical-fidelity.md), [0005](../../adr/0005-instrument-identity-lifecycle-and-rollover.md), [0015](../../adr/0015-refinement-event-envelope-processing-context-and-versioning.md), [0021](../../adr/0021-refinement-provenance-runs-capture-and-lineage.md), [0E-B](../../protocols/quantitative/0E-B-dataset-temporal-integrity.md).
