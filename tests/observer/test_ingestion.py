@@ -27,7 +27,7 @@ from btg_ai_trader.observer.ingestion import (
     take,
 )
 from btg_ai_trader.observer.market import Tick
-from btg_ai_trader.observer.temporal import ObservationTimes
+from btg_ai_trader.observer.temporal import EventTime, ObservationTimes
 from btg_ai_trader.observer.values import MissingReason
 
 UNKNOWN = MissingReason.UNKNOWN
@@ -42,7 +42,7 @@ def event(index: int) -> EventEnvelope:
         EventType.TICK,
         ProviderInstrumentRef("fixture", "stream:a", "SYMBOL"),
         UNKNOWN,
-        ObservationTimes(UNKNOWN, instant, instant, UNKNOWN),
+        ObservationTimes(EventTime(UNKNOWN, UNKNOWN, UNKNOWN), instant, instant, UNKNOWN),
         Tick(Decimal("1"), Decimal("2"), UNKNOWN, Decimal("0")),
         ingestion_order=index,
     )
