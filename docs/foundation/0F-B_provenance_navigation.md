@@ -52,6 +52,7 @@ Este companion não altera nenhuma decisão, contador, classificação, ownershi
 
 ## Demais fontes citadas pelo inventário
 
+- [README.md da raiz](../../README.md)
 - [Plano Mestre](../BTG_AI_TRADER_MASTER_PLAN.md)
 - [SAFETY.md](../protocols/SAFETY.md)
 - [config/README.md](../../config/README.md)
