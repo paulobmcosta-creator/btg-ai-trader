@@ -258,3 +258,62 @@ def test_identical_inputs_produce_identical_evidence_without_real_clock() -> Non
     assert assessed(sample()) == assessed(sample())
     first = assessed(sample())
     assert assessed(sample(), previous=first) == assessed(sample(), previous=first)
+
+
+@pytest.mark.parametrize("bad", [None, 99, 101, -1, True, 1.0])
+def test_inconsistent_previous_heartbeat_watermark_is_rejected(bad: object) -> None:
+    previous = replace(assessed(sample()), last_known_heartbeat_ns=cast(int | None, bad))
+    with pytest.raises(ValueError, match="previous heartbeat watermark"):
+        assessed(HealthSample("fixture-clock:a", 101, 99, 101), previous=previous)
+
+
+@pytest.mark.parametrize("bad", [None, 99, 101, -1, True, 1.0])
+def test_inconsistent_previous_market_watermark_is_rejected(bad: object) -> None:
+    previous = replace(assessed(sample()), last_known_market_ns=cast(int | None, bad))
+    with pytest.raises(ValueError, match="previous market data watermark"):
+        assessed(HealthSample("fixture-clock:a", 101, 101, 99), previous=previous)
+
+
+@pytest.mark.parametrize("bad", [102, -1, True, 1.0])
+def test_missing_previous_sample_still_requires_valid_retained_watermarks(
+    bad: object,
+) -> None:
+    missing = assessed(
+        HealthSample("fixture-clock:a", 101, MissingReason.UNKNOWN, MissingReason.UNKNOWN)
+    )
+    heartbeat = replace(missing, last_known_heartbeat_ns=cast(int, bad))
+    market = replace(missing, last_known_market_ns=cast(int, bad))
+    current = HealthSample("fixture-clock:a", 102, 102, 102)
+    with pytest.raises(ValueError, match="previous heartbeat watermark"):
+        assessed(current, previous=heartbeat)
+    with pytest.raises(ValueError, match="previous market data watermark"):
+        assessed(current, previous=market)
+
+
+@pytest.mark.parametrize("known", [100, 102])
+def test_valid_unknown_carryforward_accepts_nonregressive_return_to_known(
+    known: int,
+) -> None:
+    first = assessed(sample())
+    missing = assessed(
+        HealthSample("fixture-clock:a", 101, MissingReason.UNKNOWN, MissingReason.UNKNOWN),
+        previous=first,
+    )
+    current = assessed(
+        HealthSample("fixture-clock:a", 102, known, known), previous=missing
+    )
+    assert missing.heartbeat_age_ns is MissingReason.UNKNOWN
+    assert missing.market_age_ns is MissingReason.UNKNOWN
+    assert missing.last_known_heartbeat_ns == 100
+    assert missing.last_known_market_ns == 100
+    assert current.last_known_heartbeat_ns == known
+    assert current.last_known_market_ns == known
+    assert current.heartbeat_age_ns == 102 - known
+    assert current.market_age_ns == 102 - known
+    assert current.posture is SafetyPosture.DEGRADED
+
+
+def test_previous_sample_requires_validated_health_sample() -> None:
+    previous = replace(assessed(sample()), sample=cast(HealthSample, None))
+    with pytest.raises(ValueError, match="previous sample must be HealthSample"):
+        assessed(sample(), previous=previous)

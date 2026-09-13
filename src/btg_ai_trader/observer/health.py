@@ -131,6 +131,17 @@ def _watermark(value: MonotonicValue, previous: int | None, field: str) -> int |
     return value
 
 
+def _validate_previous_watermark(
+    value: MonotonicValue, watermark: int | None, now_ns: int, field: str
+) -> None:
+    if watermark is not None:
+        _reading(watermark, field)
+        if watermark > now_ns:
+            raise ValueError(f"{field} cannot lie in the previous sample's future")
+    if not isinstance(value, MissingReason) and watermark != value:
+        raise ValueError(f"{field} must equal its known previous sample reading")
+
+
 def evaluate_health(
     sample: HealthSample,
     *,
@@ -147,6 +158,20 @@ def evaluate_health(
     if previous is not None:
         if not isinstance(previous, HealthAssessment):
             raise ValueError("previous must be HealthAssessment")
+        if not isinstance(previous.sample, HealthSample):
+            raise ValueError("previous sample must be HealthSample")
+        _validate_previous_watermark(
+            previous.sample.heartbeat_ns,
+            previous.last_known_heartbeat_ns,
+            previous.sample.now_ns,
+            "previous heartbeat watermark",
+        )
+        _validate_previous_watermark(
+            previous.sample.market_data_ns,
+            previous.last_known_market_ns,
+            previous.sample.now_ns,
+            "previous market data watermark",
+        )
         if sample.clock_scope != previous.sample.clock_scope:
             raise ValueError("clock scope change requires explicit recovery continuity")
         monotonic_elapsed_ns(previous.sample.now_ns, sample.now_ns)
