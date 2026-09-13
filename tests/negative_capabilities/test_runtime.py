@@ -12,7 +12,12 @@ from uuid import UUID
 import pytest
 
 from btg_ai_trader.observer.admission import IngressMetadata
-from btg_ai_trader.observer.composition import FixtureObserver, ObserverConfig, StepResult, StepStatus
+from btg_ai_trader.observer.composition import (
+    FixtureObserver,
+    ObserverConfig,
+    StepResult,
+    StepStatus,
+)
 from btg_ai_trader.observer.health import HealthSample, SafetyPosture
 from btg_ai_trader.observer.identity import (
     InstrumentFamilyId,
