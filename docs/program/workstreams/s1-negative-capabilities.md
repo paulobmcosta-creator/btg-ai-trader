@@ -1,6 +1,6 @@
 # S1 — Negative-capability verification plan
 
-- Status: DRAFT_TEST_PLAN; ASSEMBLY_CONTRACT_PENDING; EXECUTION_NOT_STARTED.
+- Status: STRUCTURAL_IMPLEMENTATION_AUTHORIZED; COMPOSITION_API_PENDING; NEG_RUNTIME_NOT_EXECUTED.
 - Authority: bounded CONSOLIDATE_S1 task under the remote execution mandate.
 - Planning base: `d22e73f10d1e0ca21cbd7a0af90b94719debad44`.
 - Normative sources: [0F-E](../../foundation/0F-E_sprint1_entry_contract.md) §§7, 9, 14, 15, 20; NC-01..20, NEG-CAP-01..10, XC-01..11.
@@ -57,3 +57,13 @@ XC-05/06/07/08/11 receive only the evidence actually produced by the assembled s
 6. Complete production module/dependency/config inventory and provider scope constraints.
 
 Once supplied, reconcile the plan against the actual graph, record any material decision before dependent code, implement tests and the bounded static checker, run CI on the exact HEAD, investigate failures, and request independent review. No merge is authorized by this document.
+
+## Structural implementation decision before code
+
+The coordinator authorized the structural subset on assembly `37ff91bc9a86269cd68ddf5537b474f49b7d0510`. PR25 is reanchored on that assembly with ancestry retained. The reviewed production inventory initially comprises the supplied source tree, config files, pyproject.toml and .python-version. Runtime composition is not yet present and its tests remain explicitly pending.
+
+The checker will combine exact Git blob pins, AST import closure and reviewed stdlib member allowances, rejection of dynamic import/evaluation and capability-routing reflection, packaging/runtime-dependency restrictions, and independently re-pinned adversarial fixture trees. Existing getattr field validation is allowed only for explicit finite literal field sets, never as an invoked callback. None of these checks is a general interpreter or proof against arbitrary hostile in-process mutation.
+
+An additional possible-secret heuristic scans runtime/config/workflow text and AST literal assignments for credential-shaped values and private-key markers. Its findings contain only file/line/rule, never the suspected value. Planted synthetic test strings verify detection and non-disclosure. This heuristic is separate from the principal NEG-CAP checks and from an official Security scan; false negatives and false positives remain possible.
+
+An explicit CI boundary job will report structural inventory/AST, packaging/config and possible-secret results on the exact checked-out HEAD. It must also report NEG_RUNTIME_NOT_EXECUTED until real composition tests exist. Passing this structural subset does not set the ten runtime obligations, twenty NCs or Sprint 1 gate to PASS.
