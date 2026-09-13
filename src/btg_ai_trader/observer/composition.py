@@ -24,6 +24,7 @@ from btg_ai_trader.observer.dedup import (
 )
 from btg_ai_trader.observer.envelope import EventEnvelope
 from btg_ai_trader.observer.health import (
+    HealthAssessment,
     HealthPolicy,
     HealthSample,
     RuntimePhase,
@@ -33,6 +34,7 @@ from btg_ai_trader.observer.identity import (
     ArtifactId,
     CorrelationId,
     EventId,
+    InstrumentFamilyId,
     ProviderInstrumentRef,
     RunId,
     TradableInstrumentId,
@@ -41,6 +43,7 @@ from btg_ai_trader.observer.ingestion import (
     ObservationQueue,
     OfferStatus,
     QueueHealthAssessment,
+    QueueSnapshot,
     TakeResult,
     evaluate_queue_health,
     offer,
@@ -155,9 +158,11 @@ def _wire(value: object) -> object:
         return [_wire(item) for item in value]
     models = (
         ArtifactId, CorrelationId, EventId, RunId, TradableInstrumentId, ProviderInstrumentRef,
+        InstrumentFamilyId,
         CodeRevision, ConfigHash, ContentHash, ProvenanceLabel, InputIdentity, RunRelation,
         RunManifest, IngressMetadata, EventTime, ObservationTimes, EventEnvelope, Tick, Candle,
-        InstrumentMapping, InstrumentResolution,
+        InstrumentMapping, InstrumentResolution, HealthPolicy, HealthSample, HealthAssessment,
+        QueueSnapshot, QueueHealthAssessment,
     )
     if type(value) in models:
         return {field.name: _wire(getattr(value, field.name)) for field in fields(cast(Any, value))}
@@ -229,6 +234,7 @@ class _Pending:
     staged_dedup: DedupState | None = None
     waiting_capacity: bool = False
     pressure_reported: bool = False
+    previous_health: QueueHealthAssessment | None = None
 
 
 class FixtureObserver:
@@ -260,7 +266,9 @@ class FixtureObserver:
             run_id, started_at, code_revision,
             ConfigHash(content_hash(config.canonical_bytes()).value), inputs,
         )
-        self._capture = CaptureContext.from_manifest(self.manifest, ProvenanceLabel(config.provider))
+        self._capture = CaptureContext.from_manifest(
+            self.manifest, ProvenanceLabel(config.provider)
+        )
         self._source, self._store, self._registry = source, store, registry
         self._queue = ObservationQueue.empty(config.capture_scope, config.queue_capacity)
         self._dedup = DedupState(run_id.value, config.dedup_capacity)
@@ -416,6 +424,7 @@ class FixtureObserver:
         self._pending = _Pending(
             frame, ingress, valid_at, knowledge_cutoff, frontier, health_sample,
             _artifact(frame.payload, ingress.ingestion_time, self.capture),
+            previous_health=self._health,
         )
         self._refresh_health(health_sample)
         return self._progress()
@@ -474,8 +483,11 @@ class FixtureObserver:
             self._posture = SafetyPosture.SAFE_HALT
             self._refresh_health(pending.sample)
         pending.waiting_capacity = False
-        pending.decision = ObservationDecision(admission, resolution, duplicate, late, disposition)
-        pending.staged_queue, pending.staged_dedup = staged_queue, staged_dedup
+        decision = ObservationDecision(admission, resolution, duplicate, late, disposition)
+        planned_health = evaluate_queue_health(
+            pending.sample, queue=staged_queue, phase=RuntimePhase.RUNNING,
+            requested_posture=self._posture, policy=self._policy, previous=self._health,
+        ).assessment
         decision_bytes = _canonical({
             "schema": 1, "kind": "fixture-observation-decision-plan",
             "raw_record": pending.raw_record.record_id.value,
@@ -496,6 +508,9 @@ class FixtureObserver:
             "late": None if late is None else {
                 "status": late.status.value, "frontier": _wire(late.frontier),
             },
+            "health_previous_observation": _wire(pending.previous_health),
+            "health_before_queue_commit": _wire(self._health),
+            "health_after_planned_queue_commit": _wire(planned_health),
             "processing_completion_time": {"missing": "UNKNOWN"},
             "derived_availability": {"missing": "UNKNOWN"},
             "queue_commit_claim": "NOT_ATOMIC_WITH_PERSISTENCE",
@@ -509,6 +524,8 @@ class FixtureObserver:
             ProvenanceLabel("observer." + disposition.value.lower()),
             pending.decision_record.record_id,
         )
+        pending.decision = decision
+        pending.staged_queue, pending.staged_dedup = staged_queue, staged_dedup
         return None
 
     def _result(self, status: StepStatus, pending: _Pending) -> StepResult:

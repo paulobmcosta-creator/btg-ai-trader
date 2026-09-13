@@ -149,6 +149,10 @@ def test_manifest_configuration_actual_code_pin_and_read_after_start(tmp_path: P
     assert len(persisted) == 3
     decision = next(item for item in persisted if b"fixture-observation-decision-plan" in item.raw)
     encoded = json.loads(decision.raw)
+    assert encoded["health_before_queue_commit"]["health"]["readiness"]["value"] == "NOT_READY"
+    assert encoded["health_before_queue_commit"]["health"]["sample"]["clock_scope"] == "clock-a"
+    assert encoded["health_after_planned_queue_commit"]["queue"]["depth"] == 1
+    assert encoded["registry"]["matches"][0]["family_id"]["value"] == str(UUID(int=12))
     assert encoded["processing_completion_time"] == {"missing": "UNKNOWN"}
     assert encoded["derived_availability"] == {"missing": "UNKNOWN"}
     assert result.decision_receipt.record_id == decision.record_id

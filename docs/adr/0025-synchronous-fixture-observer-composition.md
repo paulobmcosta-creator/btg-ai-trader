@@ -27,7 +27,7 @@ DD40/41: RunManifest com RunId explícito, started_at UTC e CodeRevision pin for
 
 DD02/62: raw é EvidenceRecord com ArtifactId técnico alocado uma única vez, hash real e CaptureContext; não recebe EventId falso para dados ainda não decodificados. Decoder24 roda apenas depois de archive receipt. Resultado de admission, registry sidecar, dedup e late produzem artefato técnico de decisão com referências raw e valores tipados preservados. Registry só usa valid_at e knowledge_cutoff explícitos; UNKNOWN valid_at, NOT_FOUND/AMBIGUOUS ou ID conflitante bloqueiam admissão sem reescrever fato/EventId/instrument_id original. Lateness usa frontier explícito, nunca seleção/avanço implícito. O artefato preserva ingress knowledge, event/effective time e candle finality/finalized_at/available_at como sidecars. Processing completion e disponibilidade derivada permanecem explicitamente UNKNOWN neste audit receipt, nunca antecipadas a ancestrais; não é herança temporal genérica nem dataset disponível (RQM039 parcial).
 
-Journal ganha OBSERVATION_RECORDED, nome técnico para registro da decisão/receipt, sem significado de ledger ou admissão econômica. Schema de arquivo permanece1 com novo valor do catálogo técnico; leitores antigos que não o conheçam rejeitam explicitamente, sem fallback. O journal referencia o artefato da decisão. A decisão/journal documentam o plano e sua evidência; não alegam atomicidade com fila em memória.
+Journal ganha OBSERVATION_RECORDED, nome técnico para registro da decisão/receipt, sem significado de ledger ou admissão econômica. Schema de arquivo permanece1 com novo valor do catálogo técnico; leitores antigos que não o conheçam rejeitam explicitamente, sem fallback. O journal referencia o artefato da decisão. O artefato registra health anterior, avaliação completa atual (sample/policy/phase/posture/readiness/reasons/watermarks/queue counters) e avaliação após commit de fila rotulada PLANNED. Não confunde plano persistido com commit efetivo em memória. A decisão/journal documentam o plano e sua evidência; não alegam atomicidade com fila em memória.
 
 ## Progresso e falhas
 
@@ -37,7 +37,7 @@ Cada frame pendente retém ingress, valid_at, cutoff, frontier, health sample, I
 
 NEW dedup e enqueue são estados staged, aplicados em memória somente após receipts da decisão/journal. Fila cheia registra pressão no estado limitado e retorna BACKPRESSURE conservando raw pendente; dedup não incorpora o item rejeitado. take pode drenar apenas sem pendente ou enquanto pendente aguarda capacidade; é transferência de ownership local, não processamento concluído. Não é permitido drenar durante writes staged, para evitar commit de snapshot antigo. Após take, retry pode aceitar uma única vez. CAPACITY_EXHAUSTED do dedup mantém pendente e bloqueia próximas leituras, sem evicção ou aumento automático.
 
-DUPLICATE preserva incoming+canonical na decisão e não enfileira de novo. IDENTITY_CONFLICT e quarantine preservam causa/raw e não entram na FIFO. Unknown registry torna disposition não admitida; nenhuma identidade ou tempo é inferido. Raw corrupto não encerra o feed quando sua quarantine foi persistida suficientemente para este contrato técnico.
+DUPLICATE preserva incoming+canonical na decisão e não enfileira de novo. IDENTITY_CONFLICT e quarantine preservam causa/raw e não entram na FIFO. Unknown registry torna disposition não admitida; nenhuma identidade ou tempo é inferido. Quarantine é canal lógico typed separado do output admitido/FIFO, com referência ao raw; o mesmo archive técnico preserva todos os raws e não é um diretório de dados admitidos. Raw corrupto não encerra o feed quando sua quarantine foi persistida suficientemente para este contrato técnico.
 
 Falha de storage coloca postura SAFE_HALT e bloqueia read; sucesso de retry não unlatch automaticamente. Health é avaliação passiva de sample explícito. Fonte com fidelity UNKNOWN força postura conservadora, assim como quarantine/bloqueio; fixture exhaustion não fabrica heartbeat ou mercado fresco. Nenhuma postura executa cancelamento/flatten.
 
@@ -47,7 +47,7 @@ Falha de storage coloca postura SAFE_HALT e bloqueia read; sucesso de retry não
 - Um pending, fila e canonical finitos; não há lista ilimitada de receipts no runtime.
 - Raw arquivado não é admitido; resolução registry é sidecar e nunca altera o fato.
 - Writes não são transação multi-record; não existe exactly-once, recovery/restart automático ou garantia universal de power loss.
-- IDs técnicos alocados não renomeiam EventId da fixture. Reinício requer RunId novo; este módulo não reconstrói pendentes após processo morto.
+- IDs técnicos alocados não renomeiam EventId da fixture. Reinício requer RunId novo; este módulo não reconstrói pendentes após processo morto nem prova unicidade de RunId entre processos distintos.
 - Hash/receipt confirmam somente bytes e escopo do adapter; readiness passiva não confere autoridade financeira.
 - S1-F experimental não fecha41RQMs/118cláusulas/20NC/10NEG-CAP nem Security oficial.
 
