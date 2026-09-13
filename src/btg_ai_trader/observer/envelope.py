@@ -41,7 +41,7 @@ class EventEnvelope:
             raise ValueError("event_id must be EventId")
         if not isinstance(self.source, ProviderInstrumentRef):
             raise ValueError("source must be a scoped ProviderInstrumentRef")
-        if not isinstance(self.instrument_id, (TradableInstrumentId, MissingReason)):
+        if not isinstance(self.instrument_id, TradableInstrumentId | MissingReason):
             raise ValueError("instrument_id must be concrete or explicitly unresolved")
         if not isinstance(self.times, ObservationTimes):
             raise ValueError("times must be ObservationTimes")

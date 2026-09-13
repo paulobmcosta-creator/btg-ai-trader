@@ -155,15 +155,19 @@ def test_time_precision_is_explicit_and_never_fabricated() -> None:
 
 @pytest.mark.parametrize("version", [0, 2, True, "1", None])
 def test_envelope_rejects_unknown_versions_without_fallback(version: object) -> None:
-    for field in ("envelope_version", "schema_version"):
-        with pytest.raises(ValueError, match="unsupported"):
-            replace(envelope(), **{field: version})
+    with pytest.raises(ValueError, match="unsupported"):
+        replace(envelope(), envelope_version=cast(int, version))
+    with pytest.raises(ValueError, match="unsupported"):
+        replace(envelope(), schema_version=cast(int, version))
 
 
 def test_exogenous_context_and_order_are_not_synthesized() -> None:
     event = envelope()
-    assert event.correlation_id is event.causation_id is None
-    assert event.source_sequence is event.sequence_scope is event.ingestion_order is None
+    assert event.correlation_id is None
+    assert event.causation_id is None
+    assert event.source_sequence is None
+    assert event.sequence_scope is None
+    assert event.ingestion_order is None
     assert "run_id" not in {field.name for field in fields(event)}
     with pytest.raises(ValueError, match="together"):
         replace(event, source_sequence=5)
@@ -178,18 +182,18 @@ def test_exogenous_context_and_order_are_not_synthesized() -> None:
 @pytest.mark.parametrize("bad", [-1, True, 1.5, "1"])
 def test_sequence_and_arrival_index_are_strict(bad: object) -> None:
     with pytest.raises(ValueError, match="source_sequence"):
-        replace(envelope(), source_sequence=bad, sequence_scope="stream")
+        replace(envelope(), source_sequence=cast(int, bad), sequence_scope="stream")
     with pytest.raises(ValueError, match="ingestion_order"):
-        replace(envelope(), ingestion_order=bad)
+        replace(envelope(), ingestion_order=cast(int, bad))
 
 
 def test_envelope_validates_payload_type_and_identity_roles() -> None:
     with pytest.raises(ValueError, match="payload"):
         replace(envelope(), payload=candle())
     with pytest.raises(ValueError, match="payload"):
-        replace(envelope(), payload={"mutable": "payload"})
+        replace(envelope(), payload=cast(Tick, {"mutable": "payload"}))
     with pytest.raises(ValueError, match="correlation_id"):
-        replace(envelope(), correlation_id=EventId(UUID_TEXT))
+        replace(envelope(), correlation_id=cast(CorrelationId, EventId(UUID_TEXT)))
     event = replace(envelope(), correlation_id=CorrelationId(UUID_TEXT))
     assert event.correlation_id == CorrelationId(UUID_TEXT)
 
