@@ -9,6 +9,9 @@ SPRINT_BRANCH = sprint/1-market-observer
 CURRENT_INTEGRATED_BASELINE = 4fb5807f985d06ef8673a28e689b815a08763940
 ACTIVE_PROVIDER_PR = #34
 ACTIVE_PROVIDER_BRANCH = s1/20-btg-dataservices-adapter
+ACTIVE_CAPTURE_PR = #35
+ACTIVE_CAPTURE_BRANCH = s1/21-btg-controlled-capture-harness
+ACTIONS_BLOCKER_ISSUE = #36
 FOUNDATION_0A_TO_0F = FORMALLY_CLOSED
 SPRINT_1_LIFECYCLE = OPEN
 S1_A_AUTHORIZED = YES
@@ -60,9 +63,19 @@ ADR = ADR-0023
 DD_43 = TRIGGERED
 ```
 
-PR #34 implements the smallest read-only provider boundary. It remains draft and unmerged until current-head remote CI executes successfully. No API key is stored in GitHub; the adapter accepts an external runtime credential source only.
+PR #34 implements the smallest read-only provider boundary. Current design requirements include:
 
-Automatic vendor reconnect is disabled fail-closed. Recovery after disconnect requires a new explicit/auditable session.
+```text
+connect
+-> provider discovery
+-> external point-in-time contract confirmation
+-> subscribe_confirmed(exact_symbol)
+-> raw observation
+```
+
+The adapter settings do not contain a preselected ticker. Pre-subscription messages are control/discovery evidence, not instrument-labelled Market Data `RawFrame`s. Automatic vendor reconnect is disabled fail-closed. Intentional local close is distinguished from unexpected disconnect so a normal shutdown does not become a false provider failure.
+
+PR #34 remains draft and unmerged until current-head remote CI actually executes successfully. No API key is stored in GitHub; the adapter accepts an external runtime credential source only.
 
 ## DD-68 — first laboratory
 
@@ -76,6 +89,7 @@ AUTO_FALLBACK = FORBIDDEN
 AUTO_ROLLOVER = FORBIDDEN
 STREAM_TYPE = realtime
 DATA_GRANULARITY = trades
+DATA_SUBTYPE = derivatives
 INITIAL_CANDLES = NO
 ```
 
@@ -85,23 +99,64 @@ The first real laboratory consumes the real-time trade stream. Candle streams ar
 
 See `docs/program/workstreams/S1-DD68-FIRST-LAB.md`.
 
-## Current infrastructure blocker
+## Controlled capture harness — PR #35
 
-Recent GitHub Actions attempts for PR #34 have been failing before any job step starts (`steps=null`, no usable job logs). This is recorded as an execution-infrastructure blocker, not converted to PASS and not bypassed by merging.
+PR #35 is a stacked draft on PR #34 and prepares the first real read-only laboratory without executing it.
+
+The harness:
+
+- obtains the Data Services API key only from `BTG_DATASERVICES_API_KEY` in the authorized process environment;
+- executes discovery and capture as distinct sessions with distinct RunIds;
+- persists discovery/control payloads using the existing EvidenceArchive/AuditJournal model;
+- requires the exact operator-supplied WIN contract to be present in provider discovery evidence;
+- opens a fresh capture session and subscribes only after that confirmation;
+- counts only JSON `trade` events whose `symbol` equals the confirmed contract as successful market observations;
+- persists post-subscription non-trade messages but does not count them as market-data success;
+- requires at least one confirmed trade frame;
+- never persists, logs or hashes the API-key value;
+- has not used any real API key or network session.
+
+PR #35 must not be integrated before #34. After #34 integration it must be reanchored/retargeted so the effective delta is only the harness, tests and runbook, then receive exact-head CI/review.
+
+## Current infrastructure blocker — Issue #36
+
+GitHub Actions is currently failing before runner steps start on both #34 and #35:
+
+```text
+job.status = completed
+job.conclusion = failure
+job.steps = null / []
+job.logs_url = null
+check_run.output.annotations_count = 1
+```
+
+Representative affected runs are recorded in Issue #36. The current connector can observe the annotation count but cannot access the annotations endpoint, so no unverified root-cause label is assigned.
+
+This state means:
+
+```text
+REMOTE_CI = NOT_EXECUTED_VALIDLY
+PR_34_MERGE = BLOCKED
+PR_35_MERGE = BLOCKED
+```
+
+It is not converted to PASS and is not bypassed by local-only evidence.
 
 ## Remaining sequence
 
 ```text
-1. Restore successful current-head remote CI for PR #34.
-2. Re-run provider-specific verification, full Python CI and pinned upstream verification.
-3. Obtain/reconfirm independent review on the exact green head.
-4. Merge PR #34 only after those checks pass.
-5. Provision read-only BTG Data Services API key outside repository/chat.
-6. Execute controlled real read-only discovery/capture using the DD-68 profile: WIN, exact point-in-time contract, trades/realtime.
-7. Collect provider evidence for authentication, discovery, subscription, observation, heartbeat/disconnect, explicit restart and raw capture.
-8. Update exact-final-tree RQM/XC evidence.
-9. Execute official Security Diff Scan when its interface is available, or apply only an explicitly authorized governance treatment.
-10. Re-adjudicate all 11 Sprint 1 exit criteria conjunctively.
+1. Restore valid GitHub Actions runner execution (Issue #36).
+2. Run Remote Python CI, BTG provider verification and pinned upstream verification on PR #34 exact HEAD.
+3. Reconfirm independent review on that exact green HEAD.
+4. Merge PR #34 only after all mandatory checks pass.
+5. Reanchor/retarget PR #35 onto the integrated provider baseline.
+6. Run full exact-head CI/review for PR #35 and integrate only if green.
+7. Provision read-only BTG Data Services API key outside repository/chat.
+8. Execute the controlled laboratory: WIN family, exact point-in-time contract, realtime trades.
+9. Collect provider evidence for authentication, discovery, confirmation-before-subscription, observation, disconnect/close and explicit restart.
+10. Update exact-final-tree RQM/XC and NEG-CAP evidence.
+11. Execute official Security Diff Scan when its supported interface is available, or apply only an explicitly authorized governance treatment.
+12. Re-adjudicate all 11 Sprint 1 exit criteria conjunctively.
 ```
 
 No step above authorizes financial execution, trading credentials or real money.
