@@ -86,12 +86,15 @@ def _recognized_discovery_symbols(value: object) -> tuple[str, ...] | None:
     """Return symbols only from bounded, explicitly recognized discovery responses.
 
     The provider does not publish a stable discovery-response schema. The harness
-    therefore recognizes only an explicit top-level discovery event or a single
-    ``response`` envelope containing a dedicated symbol-list field. Unknown, echoed,
-    mixed or error-shaped payloads remain evidence only and never authorize subscription.
+    therefore recognizes only a bare dedicated symbol list, an explicit top-level
+    discovery event, or a single ``response`` envelope containing a dedicated symbol
+    list. Unknown, echoed, mixed or error-shaped payloads remain evidence only and
+    never authorize subscription.
     """
     if not isinstance(value, dict):
         return None
+    if set(value) in ({"tickers"}, {"symbols"}):
+        return _symbols_from_mapping(value)
     if value.get("event") == DISCOVERY_EVENT:
         return _symbols_from_mapping(value)
     if set(value) == {"response"}:
