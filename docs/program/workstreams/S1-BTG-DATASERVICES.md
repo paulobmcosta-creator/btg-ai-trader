@@ -39,6 +39,9 @@ A documentação oficial confirma suporte a B3, `derivatives`, `trades`, candles
 - ADR-0023 materializa DD-60 e a política DD-43.
 - `BtgDataServicesSettings` restringe a primeira integração a B3/derivatives e suporta `trades`, `candles-1S` e `candles-1M`; DD-68 fixa o primeiro laboratório real especificamente em `realtime` + `trades`.
 - `BtgDataServicesSubscription` expõe apenas lifecycle read-only, subscription, discovery passivo, capabilities e callback raw.
+- O lifecycle é obrigatoriamente staged: `start()` apenas conecta; `request_available_instruments()` ocorre antes da assinatura; `subscribe_confirmed()` só é chamado depois da confirmação externa do contrato point-in-time.
+- Mensagens recebidas antes da assinatura são roteadas exclusivamente para `control_sink` e nunca recebem `ProviderInstrumentRef`/`RawChannel` de market data. Após `subscribe_confirmed()`, mensagens textuais passam para `RawFrame` da referência confirmada.
+- Discovery após assinatura e assinatura duplicada falham fechado.
 - O wrapper recebe `credential_source` e não armazena o segredo no próprio adapter.
 - O wrapper recebe `client_factory` por injeção; o runtime S1 continua sem import externo direto e o boundary fail-closed não é relaxado.
 - O pacote oficial é um extra opcional explícito `btg-data`, não uma dependência runtime universal.
@@ -55,7 +58,9 @@ Após uma queda, a recuperação deverá encerrar a sessão e criar explicitamen
 
 ## Fronteira de payload
 
-O cliente oficial passa `data` diretamente do callback WebSocket para `on_message`. Para frames textuais, o adapter exige `str` e preserva `data.encode("utf-8")` em `RawFrame` antes da admissão/normalização do domínio.
+O cliente oficial passa `data` diretamente do callback WebSocket para `on_message`. Para frames textuais, o adapter exige `str` e preserva `data.encode("utf-8")` antes de qualquer interpretação de domínio.
+
+Antes de `subscribe_confirmed()`, esse payload é evidência de controle/discovery e vai apenas para `control_sink`; ele não é rotulado como tick/candle nem associado ao instrumento candidato. Depois da confirmação e assinatura explícitas, o payload textual de market data é materializado como `RawFrame` com a referência confirmada.
 
 Isso preserva o conteúdo textual recebido pelo callback, mas não reivindica preservação de framing TCP/WebSocket ou bytes anteriores à decodificação UTF-8 feita pela biblioteca subjacente.
 
@@ -97,7 +102,7 @@ A capacidade futura de candles permanece disponível no adapter, mas não integr
 2. CI específica do extra oficial no HEAD atual;
 3. revisão independente do diff atual;
 4. provisão de API key read-only fora do repositório;
-5. sessão real controlada provando autenticação, discovery point-in-time do contrato WIN, subscribe em `trades/realtime`, observação, heartbeat/disconnect e restart explícito com raw capture;
+5. sessão real controlada provando autenticação, discovery point-in-time do contrato WIN, confirmação antes de `subscribe_confirmed()`, observação `trades/realtime`, heartbeat/disconnect e restart explícito com raw capture;
 6. atualização da matriz RQM/XC no SHA integrado;
 7. Security Diff Scan oficial antes do gate final, ou waiver humano explícito conforme governança.
 
