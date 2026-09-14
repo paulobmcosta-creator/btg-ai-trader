@@ -1,9 +1,7 @@
 """Read-only BTG Solutions Data Services subscription boundary for Sprint 1."""
 
-from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import timedelta
-from typing import Protocol, cast
+from typing import Protocol
 
 from btg_ai_trader.observer.identity import ProviderInstrumentRef
 from btg_ai_trader.observer.provider import (
@@ -16,10 +14,21 @@ from btg_ai_trader.observer.values import MissingReason, require_text
 
 BTG_DATASERVICES_PROVIDER = "btg-solutions-data-services"
 
-_Callback = Callable[..., None]
-_CredentialSource = Callable[[], str]
-_FrameSink = Callable[[RawFrame], None]
-_ErrorSink = Callable[[str], None]
+
+class _Callback(Protocol):
+    def __call__(self, *args: object, **kwargs: object) -> None: ...
+
+
+class _CredentialSource(Protocol):
+    def __call__(self) -> str: ...
+
+
+class _FrameSink(Protocol):
+    def __call__(self, frame: RawFrame) -> None: ...
+
+
+class _ErrorSink(Protocol):
+    def __call__(self, error_type: str) -> None: ...
 
 
 class _VendorClient(Protocol):
@@ -48,9 +57,6 @@ class _VendorClient(Protocol):
     def available_to_subscribe(self) -> None: ...
 
     def close(self) -> None: ...
-
-
-_ClientFactory = Callable[[str, "BtgDataServicesSettings"], _VendorClient]
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,24 +111,10 @@ class BtgDataServicesSettings:
         )
 
 
-def _official_client_factory(
-    credential: str, settings: BtgDataServicesSettings
-) -> _VendorClient:
-    from btgsolutions_dataservices import (  # type: ignore[import-not-found,import-untyped]
-        MarketDataWebSocketClient,
-    )
-
-    client = MarketDataWebSocketClient(
-        api_key=credential,
-        stream_type=settings.stream_type,
-        exchange=settings.exchange,
-        data_type=settings.data_type,
-        data_subtype=settings.data_subtype,
-        instruments=[],
-        ssl=True,
-        feed=settings.feed,
-    )
-    return cast(_VendorClient, client)
+class _ClientFactory(Protocol):
+    def __call__(
+        self, credential: str, settings: BtgDataServicesSettings
+    ) -> _VendorClient: ...
 
 
 class BtgDataServicesSubscription:
@@ -143,8 +135,8 @@ class BtgDataServicesSubscription:
         credential_source: _CredentialSource,
         frame_sink: _FrameSink,
         *,
+        client_factory: _ClientFactory,
         error_sink: _ErrorSink | None = None,
-        client_factory: _ClientFactory = _official_client_factory,
     ) -> None:
         if not isinstance(settings, BtgDataServicesSettings):
             raise TypeError("settings must be BtgDataServicesSettings")
