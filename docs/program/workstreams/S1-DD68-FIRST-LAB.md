@@ -20,7 +20,7 @@ Human coordination approved the first-laboratory policy in two steps on 2026-09-
 
 ## Decision semantics
 
-DD-68 is now fully resolved for Sprint 1:
+DD-68 is fully resolved for the Sprint 1 first laboratory:
 
 1. **Stable laboratory subject:** the first observed instrument family is `WIN`.
 2. **Point-in-time tradable contract:** the concrete future contract is not hardcoded permanently. It must be resolved from provider discovery immediately before the capture session and then explicitly fixed for that run.
