@@ -118,8 +118,10 @@ def _validate_transport_path(path: Path) -> Path:
 def _validated_transport_paths(
     discovery_file: Path, tick_file: Path, candle_file: Path
 ) -> tuple[Path, Path, Path]:
-    paths = tuple(
-        _validate_transport_path(path) for path in (discovery_file, tick_file, candle_file)
+    paths = (
+        _validate_transport_path(discovery_file),
+        _validate_transport_path(tick_file),
+        _validate_transport_path(candle_file),
     )
     if len(set(paths)) != 3:
         raise ValueError("discovery, tick and candle transport paths must be distinct")
