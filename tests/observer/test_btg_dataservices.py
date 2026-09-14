@@ -92,7 +92,7 @@ class FakeFactory:
 def _settings(**overrides: Any) -> BtgDataServicesSettings:
     values: dict[str, object] = {
         "capture_scope": "lab-a",
-        "instrument": "WINX26",
+        "instrument": "TEST-DERIV-1",
     }
     values.update(overrides)
     return BtgDataServicesSettings(**values)  # type: ignore[arg-type]
@@ -116,7 +116,7 @@ def test_subscription_preserves_websocket_text_as_raw_utf8_before_domain_decode(
         client_factory=factory,
     )
     subscription.start()
-    raw = '{"event":"trade","symbol":"WINX26","px":123456.0}'
+    raw = '{"event":"trade","symbol":"TEST-DERIV-1","px":123456.0}'
     client.emit(raw)
 
     assert credential_reads == 1
@@ -127,7 +127,7 @@ def test_subscription_preserves_websocket_text_as_raw_utf8_before_domain_decode(
         "spawn_thread": False,
         "default_logs": False,
     }
-    assert client.subscriptions == [["WINX26"]]
+    assert client.subscriptions == [["TEST-DERIV-1"]]
     assert frames == [
         RawFrame(
             raw.encode("utf-8"),
@@ -162,7 +162,7 @@ def test_adapter_exposes_passive_discovery_and_lifecycle_only() -> None:
     subscription.close()
 
     assert client.discovery_requests == 1
-    assert client.unsubscriptions == [["WINX26"]]
+    assert client.unsubscriptions == [["TEST-DERIV-1"]]
     assert client.closed is True
     with pytest.raises(RuntimeError, match="not started"):
         subscription.request_available_instruments()
