@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "assembly_revision": "58807a8a97509f7b17e52b1c223644d948aa34c1",
+  "assembly_revision": "913025c3bedb561c6e3278865a4baba528d16a6f",
   "composition_status": "SCOPED_TESTS_IMPLEMENTED",
   "files": {
     ".python-version": "e4fba2183587225f216eeada4c78dfab6b2e65f5",
@@ -10,7 +10,7 @@
     "src/btg_ai_trader/observer/__init__.py": "f1f98d389ddd7b205a6d2969cf8d0f455d728259",
     "src/btg_ai_trader/observer/admission.py": "372c0f20fb3361193a2b3154422d4990e48806fa",
     "src/btg_ai_trader/observer/btg_dataservices.py": "de8b6a8f3ab786d306da14711120bd5aadffbe18",
-    "src/btg_ai_trader/observer/cedro_market_data.py": "541d9acb96e175bfd154437c11165edbdda41345",
+    "src/btg_ai_trader/observer/cedro_market_data.py": "91e047137578686f22eb49e177bae6bad49db4bf",
     "src/btg_ai_trader/observer/composition.py": "c2823cb754c481ac78ea64d7b41681b7eea24c92",
     "src/btg_ai_trader/observer/dedup.py": "8da04c84636106a07d6c9d60df7a36e143b081e0",
     "src/btg_ai_trader/observer/discovery.py": "9b63d019a0fdb4a6d61ae76617f9c2a4e0b5d655",
