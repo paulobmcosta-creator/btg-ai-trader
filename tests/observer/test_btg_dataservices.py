@@ -68,6 +68,12 @@ class FakeVendorClient:
 
     def close(self) -> None:
         self.closed = True
+        if self.on_close is not None:
+            self.on_close(1000, "normal-close")
+
+    def disconnect(self) -> None:
+        assert self.on_close is not None
+        self.on_close(1006, "unexpected-disconnect")
 
     def emit(self, data: object) -> None:
         assert self.on_message is not None
@@ -331,6 +337,39 @@ def test_error_sink_receives_only_exception_type_not_message() -> None:
     subscription.start()
     client.fail(RuntimeError("sensitive-provider-detail"))
     assert errors == ["RuntimeError"]
+
+
+def test_expected_close_is_not_reported_but_unexpected_disconnect_is() -> None:
+    client = FakeVendorClient()
+    errors: list[str] = []
+    subscription = BtgDataServicesSubscription(
+        _settings(),
+        lambda: "test-only-placeholder",
+        lambda _frame: None,
+        error_sink=errors.append,
+        client_factory=FakeFactory(client),
+    )
+    subscription.start()
+    client.disconnect()
+    assert errors == ["connection-closed"]
+
+    subscription.close()
+    assert errors == ["connection-closed"]
+
+
+def test_intentional_close_does_not_emit_disconnect_error() -> None:
+    client = FakeVendorClient()
+    errors: list[str] = []
+    subscription = BtgDataServicesSubscription(
+        _settings(),
+        lambda: "test-only-placeholder",
+        lambda _frame: None,
+        error_sink=errors.append,
+        client_factory=FakeFactory(client),
+    )
+    subscription.start()
+    subscription.close()
+    assert errors == []
 
 
 def test_double_start_and_close_before_start_fail_closed() -> None:
