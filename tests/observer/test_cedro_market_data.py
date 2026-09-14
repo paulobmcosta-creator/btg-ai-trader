@@ -20,7 +20,8 @@ CANDIDATE = "WINV26"
 
 class FakeMarketDataClient:
     def __init__(self) -> None:
-        self.on_message: Callable[..., None] | None = None
+        self.on_control: Callable[..., None] | None = None
+        self.on_trade: Callable[..., None] | None = None
         self.on_error: Callable[..., None] | None = None
         self.on_close: Callable[..., None] | None = None
         self.reconnect: bool | None = None
@@ -31,13 +32,15 @@ class FakeMarketDataClient:
 
     def connect(
         self,
-        on_message: Callable[..., None],
+        on_control: Callable[..., None],
+        on_trade: Callable[..., None],
         on_error: Callable[..., None] | None = None,
         on_close: Callable[..., None] | None = None,
         *,
         reconnect: bool = False,
     ) -> None:
-        self.on_message = on_message
+        self.on_control = on_control
+        self.on_trade = on_trade
         self.on_error = on_error
         self.on_close = on_close
         self.reconnect = reconnect
@@ -56,9 +59,13 @@ class FakeMarketDataClient:
         if self.on_close is not None:
             self.on_close(1000, "normal-close")
 
-    def emit(self, data: object) -> None:
-        assert self.on_message is not None
-        self.on_message(data)
+    def emit_control(self, data: object) -> None:
+        assert self.on_control is not None
+        self.on_control(data)
+
+    def emit_trade(self, data: object) -> None:
+        assert self.on_trade is not None
+        self.on_trade(data)
 
     def fail(self, error: object) -> None:
         assert self.on_error is not None
@@ -72,13 +79,20 @@ class FakeMarketDataClient:
 class FailingConnectClient(FakeMarketDataClient):
     def connect(
         self,
-        on_message: Callable[..., None],
+        on_control: Callable[..., None],
+        on_trade: Callable[..., None],
         on_error: Callable[..., None] | None = None,
         on_close: Callable[..., None] | None = None,
         *,
         reconnect: bool = False,
     ) -> None:
-        super().connect(on_message, on_error, on_close, reconnect=reconnect)
+        super().connect(
+            on_control,
+            on_trade,
+            on_error,
+            on_close,
+            reconnect=reconnect,
+        )
         raise RuntimeError("synthetic connect failure")
 
 
@@ -170,7 +184,7 @@ def test_start_reads_credentials_once_and_does_not_store_them_on_adapter() -> No
     assert not hasattr(subscription, "session_cookie")
 
 
-def test_candidate_confirmation_precedes_same_symbol_trade_subscription() -> None:
+def test_confirmation_evidence_must_be_recorded_before_same_symbol_subscription() -> None:
     client = FakeMarketDataClient()
     factory = FakeFactory(client)
     controls: list[bytes] = []
@@ -184,21 +198,24 @@ def test_candidate_confirmation_precedes_same_symbol_trade_subscription() -> Non
     )
 
     subscription.start()
-    assert client.subscriptions == []
-
     subscription.request_instrument_confirmation(CANDIDATE)
     confirmation = '{"symbol":"WINV26","market":"BMF","status":"available"}'
-    client.emit(confirmation)
+    client.emit_control(confirmation)
+
+    with pytest.raises(RuntimeError, match="confirmation must be recorded"):
+        subscription.subscribe_confirmed(CANDIDATE)
+
+    subscription.record_provider_confirmation(CANDIDATE)
+    subscription.subscribe_confirmed(CANDIDATE)
+
+    ack = '{"event":"subscribed","symbol":"WINV26"}'
+    client.emit_control(ack)
+    trade = '{"event":"trade","symbol":"WINV26","price":123456.0}'
+    client.emit_trade(trade)
 
     assert client.confirmation_requests == [CANDIDATE]
-    assert controls == [confirmation.encode("utf-8")]
-    assert frames == []
-
-    subscription.subscribe_confirmed(CANDIDATE)
-    trade = '{"event":"trade","symbol":"WINV26","price":123456.0}'
-    client.emit(trade)
-
     assert client.subscriptions == [CANDIDATE]
+    assert controls == [confirmation.encode("utf-8"), ack.encode("utf-8")]
     assert frames == [
         RawFrame(
             trade.encode("utf-8"),
@@ -212,30 +229,55 @@ def test_candidate_confirmation_precedes_same_symbol_trade_subscription() -> Non
     ]
 
 
+def test_trade_callback_is_impossible_before_confirmed_subscription() -> None:
+    client = FakeMarketDataClient()
+    subscription = _subscription(client, control_sink=lambda _payload: None)
+    subscription.start()
+
+    with pytest.raises(RuntimeError, match="before confirmed subscription"):
+        client.emit_trade('{"event":"trade","symbol":"WINV26"}')
+
+
 def test_subscription_is_impossible_before_confirmation_request() -> None:
     client = FakeMarketDataClient()
     subscription = _subscription(client, control_sink=lambda _payload: None)
     subscription.start()
 
-    with pytest.raises(RuntimeError, match="confirmation must be requested"):
+    with pytest.raises(RuntimeError, match="confirmation must be recorded"):
         subscription.subscribe_confirmed(CANDIDATE)
-
     assert client.subscriptions == []
 
 
-def test_subscription_rejects_symbol_different_from_confirmed_candidate() -> None:
+def test_confirmation_record_requires_prior_request_exact_symbol_and_is_single_shot() -> None:
+    client = FakeMarketDataClient()
+    subscription = _subscription(client, control_sink=lambda _payload: None)
+    subscription.start()
+
+    with pytest.raises(RuntimeError, match="requested before it can be recorded"):
+        subscription.record_provider_confirmation(CANDIDATE)
+
+    subscription.request_instrument_confirmation(CANDIDATE)
+    with pytest.raises(ValueError, match="match the requested candidate"):
+        subscription.record_provider_confirmation("WINZ26")
+
+    subscription.record_provider_confirmation(CANDIDATE)
+    with pytest.raises(RuntimeError, match="already recorded"):
+        subscription.record_provider_confirmation(CANDIDATE)
+
+
+def test_subscription_rejects_symbol_different_from_recorded_candidate() -> None:
     client = FakeMarketDataClient()
     subscription = _subscription(client, control_sink=lambda _payload: None)
     subscription.start()
     subscription.request_instrument_confirmation(CANDIDATE)
+    subscription.record_provider_confirmation(CANDIDATE)
 
     with pytest.raises(ValueError, match="exactly match"):
         subscription.subscribe_confirmed("WINZ26")
-
     assert client.subscriptions == []
 
 
-def test_confirmation_is_single_shot_and_requires_control_sink() -> None:
+def test_confirmation_request_is_single_shot_and_requires_control_sink() -> None:
     without_sink_client = FakeMarketDataClient()
     without_sink = _subscription(without_sink_client)
     without_sink.start()
@@ -290,20 +332,27 @@ def test_capabilities_do_not_invent_candles_sequence_or_timestamp_resolution() -
     assert capabilities.fidelity is FidelityMode.OBSERVATION_FAITHFUL
 
 
-def test_callback_rejects_non_text_payload_without_optimistic_serialization() -> None:
+def test_control_and_trade_callbacks_reject_non_text_without_serialization() -> None:
     client = FakeMarketDataClient()
     subscription = _subscription(client, control_sink=lambda _payload: None)
     subscription.start()
-    with pytest.raises(TypeError, match="text payload"):
-        client.emit(b"already-bytes")
+
+    with pytest.raises(TypeError, match="control callback must provide a text payload"):
+        client.emit_control(b"already-bytes")
+
+    subscription.request_instrument_confirmation(CANDIDATE)
+    subscription.record_provider_confirmation(CANDIDATE)
+    subscription.subscribe_confirmed(CANDIDATE)
+    with pytest.raises(TypeError, match="trade callback must provide a text payload"):
+        client.emit_trade(b"already-bytes")
 
 
-def test_unsolicited_control_message_without_sink_fails_closed() -> None:
+def test_control_message_without_sink_fails_closed() -> None:
     client = FakeMarketDataClient()
     subscription = _subscription(client)
     subscription.start()
     with pytest.raises(RuntimeError, match="control message received"):
-        client.emit('{"event":"control"}')
+        client.emit_control('{"event":"control"}')
 
 
 def test_error_sink_receives_type_only_and_close_semantics_are_explicit() -> None:
@@ -324,6 +373,7 @@ def test_close_unsubscribes_only_after_confirmed_subscription() -> None:
     subscription = _subscription(client, control_sink=lambda _payload: None)
     subscription.start()
     subscription.request_instrument_confirmation(CANDIDATE)
+    subscription.record_provider_confirmation(CANDIDATE)
     subscription.subscribe_confirmed(CANDIDATE)
     subscription.close()
 
