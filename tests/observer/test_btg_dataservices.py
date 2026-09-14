@@ -84,6 +84,29 @@ class FakeVendorClient:
         self.on_error(error)
 
 
+class FailingRunClient(FakeVendorClient):
+    def run(
+        self,
+        on_open: Callable[..., None] | None = None,
+        on_message: Callable[..., None] | None = None,
+        on_error: Callable[..., None] | None = None,
+        on_close: Callable[..., None] | None = None,
+        reconnect: bool = True,
+        spawn_thread: bool = True,
+        default_logs: bool = True,
+    ) -> None:
+        super().run(
+            on_open,
+            on_message,
+            on_error,
+            on_close,
+            reconnect,
+            spawn_thread,
+            default_logs,
+        )
+        raise RuntimeError("synthetic run failure")
+
+
 class FakeFactory:
     def __init__(self, client: FakeVendorClient) -> None:
         self.client = client
@@ -100,6 +123,22 @@ def _settings(**overrides: Any) -> BtgDataServicesSettings:
     values: dict[str, object] = {"capture_scope": "lab-a"}
     values.update(overrides)
     return BtgDataServicesSettings(**values)  # type: ignore[arg-type]
+
+
+def _subscription(
+    client: FakeVendorClient,
+    *,
+    control_sink: Callable[[bytes], None] | None = None,
+    error_sink: Callable[[str], None] | None = None,
+) -> BtgDataServicesSubscription:
+    return BtgDataServicesSubscription(
+        _settings(),
+        lambda: "test-only-placeholder",
+        lambda _frame: None,
+        client_factory=FakeFactory(client),
+        control_sink=control_sink,
+        error_sink=error_sink,
+    )
 
 
 def test_first_lab_defaults_are_realtime_trades_without_vendor_reconnect() -> None:
@@ -172,33 +211,39 @@ def test_discovery_happens_before_subscription_and_control_payload_stays_separat
     ]
 
 
-def test_discovery_requires_explicit_control_sink_and_never_auto_subscribes() -> None:
+def test_subscription_is_impossible_before_discovery_request() -> None:
     client = FakeVendorClient()
-    subscription = BtgDataServicesSubscription(
-        _settings(),
-        lambda: "test-only-placeholder",
-        lambda _frame: None,
-        client_factory=FakeFactory(client),
-    )
+    subscription = _subscription(client, control_sink=lambda _payload: None)
     subscription.start()
 
-    with pytest.raises(RuntimeError, match="requires a control_sink"):
-        subscription.request_available_instruments()
+    with pytest.raises(RuntimeError, match="discovery must be requested"):
+        subscription.subscribe_confirmed(CONFIRMED_INSTRUMENT)
 
     assert client.discovery_requests == 0
     assert client.subscriptions == []
 
 
+def test_discovery_is_single_shot_and_requires_control_sink() -> None:
+    no_sink_client = FakeVendorClient()
+    no_sink = _subscription(no_sink_client)
+    no_sink.start()
+    with pytest.raises(RuntimeError, match="requires a control_sink"):
+        no_sink.request_available_instruments()
+    assert no_sink_client.discovery_requests == 0
+
+    client = FakeVendorClient()
+    subscription = _subscription(client, control_sink=lambda _payload: None)
+    subscription.start()
+    subscription.request_available_instruments()
+    with pytest.raises(RuntimeError, match="already requested"):
+        subscription.request_available_instruments()
+    assert client.discovery_requests == 1
+
+
 def test_adapter_exposes_passive_discovery_and_lifecycle_only() -> None:
     client = FakeVendorClient()
     controls: list[bytes] = []
-    subscription = BtgDataServicesSubscription(
-        _settings(),
-        lambda: "test-only-placeholder",
-        lambda _frame: None,
-        client_factory=FakeFactory(client),
-        control_sink=controls.append,
-    )
+    subscription = _subscription(client, control_sink=controls.append)
 
     forbidden = {
         "order_send",
@@ -224,14 +269,9 @@ def test_adapter_exposes_passive_discovery_and_lifecycle_only() -> None:
 
 
 def test_discovery_is_forbidden_after_subscription() -> None:
-    subscription = BtgDataServicesSubscription(
-        _settings(),
-        lambda: "test-only-placeholder",
-        lambda _frame: None,
-        client_factory=FakeFactory(FakeVendorClient()),
-        control_sink=lambda _payload: None,
-    )
+    subscription = _subscription(FakeVendorClient(), control_sink=lambda _payload: None)
     subscription.start()
+    subscription.request_available_instruments()
     subscription.subscribe_confirmed(CONFIRMED_INSTRUMENT)
 
     with pytest.raises(RuntimeError, match="only allowed before subscription"):
@@ -242,14 +282,9 @@ def test_discovery_is_forbidden_after_subscription() -> None:
 
 def test_confirmed_instrument_must_be_non_empty_and_is_not_taken_from_settings() -> None:
     client = FakeVendorClient()
-    subscription = BtgDataServicesSubscription(
-        _settings(),
-        lambda: "test-only-placeholder",
-        lambda _frame: None,
-        client_factory=FakeFactory(client),
-        control_sink=lambda _payload: None,
-    )
+    subscription = _subscription(client, control_sink=lambda _payload: None)
     subscription.start()
+    subscription.request_available_instruments()
 
     with pytest.raises(ValueError):
         subscription.subscribe_confirmed("")
@@ -258,12 +293,7 @@ def test_confirmed_instrument_must_be_non_empty_and_is_not_taken_from_settings()
 
 
 def test_capabilities_are_scoped_and_do_not_invent_sequence_or_resolution() -> None:
-    trade = BtgDataServicesSubscription(
-        _settings(),
-        lambda: "test-only-placeholder",
-        lambda _frame: None,
-        client_factory=FakeFactory(FakeVendorClient()),
-    ).describe_capabilities()
+    trade = _subscription(FakeVendorClient()).describe_capabilities()
     candle = BtgDataServicesSubscription(
         _settings(data_type="candles-1M"),
         lambda: "test-only-placeholder",
@@ -298,13 +328,7 @@ def test_settings_fail_closed_outside_authorized_b3_derivatives_surface() -> Non
 
 def test_callback_rejects_non_text_payload_without_optimistic_serialization() -> None:
     client = FakeVendorClient()
-    subscription = BtgDataServicesSubscription(
-        _settings(),
-        lambda: "test-only-placeholder",
-        lambda _frame: None,
-        client_factory=FakeFactory(client),
-        control_sink=lambda _payload: None,
-    )
+    subscription = _subscription(client, control_sink=lambda _payload: None)
     subscription.start()
     with pytest.raises(TypeError, match="text WebSocket payload"):
         client.emit(b"already-bytes")
@@ -312,12 +336,7 @@ def test_callback_rejects_non_text_payload_without_optimistic_serialization() ->
 
 def test_unsolicited_control_message_without_sink_fails_closed() -> None:
     client = FakeVendorClient()
-    subscription = BtgDataServicesSubscription(
-        _settings(),
-        lambda: "test-only-placeholder",
-        lambda _frame: None,
-        client_factory=FakeFactory(client),
-    )
+    subscription = _subscription(client)
     subscription.start()
 
     with pytest.raises(RuntimeError, match="control message received"):
@@ -327,13 +346,7 @@ def test_unsolicited_control_message_without_sink_fails_closed() -> None:
 def test_error_sink_receives_only_exception_type_not_message() -> None:
     client = FakeVendorClient()
     errors: list[str] = []
-    subscription = BtgDataServicesSubscription(
-        _settings(),
-        lambda: "test-only-placeholder",
-        lambda _frame: None,
-        error_sink=errors.append,
-        client_factory=FakeFactory(client),
-    )
+    subscription = _subscription(client, error_sink=errors.append)
     subscription.start()
     client.fail(RuntimeError("sensitive-provider-detail"))
     assert errors == ["RuntimeError"]
@@ -342,13 +355,7 @@ def test_error_sink_receives_only_exception_type_not_message() -> None:
 def test_expected_close_is_not_reported_but_unexpected_disconnect_is() -> None:
     client = FakeVendorClient()
     errors: list[str] = []
-    subscription = BtgDataServicesSubscription(
-        _settings(),
-        lambda: "test-only-placeholder",
-        lambda _frame: None,
-        error_sink=errors.append,
-        client_factory=FakeFactory(client),
-    )
+    subscription = _subscription(client, error_sink=errors.append)
     subscription.start()
     client.disconnect()
     assert errors == ["connection-closed"]
@@ -360,25 +367,26 @@ def test_expected_close_is_not_reported_but_unexpected_disconnect_is() -> None:
 def test_intentional_close_does_not_emit_disconnect_error() -> None:
     client = FakeVendorClient()
     errors: list[str] = []
-    subscription = BtgDataServicesSubscription(
-        _settings(),
-        lambda: "test-only-placeholder",
-        lambda _frame: None,
-        error_sink=errors.append,
-        client_factory=FakeFactory(client),
-    )
+    subscription = _subscription(client, error_sink=errors.append)
     subscription.start()
     subscription.close()
     assert errors == []
 
 
+def test_failed_start_closes_vendor_and_clears_session_state() -> None:
+    client = FailingRunClient()
+    subscription = _subscription(client)
+
+    with pytest.raises(RuntimeError, match="synthetic run failure"):
+        subscription.start()
+
+    assert client.closed is True
+    with pytest.raises(RuntimeError, match="not started"):
+        subscription.request_available_instruments()
+
+
 def test_double_start_and_close_before_start_fail_closed() -> None:
-    subscription = BtgDataServicesSubscription(
-        _settings(),
-        lambda: "test-only-placeholder",
-        lambda _frame: None,
-        client_factory=FakeFactory(FakeVendorClient()),
-    )
+    subscription = _subscription(FakeVendorClient())
     with pytest.raises(RuntimeError, match="not started"):
         subscription.close()
     subscription.start()
@@ -388,12 +396,7 @@ def test_double_start_and_close_before_start_fail_closed() -> None:
 
 def test_close_before_subscription_does_not_send_unsubscribe() -> None:
     client = FakeVendorClient()
-    subscription = BtgDataServicesSubscription(
-        _settings(),
-        lambda: "test-only-placeholder",
-        lambda _frame: None,
-        client_factory=FakeFactory(client),
-    )
+    subscription = _subscription(client)
     subscription.start()
     subscription.close()
 
@@ -402,11 +405,6 @@ def test_close_before_subscription_does_not_send_unsubscribe() -> None:
 
 
 def test_settings_keep_no_latency_or_timestamp_claim_until_measured() -> None:
-    capabilities = BtgDataServicesSubscription(
-        _settings(),
-        lambda: "test-only-placeholder",
-        lambda _frame: None,
-        client_factory=FakeFactory(FakeVendorClient()),
-    ).describe_capabilities()
+    capabilities = _subscription(FakeVendorClient()).describe_capabilities()
     assert capabilities.timestamp_resolution is MissingReason.UNKNOWN
     assert capabilities.timestamp_resolution != timedelta(microseconds=1)
