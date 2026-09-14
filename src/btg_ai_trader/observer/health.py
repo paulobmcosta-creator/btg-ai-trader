@@ -22,6 +22,38 @@ def monotonic_elapsed_ns(start_ns: int, end_ns: int) -> int:
     return end_ns - start_ns
 
 
+@dataclass(frozen=True, slots=True)
+class TransitLatencyEvidence:
+    """Passive same-scope monotonic transit measurement; never inferred from wall-clock time."""
+
+    clock_scope: str
+    ingress_ns: int
+    available_ns: int
+    latency_ns: int
+
+    def __post_init__(self) -> None:
+        require_text(self.clock_scope, "clock_scope")
+        _reading(self.ingress_ns, "ingress_ns")
+        _reading(self.available_ns, "available_ns")
+        _reading(self.latency_ns, "latency_ns")
+        expected = monotonic_elapsed_ns(self.ingress_ns, self.available_ns)
+        if self.latency_ns != expected:
+            raise ValueError("latency_ns must equal the monotonic elapsed interval")
+
+
+def measure_transit_latency(
+    clock_scope: str, ingress_ns: int, available_ns: int
+) -> TransitLatencyEvidence:
+    """Measure explicit ingress→availability latency without reading a clock implicitly."""
+    require_text(clock_scope, "clock_scope")
+    return TransitLatencyEvidence(
+        clock_scope,
+        ingress_ns,
+        available_ns,
+        monotonic_elapsed_ns(ingress_ns, available_ns),
+    )
+
+
 class RuntimePhase(Enum):
     STARTING = "STARTING"
     RECOVERING = "RECOVERING"
