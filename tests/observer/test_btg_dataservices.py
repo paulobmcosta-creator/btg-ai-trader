@@ -11,9 +11,12 @@ from btg_ai_trader.observer.btg_dataservices import (
     BtgDataServicesSettings,
     BtgDataServicesSubscription,
 )
+from btg_ai_trader.observer.identity import ProviderInstrumentRef
 from btg_ai_trader.observer.provider import CapabilitySupport, FidelityMode
 from btg_ai_trader.observer.raw_source import RawChannel, RawFrame
 from btg_ai_trader.observer.values import MissingReason
+
+CONFIRMED_INSTRUMENT = "TEST-DERIV-1"
 
 
 class FakeVendorClient:
@@ -88,10 +91,7 @@ class FakeFactory:
 
 
 def _settings(**overrides: Any) -> BtgDataServicesSettings:
-    values: dict[str, object] = {
-        "capture_scope": "lab-a",
-        "instrument": "TEST-DERIV-1",
-    }
+    values: dict[str, object] = {"capture_scope": "lab-a"}
     values.update(overrides)
     return BtgDataServicesSettings(**values)  # type: ignore[arg-type]
 
@@ -102,6 +102,11 @@ def test_first_lab_defaults_are_realtime_trades_without_vendor_reconnect() -> No
     assert settings.data_type == "trades"
     assert settings.raw_channel is RawChannel.TICK
     assert settings.reconnect is False
+
+
+def test_settings_do_not_preselect_an_instrument_before_discovery() -> None:
+    settings = _settings()
+    assert not hasattr(settings, "instrument")
 
 
 def test_discovery_happens_before_subscription_and_control_payload_stays_separate() -> None:
@@ -143,15 +148,19 @@ def test_discovery_happens_before_subscription_and_control_payload_stays_separat
     assert controls == [discovery.encode("utf-8")]
     assert frames == []
 
-    subscription.subscribe_confirmed()
+    subscription.subscribe_confirmed(CONFIRMED_INSTRUMENT)
     trade = '{"event":"trade","symbol":"TEST-DERIV-1","px":123456.0}'
     client.emit(trade)
 
-    assert client.subscriptions == [["TEST-DERIV-1"]]
+    assert client.subscriptions == [[CONFIRMED_INSTRUMENT]]
     assert frames == [
         RawFrame(
             trade.encode("utf-8"),
-            _settings().reference,
+            ProviderInstrumentRef(
+                BTG_DATASERVICES_PROVIDER,
+                "lab-a",
+                CONFIRMED_INSTRUMENT,
+            ),
             RawChannel.TICK,
         )
     ]
@@ -198,11 +207,11 @@ def test_adapter_exposes_passive_discovery_and_lifecycle_only() -> None:
 
     subscription.start()
     subscription.request_available_instruments()
-    subscription.subscribe_confirmed()
+    subscription.subscribe_confirmed(CONFIRMED_INSTRUMENT)
     subscription.close()
 
     assert client.discovery_requests == 1
-    assert client.unsubscriptions == [["TEST-DERIV-1"]]
+    assert client.unsubscriptions == [[CONFIRMED_INSTRUMENT]]
     assert client.closed is True
     with pytest.raises(RuntimeError, match="not started"):
         subscription.request_available_instruments()
@@ -217,12 +226,29 @@ def test_discovery_is_forbidden_after_subscription() -> None:
         control_sink=lambda _payload: None,
     )
     subscription.start()
-    subscription.subscribe_confirmed()
+    subscription.subscribe_confirmed(CONFIRMED_INSTRUMENT)
 
     with pytest.raises(RuntimeError, match="only allowed before subscription"):
         subscription.request_available_instruments()
     with pytest.raises(RuntimeError, match="already subscribed"):
-        subscription.subscribe_confirmed()
+        subscription.subscribe_confirmed(CONFIRMED_INSTRUMENT)
+
+
+def test_confirmed_instrument_must_be_non_empty_and_is_not_taken_from_settings() -> None:
+    client = FakeVendorClient()
+    subscription = BtgDataServicesSubscription(
+        _settings(),
+        lambda: "test-only-placeholder",
+        lambda _frame: None,
+        client_factory=FakeFactory(client),
+        control_sink=lambda _payload: None,
+    )
+    subscription.start()
+
+    with pytest.raises(ValueError):
+        subscription.subscribe_confirmed("")
+
+    assert client.subscriptions == []
 
 
 def test_capabilities_are_scoped_and_do_not_invent_sequence_or_resolution() -> None:
