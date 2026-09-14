@@ -46,11 +46,17 @@ class _ErrorSink(Protocol):
 
 
 class _MarketDataClient(Protocol):
-    """Only the passive Cedro Market Data operations admitted by Sprint 1."""
+    """Only the passive Cedro Market Data operations admitted by Sprint 1.
+
+    A concrete wire binding MUST classify vendor payloads before invoking these
+    callbacks: control/discovery messages go to ``on_control`` and executed-trade
+    payloads go to ``on_trade``. The local boundary never infers one from the other.
+    """
 
     def connect(
         self,
-        on_message: _MessageCallback,
+        on_control: _MessageCallback,
+        on_trade: _MessageCallback,
         on_error: _ErrorCallback | None = None,
         on_close: _CloseCallback | None = None,
         *,
@@ -104,12 +110,13 @@ class _ClientFactory(Protocol):
 
 
 class CedroMarketDataSubscription:
-    """Fail-closed read-only wrapper with candidate confirmation before subscription."""
+    """Fail-closed read-only wrapper with adjudicated confirmation before subscription."""
 
     __slots__ = (
         "_candidate_instrument",
         "_client",
         "_client_factory",
+        "_confirmation_recorded",
         "_confirmation_requested",
         "_confirmed_instrument",
         "_control_sink",
@@ -151,6 +158,7 @@ class CedroMarketDataSubscription:
         self._candidate_instrument: str | None = None
         self._confirmed_instrument: str | None = None
         self._confirmation_requested = False
+        self._confirmation_recorded = False
         self._subscribed = False
         self._expected_close = False
 
@@ -165,21 +173,24 @@ class CedroMarketDataSubscription:
             fidelity=FidelityMode.OBSERVATION_FAITHFUL,
         )
 
-    def _on_message(self, data: object) -> None:
+    def _on_control(self, data: object) -> None:
         if type(data) is not str:
-            raise TypeError("Cedro Market Data callback must provide a text payload")
-        payload = data.encode("utf-8")
+            raise TypeError("Cedro Market Data control callback must provide a text payload")
+        if self._control_sink is None:
+            raise RuntimeError("control message received without configured control_sink")
+        self._control_sink(data.encode("utf-8"))
+
+    def _on_trade(self, data: object) -> None:
+        if type(data) is not str:
+            raise TypeError("Cedro Market Data trade callback must provide a text payload")
         if not self._subscribed:
-            if self._control_sink is None:
-                raise RuntimeError("control message received without configured control_sink")
-            self._control_sink(payload)
-            return
+            raise RuntimeError("trade message received before confirmed subscription")
         instrument = self._confirmed_instrument
         if instrument is None:
             raise RuntimeError("subscribed state requires a confirmed instrument")
         self._frame_sink(
             RawFrame(
-                payload=payload,
+                payload=data.encode("utf-8"),
                 reference=ProviderInstrumentRef(
                     CEDRO_MARKET_DATA_PROVIDER,
                     self._settings.capture_scope,
@@ -212,11 +223,13 @@ class CedroMarketDataSubscription:
         self._candidate_instrument = None
         self._confirmed_instrument = None
         self._confirmation_requested = False
+        self._confirmation_recorded = False
         self._subscribed = False
         self._client = client
         try:
             client.connect(
-                self._on_message,
+                self._on_control,
+                self._on_trade,
                 self._on_error,
                 self._on_close,
                 reconnect=False,
@@ -243,11 +256,28 @@ class CedroMarketDataSubscription:
         self._candidate_instrument = instrument
         self._confirmation_requested = True
 
-    def subscribe_confirmed(self, instrument: str) -> None:
-        """Subscribe only to the exact candidate whose provider confirmation was adjudicated."""
-        client = self._require_client()
+    def record_provider_confirmation(self, instrument: str) -> None:
+        """Record caller adjudication of preserved provider confirmation evidence.
+
+        The caller is responsible for parsing the raw control evidence using the
+        concrete, reviewed Cedro wire protocol. This method only binds that
+        adjudication to the exact candidate previously requested.
+        """
+        self._require_client()
         if not self._confirmation_requested or self._candidate_instrument is None:
-            raise RuntimeError("instrument confirmation must be requested before subscription")
+            raise RuntimeError("confirmation must be requested before it can be recorded")
+        if self._confirmation_recorded:
+            raise RuntimeError("provider confirmation was already recorded")
+        self._require_win_contract(instrument)
+        if instrument != self._candidate_instrument:
+            raise ValueError("provider confirmation must match the requested candidate")
+        self._confirmation_recorded = True
+
+    def subscribe_confirmed(self, instrument: str) -> None:
+        """Subscribe only after exact provider confirmation evidence was adjudicated."""
+        client = self._require_client()
+        if not self._confirmation_recorded or self._candidate_instrument is None:
+            raise RuntimeError("provider confirmation must be recorded before subscription")
         if self._subscribed or self._confirmed_instrument is not None:
             raise RuntimeError("instrument is already subscribed")
         self._require_win_contract(instrument)
@@ -277,6 +307,7 @@ class CedroMarketDataSubscription:
             self._candidate_instrument = None
             self._confirmed_instrument = None
             self._confirmation_requested = False
+            self._confirmation_recorded = False
             self._subscribed = False
 
     @staticmethod
