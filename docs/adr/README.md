@@ -20,7 +20,7 @@ Estados sugeridos: `Proposta`, `Aceita`, `Rejeitada`, `Substituída`.
 - [0012 — Eventos inválidos e erros críticos](0012-invalid-events-and-critical-errors.md)
 - [0013 — Observabilidade, proveniência e rastreabilidade de decisões](0013-observability-decision-provenance-and-traceability.md) — *refinado por ADR 0021*
 - [0014 — Ownership de Position, Portfolio, Ledger e exposição](0014-position-portfolio-ledger-and-exposure-ownership.md) — *refinado por ADR 0022*
-- [0015 — Refinamento do envelope, contexto de processamento e versionamento](0015-refinement-event-envelope-processing_context-and-versioning.md)
+- [0015 — Refinamento do envelope, contexto de processamento e versionamento](0015-refinement-event-envelope-processing-context-and-versioning.md)
 - [0016 — Refinamento da cadeia Strategy, Risk, autorização e Execution](0016-refinement-strategy-risk-authorization-and-execution-chain.md)
 - [0017 — Refinamento de determinismo, input boundaries e aleatoriedade](0017-refinement-determinism-input-boundaries-and-randomness.md)
 - [0018 — Refinamento de persistência, durabilidade e persist-before-act](0018-refinement-persistence-durability-and-persist-before-act.md)
