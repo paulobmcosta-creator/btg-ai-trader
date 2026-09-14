@@ -6,20 +6,25 @@
 AUTHORITATIVE_STATE = GITHUB_REMOTE
 REPOSITORY = paulobmcosta-creator/btg-ai-trader
 SPRINT_BRANCH = sprint/1-market-observer
-INTEGRATED_IMPLEMENTATION_BASELINE = 5a9fa177b609e56e06e7835b291beac821c8bbd6
-PR_34_PROVIDER = MERGED @ d1d865d32f88b7420cfd0555823240d793131c19
-PR_35_CAPTURE_HARNESS = MERGED @ 0c59a19956f43651778441e48d30299e4df72c30
-PR_40_SECURE_LAB_RUNNER = MERGED @ 5a9fa177b609e56e06e7835b291beac821c8bbd6
-ACTIONS_BLOCKER_ISSUE_36 = RESOLVED_CLOSED
+INTEGRATED_BASELINE_BEFORE_THIS_WORK = fd53f221b09902ec2e79df758bf35e8a04f86267
 FOUNDATION_0A_TO_0F = FORMALLY_CLOSED
 SPRINT_1_LIFECYCLE = OPEN
 S1_A_AUTHORIZED = YES
-SPRINT1_ACCEPTANCE = NOT_GRANTED
+
+PROVIDER_DECISION = ADR-0025
+PROVIDER_SELECTION = RICO_SUPPLIED_MT5
+PROVIDER_SELECTION_STATUS = ACCEPTED_FOR_QUALIFICATION
+ZERO_ADDITIONAL_RECURRING_COST = HARD_CONSTRAINT
+REALTIME_REQUIREMENT = PRESERVED
 REAL_PROVIDER_SESSION = NOT_EXECUTED
+SPRINT1_PROVIDER_QUALIFIED = NO
+SPRINT1_ACCEPTANCE = NOT_GRANTED
+PROMOTION_TO_SPRINT_2 = NO
 SECURITY_DIFF_SCAN = NOT_EXECUTED
-BTG_LAB_ENVIRONMENT = EXTERNAL_CONFIGURATION_NOT_VERIFIED
+
 REAL_MONEY = NO
 LIVE_TRADING = NO
+PAPER_TRADING = NO
 TRADING_CREDENTIALS = NO
 TRADING_CAPABILITY = ABSENT
 ```
@@ -28,97 +33,112 @@ Historical execution detail remains in Git history and prior PRs. This living fi
 
 ## Preserved authorities
 
-The frozen Foundation artifacts remain unchanged: `0F-B`, `0F-E`, `0F-F`, and quantitative `TRACEABILITY.md`. The 0F-E replay boundary remains authoritative: Sprint 1 is passive observation/evidence; Sprint 2 owns formal causal replay; Sprint 3 owns deterministic economic backtesting.
+The frozen Foundation artifacts remain unchanged. The Sprint 1 contract remains passive Market Observer only. Formal causal replay belongs to Sprint 2 and deterministic economic backtesting belongs to Sprint 3.
 
-## Integrated Sprint 1 graph
+The negative capability baseline remains authoritative: no Strategy operational path, TradeIntent operational path, RiskAuthorization Engine, OrderIntent, OrderPlan, ExecutionOrder, Paper execution, broker execution, financial ledger mutation or real-money authority may appear in Sprint 1.
 
-The integrated branch now contains the passive Market Observer core, the selected BTG Data Services read-only provider boundary, the controlled first-lab capture harness, and a protected secure runner for the first real laboratory.
+## Provider history and current authority
 
-```text
-BTG Data Services read-only session
--> discovery/control evidence
--> exact point-in-time WIN confirmation
--> subscribe_confirmed(exact_symbol)
--> realtime trades observation
--> passive admission / queue / health / latency
--> EvidenceArchive / AuditJournal / provenance / lineage
-```
+ADR-0023 selected BTG Solutions Data Services historically. Its narrow read-only adapter and tests remain useful as an integrated reference implementation, but the owner subsequently established zero additional recurring cost as a hard constraint. BTG Data Services is therefore not the active qualification provider.
 
-No StrategyDecision operational path, TradeIntent operational path, RiskAuthorization Engine, OrderIntent, OrderPlan, ExecutionOrder, Paper execution, broker execution, ledger mutation or real-money authority exists.
+A Cedro free-trial path was explored, merged historically and explicitly reverted because a time-limited trial cannot sustain the program after development.
 
-## Provider and laboratory policy
+ADR-0025 now selects **Rico-supplied MetaTrader 5 market data for qualification**. Selection is not runtime qualification and does not itself satisfy any realtime acceptance criterion.
 
 ```text
-DD_60 = ACCEPTED
-PROVIDER = BTG Solutions Data Services
-ADR = ADR-0023
-DD_43 = TRIGGERED_EXTERNAL_READ_ONLY_SECRET
-DD_68 = RESOLVED
-INSTRUMENT_FAMILY = WIN
-CONCRETE_CONTRACT = EXPLICIT_CANDIDATE_PLUS_PROVIDER_CONFIRMATION_POINT_IN_TIME
-STREAM_TYPE = realtime
-DATA_TYPE = trades
-DATA_SUBTYPE = derivatives
-AUTO_FALLBACK = FORBIDDEN
-AUTO_ROLLOVER = FORBIDDEN
-VENDOR_AUTO_RECONNECT = FORBIDDEN
-INITIAL_CANDLES = NO
+BTG_DATA_SERVICES = HISTORICAL_REFERENCE_IMPLEMENTATION
+CEDRO_FREE_TRIAL = REJECTED_AS_CANONICAL_LONG_TERM_PROVIDER
+RICO_MT5 = ACCEPTED_FOR_QUALIFICATION
+RICO_MT5_RUNTIME_EVIDENCE = ABSENT
 ```
 
-PR #34 integrated the narrow read-only adapter. PR #35 integrated the one-session/one-RunId capture harness and the fail-closed discovery remediation. PR #40 integrated the secure runner; merging it does not execute a real session.
+Runtime qualification is tracked in Issue #45.
 
-## Secure laboratory runner
+## Rico/MT5 read-only boundary
 
-The integrated workflow `.github/workflows/btg-first-lab-secure.yml` is restricted to an explicit request on `lab/btg-s1-first-capture`, checks that the requested code revision equals the current remote Sprint 1 head, then executes the exact clean Sprint 1 revision.
-
-The job is bound to GitHub Environment `btg-readonly-lab`. Governance requires the laboratory values to exist only as Environment secrets:
+The Sprint 1 target boundary is:
 
 ```text
-BTG_LAB_DATASERVICES_API_KEY
-BTG_LAB_EVIDENCE_PASSPHRASE
+Rico / MT5 server
+-> MetaTrader 5 terminal
+   -> Investor / read-only authorization
+   -> custom MQL5 indicator
+      -> passive market observations
+      -> bounded append-only FILE_COMMON transport
+         -> trusted Python bridge reader
+            -> RawFrame / later admission and evidence processing
 ```
 
-The current connector cannot inspect or mutate GitHub Environment/secrets administration. Therefore their actual remote configuration is intentionally recorded as:
+The bridge is deliberately one-way. The trusted Python runtime does not import the dual-use `MetaTrader5` package and receives no terminal-control, account, position or order interface.
+
+The offline bridge may be implemented and tested before a real session, but fixture/file tests are not realtime provider evidence. Runtime feed fidelity remains unknown until qualification.
+
+## Negative capabilities for the selected boundary
 
 ```text
-BTG_LAB_ENVIRONMENT = EXTERNAL_CONFIGURATION_NOT_VERIFIED
-BTG_LAB_SECRETS = EXTERNAL_CONFIGURATION_NOT_VERIFIED
+TRUSTED_PYTHON_IMPORTS_METATRADER5 = NO
+MT5_MASTER_PASSWORD_IN_PROJECT = NO
+MT5_MASTER_PASSWORD_IN_CHAT = NO
+MT5_MASTER_PASSWORD_IN_SECRET_STORE = NO
+MT5_INVESTOR_PASSWORD_ONLY = YES
+MQL5_BRIDGE_PROGRAM_TYPE = CUSTOM_INDICATOR
+PYTHON_ORDER_API = ABSENT
+BROKER_ACCOUNT_API = ABSENT
+ORDER_SUBMISSION = IMPOSSIBLE
+ORDER_MODIFICATION = IMPOSSIBLE
+ORDER_CANCELLATION = IMPOSSIBLE
+PAPER_PATH = ABSENT
+LIVE_TRADING_PATH = ABSENT
+REAL_MONEY_AUTHORITY = ABSENT
+ECONOMIC_COMMITMENT = IMPOSSIBLE
 ```
 
-No secret value may be pasted into chat or committed. Raw market-data evidence is encrypted before artifact handling; only ciphertext, checksum and a sanitized no-price/no-raw-payload summary are exposed remotely.
+## Historical BTG active-runner treatment
+
+The BTG secure real-lab workflow was appropriate while BTG Data Services was the active qualification provider. Once ADR-0025 selected Rico/MT5 under the zero-cost constraint, keeping that workflow executable would create two conflicting operational paths. It is therefore removed from the active tree while its complete implementation remains preserved in Git history.
+
+The BTG adapter, its unit tests and its non-authenticated provider-surface verification may remain as historical technical reference; they do not authorize or schedule a BTG real session.
+
+## Runtime qualification gate
+
+Rico can be promoted to `SPRINT1_PROVIDER_QUALIFIED = YES` only after evidence demonstrates all of the following:
+
+1. MT5 activation in the concrete Rico account with no additional recurring platform/market-data charge under the qualified account state.
+2. Discovery of the current WIN contract and exact provider symbol.
+3. Realtime WIN observations sufficient for AC-05 and AC-07.
+4. Investor/read-only authorization with trading demonstrably disabled.
+5. Bridge execution as a custom MQL5 indicator only.
+6. Trusted Python path without `MetaTrader5`, master password or account/order APIs.
+7. Required timestamp, provenance, heartbeat and latency evidence.
+8. No minimum real-money operation required to retain the entitlement used by the qualification.
+
+Failure of any item rejects the Rico qualification under the current constraints; it does not relax the Sprint 1 contract.
 
 ## Evidence state
 
 ```text
-RQM_TOTAL = 41
-RQM_SATISFIED_OR_FIXTURE_SCOPE = 39
-RQM_BLOCKED_SECURITY_SCAN = 2  # RQM-018, RQM-036
-NEG_CAP_01_TO_10 = SATISFIED_CURRENT_TREE
-READ_ONLY_BY_CONSTRUCTION = SATISFIED_CURRENT_TREE
-STRUCTURAL_ESCALATION = SATISFIED_CURRENT_TREE
-REAL_PROVIDER_SESSION = NOT_EXECUTED
-SECURITY_DIFF_SCAN = NOT_EXECUTED
+FIXTURE_AND_OFFLINE_ENGINEERING_EVIDENCE = AVAILABLE
+REAL_RICO_MT5_EVIDENCE = NOT_EXECUTED
+REALTIME_AC_05_AC_07 = NOT_YET_SATISFIED_BY_RICO
+OFFICIAL_SECURITY_DIFF_SCAN = NOT_EXECUTED
+SPRINT1_ACCEPTANCE = NO
 ```
 
-The official Security Diff Scan remains a distinct gate. Codex Security is installed, but its scan action is not exposed in this chat runtime; no alternative scan is relabeled as official PASS.
-
-## Review treatment
-
-For PRs #34, #35 and #40, the project owner explicitly authorized the same coordinating agent to perform adversarial review and proceed. These reviews are not represented as independent review. This treatment does not waive Foundation constraints, CI, NEG-CAP, real-provider evidence or the official Security Diff Scan.
+Historical BTG fixture/provider evidence remains auditable but is not relabeled as proof of the Rico runtime feed.
 
 ## Remaining Sprint 1 sequence
 
 ```text
-1. Configure the external GitHub Environment `btg-readonly-lab` with deployment protection appropriate to the laboratory branch.
-2. Provision the two laboratory Environment secrets outside repository/chat.
-3. Choose one explicit concrete WIN candidate; no ranking, fallback or rollover.
-4. Create the dedicated laboratory request branch from the current Sprint 1 head and execute the secure runner.
-5. Review the sanitized run summary and protected evidence; preserve one causal RunId from discovery through close.
-6. Reconcile real-provider evidence into RQM/XC without overstating fixture evidence.
-7. Re-run exact-final-tree CI and NEG-CAP after final evidence/documentation changes.
-8. Execute the official Security Diff Scan for the exact final Sprint 1 diff/tree, or only use a separately explicit governance treatment if authorized.
-9. Adjudicate all 11 Sprint 1 exit criteria conjunctively.
+1. Complete and validate the offline Rico/MT5 read-only bridge and negative-capability tests.
+2. Confirm MT5 R$0 activation in the user's concrete Rico account without a minimum-trade condition.
+3. Install/authenticate MT5 using Investor/read-only authorization only and identify the current WIN symbol.
+4. Execute one controlled realtime observation session with the custom indicator bridge.
+5. Preserve raw/passive evidence, timestamps, provenance, heartbeat and latency without exposing credentials.
+6. Reconcile the real-provider evidence against AC-01/02/03/05/07 and the RQM matrix.
+7. Re-run exact-final-tree CI and negative-capability verification.
+8. Execute the official Security Diff Scan on the exact final Sprint 1 tree when the official action is available.
+9. Adjudicate all Sprint 1 exit criteria conjunctively.
 10. Promote to Sprint 2 only after formal Sprint 1 PASS.
 ```
 
-No step above authorizes financial execution, broker/trading credentials, order APIs, Paper execution, Risk authorization or real money.
+No step above authorizes financial execution, order APIs, master/trading credentials, Paper execution, Risk authorization or real money.
