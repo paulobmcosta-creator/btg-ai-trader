@@ -7,11 +7,13 @@ DD_60 = ACCEPTED
 PROVIDER = BTG Solutions Data Services
 ADR = ADR-0023
 DD_43 = TRIGGERED
-DD_68 = PARTIALLY_RESOLVED
+DD_68 = RESOLVED
 DD_68_INSTRUMENT_FAMILY = WIN
 DD_68_CONCRETE_CONTRACT = RESOLVE_POINT_IN_TIME
 DD_68_AUTO_FALLBACK = FORBIDDEN
-DD_68_TIMEFRAME_OR_GRANULARITY = UNDECIDED
+DD_68_STREAM_TYPE = realtime
+DD_68_DATA_GRANULARITY = trades
+DD_68_INITIAL_CANDLES = NO
 REAL_PROVIDER_CONNECTION = NOT_EXECUTED
 REAL_CAPTURE = NOT_EXECUTED
 VENDOR_AUTO_RECONNECT = DISABLED
@@ -20,7 +22,7 @@ TRADING_CAPABILITY = ABSENT
 
 A seleção humana de DD-60 ocorreu em 2026-09-14: `Aprovo DD-60 = BTG Solutions Data Services`.
 
-A decisão humana de laboratório DD-68 também foi registrada em 2026-09-14: a família inicial é `WIN`; o contrato futuro concreto deve ser resolvido e confirmado point-in-time no BTG Data Services imediatamente antes de cada captura real; fallback/rollover silencioso é proibido. O timeframe/granularidade permanece aberto até antes da primeira captura real. Ver [`S1-DD68-FIRST-LAB.md`](S1-DD68-FIRST-LAB.md).
+A decisão humana DD-68 também foi concluída em 2026-09-14: a família inicial é `WIN`; o contrato futuro concreto deve ser resolvido e confirmado point-in-time no BTG Data Services imediatamente antes de cada captura real; fallback/rollover silencioso é proibido; e o primeiro laboratório usa `trades` em `realtime`, sem candles como input inicial. Ver [`S1-DD68-FIRST-LAB.md`](S1-DD68-FIRST-LAB.md).
 
 ## Fontes oficiais consultadas
 
@@ -35,7 +37,7 @@ A documentação oficial confirma suporte a B3, `derivatives`, `trades`, candles
 ## Implementação nesta branch
 
 - ADR-0023 materializa DD-60 e a política DD-43.
-- `BtgDataServicesSettings` restringe a primeira integração a B3/derivatives e tipos de dados `trades`, `candles-1S` e `candles-1M`.
+- `BtgDataServicesSettings` restringe a primeira integração a B3/derivatives e suporta `trades`, `candles-1S` e `candles-1M`; DD-68 fixa o primeiro laboratório real especificamente em `realtime` + `trades`.
 - `BtgDataServicesSubscription` expõe apenas lifecycle read-only, subscription, discovery passivo, capabilities e callback raw.
 - O wrapper recebe `credential_source` e não armazena o segredo no próprio adapter.
 - O wrapper recebe `client_factory` por injeção; o runtime S1 continua sem import externo direto e o boundary fail-closed não é relaxado.
@@ -70,7 +72,7 @@ O adapter não deve:
 
 O cliente oficial mantém sua autenticação somente no processo/sessão necessária à conexão.
 
-## DD-68 — laboratório WIN
+## DD-68 — laboratório WIN / trades realtime
 
 A família `WIN` foi aprovada como primeiro laboratório. Nenhum ticker concreto é default permanente do runtime.
 
@@ -78,18 +80,26 @@ Antes de cada captura real, o sistema deverá resolver no discovery do BTG Data 
 
 É proibido fallback automático, ranking implícito, troca silenciosa para outro vencimento ou rollover invisível. O identificador `TEST-DERIV-1` continua sendo somente fixture.
 
-A granularidade/timeframe ainda não foi decidida e deve ser resolvida antes da primeira captura real. Defaults do adapter não contam como decisão DD-68.
+Para a primeira captura real, DD-68 fixa:
+
+```text
+stream_type = realtime
+data_type = trades
+data_subtype = derivatives
+initial_candles = no
+```
+
+A capacidade futura de candles permanece disponível no adapter, mas não integra o primeiro laboratório real e não pode substituir silenciosamente o stream de trades.
 
 ## Evidência ainda necessária
 
 1. CI atual do HEAD desta branch executado com runners funcionais;
 2. CI específica do extra oficial no HEAD atual;
 3. revisão independente do diff atual;
-4. decisão humana sobre timeframe/granularidade do primeiro laboratório;
-5. provisão de API key read-only fora do repositório;
-6. sessão real controlada provando autenticação, discovery point-in-time do contrato WIN, subscribe, observação, heartbeat/disconnect e restart explícito com raw capture;
-7. atualização da matriz RQM/XC no SHA integrado;
-8. Security Diff Scan oficial antes do gate final, ou waiver humano explícito conforme governança.
+4. provisão de API key read-only fora do repositório;
+5. sessão real controlada provando autenticação, discovery point-in-time do contrato WIN, subscribe em `trades/realtime`, observação, heartbeat/disconnect e restart explícito com raw capture;
+6. atualização da matriz RQM/XC no SHA integrado;
+7. Security Diff Scan oficial antes do gate final, ou waiver humano explícito conforme governança.
 
 ## Proibições preservadas
 
