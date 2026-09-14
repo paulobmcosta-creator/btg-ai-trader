@@ -71,6 +71,7 @@ bool WriteDiscoverySnapshot()
    int prefix_matches = 0;
    int emitted_symbols = 0;
    int excluded_custom = 0;
+   int prefix_errors = 0;
    int enumeration_errors = 0;
 
    string begin = StringFormat(
@@ -98,25 +99,23 @@ bool WriteDiscoverySnapshot()
          continue;
 
       prefix_matches++;
-      bool custom = (bool)SymbolInfoInteger(name, SYMBOL_CUSTOM);
+      bool custom = false;
+      if(!SymbolExist(name, custom))
+      {
+         prefix_errors++;
+         continue;
+      }
       if(custom)
       {
          excluded_custom++;
          continue;
       }
 
-      long start_time = SymbolInfoInteger(name, SYMBOL_START_TIME);
-      long expiration_time = SymbolInfoInteger(name, SYMBOL_EXPIRATION_TIME);
-      long digits = SymbolInfoInteger(name, SYMBOL_DIGITS);
       string line = StringFormat(
          "{\"schema\":1,\"record_type\":\"symbol\",\"snapshot_id\":\"%s\","
-         "\"symbol\":\"%s\",\"custom\":false,\"start_time\":%I64d,"
-         "\"expiration_time\":%I64d,\"digits\":%I64d}",
+         "\"symbol\":\"%s\",\"custom\":false}",
          EscapeJson(snapshot_id),
-         EscapeJson(name),
-         start_time,
-         expiration_time,
-         digits
+         EscapeJson(name)
       );
       if(!WriteBridgeLine(handle, line))
       {
@@ -129,11 +128,12 @@ bool WriteDiscoverySnapshot()
    string ending = StringFormat(
       "{\"schema\":1,\"record_type\":\"snapshot_end\","
       "\"snapshot_id\":\"%s\",\"prefix_matches\":%d,\"emitted_symbols\":%d,"
-      "\"excluded_custom\":%d,\"enumeration_errors\":%d}",
+      "\"excluded_custom\":%d,\"prefix_errors\":%d,\"enumeration_errors\":%d}",
       EscapeJson(snapshot_id),
       prefix_matches,
       emitted_symbols,
       excluded_custom,
+      prefix_errors,
       enumeration_errors
    );
    bool written = WriteBridgeLine(handle, ending);
