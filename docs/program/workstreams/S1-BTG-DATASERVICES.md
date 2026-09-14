@@ -18,6 +18,9 @@ REAL_PROVIDER_CONNECTION = NOT_EXECUTED
 REAL_CAPTURE = NOT_EXECUTED
 VENDOR_AUTO_RECONNECT = DISABLED
 TRADING_CAPABILITY = ABSENT
+REVIEW_MODE = OWNER_AUTHORIZED_SAME_AGENT_ADVERSARIAL_REVIEW
+INDEPENDENT_REVIEW = NOT_CLAIMED
+MERGE_REQUIRES = GREEN_CURRENT_HEAD_CI
 ```
 
 A seleção humana de DD-60 ocorreu em 2026-09-14: `Aprovo DD-60 = BTG Solutions Data Services`.
@@ -96,12 +99,35 @@ initial_candles = no
 
 A capacidade futura de candles permanece disponível no adapter, mas não integra o primeiro laboratório real e não pode substituir silenciosamente o stream de trades.
 
+## Adjudicação de revisão — 2026-09-14
+
+A revisão técnica adversarial do diff atual foi refeita no HEAD exato depois da restauração dos runners, incluindo confronto com a fonte oficial do cliente BTG. Ela verificou, em especial:
+
+- ausência de superfície de ordem, conta, posição ou autoridade econômica no wrapper;
+- discovery obrigatório antes de `subscribe_confirmed()`;
+- separação entre payload de controle pré-assinatura e `RawFrame` pós-confirmação;
+- credencial apenas por fonte externa de runtime;
+- erro sanitizado por tipo, sem mensagem potencialmente sensível;
+- reconnect automático do vendor desabilitado;
+- limpeza fail-closed após falha de `start()`;
+- pacote oficial isolado em extra opcional;
+- boundary/NEG-CAP repinado e CI específica do SDK sem autenticação.
+
+Nenhum finding bloqueante de código foi identificado nessa segunda passagem.
+
+Esta revisão **não é chamada de independente**, porque o mesmo agente coordenou mudanças anteriores. O proprietário do projeto autorizou explicitamente em 2026-09-14 que este mesmo agente realizasse a revisão e prosseguisse. Para o PR #34, essa autorização substitui a regra operacional adicional de reviewer separado. Ela não altera as proibições de segurança, não dispensa CI do HEAD exato e não constitui waiver do Security Diff Scan final do Sprint 1.
+
 ## Evidência ainda necessária
 
-1. CI atual do HEAD desta branch executado com runners funcionais;
-2. CI específica do extra oficial no HEAD atual;
-3. revisão independente do diff atual;
-4. provisão de API key read-only fora do repositório;
+Antes de integrar o PR #34:
+
+1. Remote Python CI verde no HEAD exato final;
+2. CI específica do extra oficial verde no HEAD exato final;
+3. pinned upstream engineering verification verde no HEAD exato final.
+
+Depois da integração:
+
+4. provisão de API key read-only fora do repositório e fora do chat;
 5. sessão real controlada provando autenticação, discovery point-in-time do contrato WIN, confirmação antes de `subscribe_confirmed()`, observação `trades/realtime`, heartbeat/disconnect e restart explícito com raw capture;
 6. atualização da matriz RQM/XC no SHA integrado;
 7. Security Diff Scan oficial antes do gate final, ou waiver humano explícito conforme governança.
