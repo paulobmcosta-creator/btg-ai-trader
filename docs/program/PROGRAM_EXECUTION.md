@@ -2,22 +2,22 @@
 
 ## Current remote checkpoint
 
-This is the current operational checkpoint. Historical execution detail remains available through Git
-history and prior PRs; this living file intentionally records only the state needed to resume work safely.
-
 ```text
 AUTHORITATIVE_STATE = GITHUB_REMOTE
 REPOSITORY = paulobmcosta-creator/btg-ai-trader
 SPRINT_BRANCH = sprint/1-market-observer
-CURRENT_INTEGRATED_BASELINE = cf3f184fd46d3482f24f8ac2b0a4f7bacbe3b035
+CURRENT_INTEGRATED_BASELINE = 4fb5807f985d06ef8673a28e689b815a08763940
+ACTIVE_PROVIDER_PR = #34
+ACTIVE_PROVIDER_BRANCH = s1/20-btg-dataservices-adapter
+ACTIVE_CAPTURE_PR = #35
+ACTIVE_CAPTURE_BRANCH = s1/21-btg-controlled-capture-harness
+ACTIONS_BLOCKER_ISSUE = #36
+SPECULATIVE_S2_PR = #37
+SPECULATIVE_S2_BRANCH = s2/01-causal-market-replay
+SPECULATIVE_S2_BASE = integration/s2-research
 FOUNDATION_0A_TO_0F = FORMALLY_CLOSED
-PR_5 = MERGED
-ISSUE_1 = COMPLETED
-ISSUE_6 = OPEN_NON_BLOCKING
-PRE_CODE_RECONCILIATION = COMPLETE
 SPRINT_1_LIFECYCLE = OPEN
 S1_A_AUTHORIZED = YES
-FIRST_FUNCTIONAL_CODE = AUTHORIZED_AND_IMPLEMENTED
 SPRINT1_ACCEPTANCE = NOT_GRANTED
 REAL_MONEY = NO
 LIVE_TRADING = NO
@@ -25,58 +25,26 @@ TRADING_CREDENTIALS = NO
 TRADING_CAPABILITY = ABSENT
 ```
 
+Historical execution detail remains available through Git history and prior PRs. This living file records only the state needed to resume safely.
+
 ## Preserved authorities
 
-The following historical/canonical artifacts remain unchanged by this checkpoint:
+The historical/canonical Foundation artifacts remain unchanged:
 
-- `docs/foundation/0F-B_deferred_decision_register.md` — blob `819397f0a3fe322ef199d053b2ccbe9a6fdb5747`;
-- `docs/foundation/0F-E_sprint1_entry_contract.md` — blob `b04901dcc5612d3d418a6603a3a51a8e6e18ae08`;
-- `docs/foundation/0F-F_foundation_final_gate.md` — blob `7204d409edd1239853ab2282e9a7a4411a068bba`;
-- `docs/protocols/quantitative/TRACEABILITY.md` remains the canonical QPI authority;
-- Issue #6 remains a non-blocking traceability erratum and does not rewrite 0F-F.
+- `docs/foundation/0F-B_deferred_decision_register.md`;
+- `docs/foundation/0F-E_sprint1_entry_contract.md`;
+- `docs/foundation/0F-F_foundation_final_gate.md`;
+- `docs/protocols/quantitative/TRACEABILITY.md` remains the canonical QPI authority.
 
-## Integrated Sprint 1 capability graph
+The frozen 0F-E Replay Boundary remains authoritative: Sprint 1 preserves replay inputs/evidence but does not contain formal replay; Sprint 2 owns formal causal market-data replay; Sprint 3 owns deterministic economic backtesting.
 
-The current baseline contains only the passive Market Observer graph:
+## Integrated Sprint 1 core
 
-```text
-provider-agnostic source / fixture
-    -> raw evidence
-    -> admission + quarantine
-    -> normalized observation envelope
-    -> point-in-time instrument resolution/discovery
-    -> dedup + finite FIFO + backpressure
-    -> health / liveness / readiness
-    -> monotonic latency evidence
-    -> technical evidence persistence
-    -> AuditJournal / provenance / lineage
-```
+The integrated baseline already contains the passive Market Observer core: raw evidence, admission/quarantine, normalized observation envelope, point-in-time registry discovery, dedup, bounded FIFO/backpressure, health/liveness/readiness, latency evidence, provenance, technical persistence and AuditJournal/lineage.
 
-It does **not** contain StrategyDecision, TradeIntent, RiskAuthorization, OrderIntent, OrderPlan,
-ExecutionOrder, Paper execution, broker execution, ledger mutation or real-money authority.
+It contains no StrategyDecision, TradeIntent, RiskAuthorization, OrderIntent, OrderPlan, ExecutionOrder, Paper execution, broker execution, ledger mutation or real-money authority.
 
-## Integrated engineering evidence
-
-| Area | Integrated evidence |
-|---|---|
-| Foundation / pre-code gate | PR #5 merge `dabce69d92054b77cad72809669d4340c211c328` |
-| Domain / registry / provenance / health / storage / ingestion | integrated through the Sprint 1 branch history before Observer composition |
-| NEG-CAP structural + runtime | integrated and green before composition/property campaign |
-| Observer composition | integrated before the final RQM remediation sequence |
-| Property + mutation campaign | generated properties plus bounded 10/10 mutant detection campaign |
-| RQM-023 latency | PR #28 → `035113c5c6ab58237b304304c3c884b3625bbed2` |
-| RQM-015 RunId process evidence | PR #29 → `138352088a6d8929663163d410cbc526584219cf` |
-| RQM-034 transition audit | PR #30 → `3e424b5516cd1d1391489825b290f3a02143d917` |
-| RQM-039 temporal inheritance | PR #31 → `2263d0e654609d8abff6dd86d1edcbe5b181ed95` |
-| RQM-040 instrument discovery | PR #32 → `cf3f184fd46d3482f24f8ac2b0a4f7bacbe3b035` |
-
-The PR #32 final head passed 491 tests plus Ruff, mypy, compile, dependency validation, Foundation
-integrity, scoped NEG-CAP boundary, diff validation and pinned upstream engineering verification before
-merge.
-
-## Current Sprint 1 evidence state
-
-See [`RQM_EXECUTION_STATUS.md`](RQM_EXECUTION_STATUS.md) for the detailed matrix.
+## RQM / negative-capability state
 
 ```text
 RQM_TOTAL = 41
@@ -86,59 +54,181 @@ RQM_BLOCKED_SECURITY_SCAN = 2  # RQM-018, RQM-036
 NEG_CAP_01_TO_10 = SATISFIED
 READ_ONLY_BY_CONSTRUCTION_CURRENT_TREE = SATISFIED
 STRUCTURAL_ESCALATION_CURRENT_TREE = SATISFIED
-```
-
-The absence of `PARTIAL` RQMs does not grant Sprint 1 acceptance because required capability and
-decision gates remain open.
-
-## Open canonical gates
-
-### G1 — DD-60 / AC-05 provider admission
-
-0F-E makes `AC-05 Read-Only Market-Data Subscription` `REQUIRED_CORE` and marks `DD-60 Initial Market
-Data Provider` mandatory for all implementations. Therefore:
-
-```text
-DD_60 = UNDECIDED
-REAL_PROVIDER_ADAPTER = ABSENT
-AC_05_REAL_SUBSCRIPTION = OPEN
-```
-
-A provider must be selected by explicit coordination decision and documented by ADR before its
-concrete adapter is implemented. The existing fixture does not silently satisfy this gate.
-
-If MetaTrader 5 is selected, DD-61 becomes active. The existing import-only MT5 spike proves package
-installation/import compatibility only; it does not prove connection, market-data observation,
-reconnect/liveness behavior or the eleven dual-use admissibility conditions.
-
-### G2 — DD-68 first real laboratory instrument
-
-`DD-68` must be explicitly selected before the first real capture session. Fixture symbols do not count
-as that decision.
-
-### G3 — official Security Diff Scan
-
-The repository's structural boundary, config/possible-secret heuristics and runtime NEG-CAP tests are
-green, but they are not relabeled as the official Security Diff Scan.
-
-```text
 SECURITY_DIFF_SCAN = NOT_EXECUTED
-RQM_018 = BLOCKED_SECURITY_SCAN
-RQM_036 = BLOCKED_SECURITY_SCAN
 ```
 
-## Next execution sequence
+## Provider gate — DD-60 / DD-43 / AC-05
+
+Human coordination approved:
 
 ```text
-1. Prepare DD-60 provider decision packet.
-2. Human coordination selects the initial provider.
-3. Materialize DD-60 ADR before provider-dependent code.
-4. Resolve DD-68 before the first real capture.
-5. Implement the smallest strictly read-only provider adapter/subscription boundary.
-6. Prove all applicable dual-use constraints and negative capabilities.
-7. Run full remote CI and exact final-tree evidence suite.
-8. Execute the official Security Diff Scan when its scan interface is available.
-9. Reconcile the final Sprint 1 acceptance gate.
+DD_60 = ACCEPTED
+PROVIDER = BTG Solutions Data Services
+ADR = ADR-0023
+DD_43 = TRIGGERED
 ```
 
-No step above authorizes real-money trading, trading credentials or financial execution.
+PR #34 implements the smallest read-only provider boundary. Current design requirements include:
+
+```text
+connect
+-> provider discovery request
+-> external point-in-time contract confirmation
+-> subscribe_confirmed(exact_symbol)
+-> raw observation
+```
+
+The adapter settings do not contain a preselected ticker. `subscribe_confirmed()` is impossible until the adapter has successfully issued `available_to_subscribe()`. Pre-subscription messages are control/discovery evidence, not instrument-labelled Market Data `RawFrame`s. Automatic vendor reconnect is disabled fail-closed. Intentional local close is distinguished from unexpected disconnect so a normal shutdown does not become a false provider failure.
+
+PR #34 remains draft and unmerged until current-head remote CI actually executes successfully. No API key is stored in GitHub; the adapter accepts an external runtime credential source only.
+
+## DD-68 — first laboratory
+
+Human coordination fully resolved the first laboratory:
+
+```text
+DD_68 = RESOLVED
+INSTRUMENT_FAMILY = WIN
+CONCRETE_CONTRACT = RESOLVE_POINT_IN_TIME
+AUTO_FALLBACK = FORBIDDEN
+AUTO_ROLLOVER = FORBIDDEN
+STREAM_TYPE = realtime
+DATA_GRANULARITY = trades
+DATA_SUBTYPE = derivatives
+INITIAL_CANDLES = NO
+```
+
+Before every real capture, provider discovery must confirm the exact WIN contract that will be fixed for that run/capture context. If resolution is absent, ambiguous or invalid, capture does not start. No automatic rollover, ranking or silent contract substitution is allowed.
+
+The first real laboratory consumes the real-time trade stream. Candle streams are outside this first capture profile and cannot silently replace the approved input.
+
+See `docs/program/workstreams/S1-DD68-FIRST-LAB.md`.
+
+## Controlled capture harness — PR #35
+
+PR #35 is a stacked draft on PR #34 and prepares the first real read-only laboratory without executing it. Its effective delta is intentionally limited to four files: runbook, scripts policy, harness and offline tests.
+
+The harness executes one causal read-only provider session with one RunId:
+
+```text
+connect with no preselected ticker
+-> available_to_subscribe
+-> persist raw discovery/control evidence
+-> exact WIN confirmation
+-> persist explicit confirmation evidence
+-> subscribe_confirmed(exact_symbol)
+-> observe realtime provider messages
+-> require at least one trade for exact_symbol
+-> unsubscribe
+-> close
+-> persist canonical summary
+```
+
+This same-session design removes a time-of-check/time-of-use gap that existed in an earlier draft using separate discovery/capture connections.
+
+The harness:
+
+- obtains the Data Services API key only from `BTG_DATASERVICES_API_KEY` in the authorized process environment;
+- never receives the API key as a CLI/config argument and never persists or hashes its value;
+- starts the vendor client with an empty instrument list;
+- persists discovery/control payloads using the existing EvidenceArchive/AuditJournal model;
+- requires the exact operator-supplied WIN contract to appear in an explicit JSON list of strings in discovery evidence before subscription;
+- does not accept scalar echoes such as `requested`, `message` or `error` as availability confirmation;
+- persists an explicit confirmation artifact before `subscribe_confirmed(exact_symbol)`;
+- counts only JSON `trade` events whose `symbol` equals the confirmed contract as successful market observations;
+- preserves post-subscription non-trade messages but does not count them as market-data success;
+- fails closed if discovery does not confirm the candidate or if zero confirmed trade frames arrive;
+- has offline fake-provider tests proving single-session causality, scalar-echo rejection and that a synthetic credential is absent from persisted artifacts;
+- has not used any real API key or network session.
+
+The public BTG client surface confirms discovery is a separate operation but does not provide a stable discovery-response schema in the reviewed documentation. Therefore unknown or ambiguous real response shapes must fail closed while raw evidence is preserved for review.
+
+The S1 boundary inventory remains intentionally scoped to the importable runtime/configuration surface. The harness does not become canonical runtime merely by existing under `scripts/`. Ruff, mypy and compileall cover `scripts`, while dedicated harness tests cover its credential/evidence lifecycle. The official Security Diff Scan remains a separate mandatory final gate unless human governance explicitly changes that requirement.
+
+PR #35 must not be integrated before #34. It is kept reanchored on the current #34 head while stacked. After #34 integrates into `sprint/1-market-observer`, #35 must be retargeted to that integrated baseline and its four-file effective delta reconfirmed before promotion.
+
+## Current infrastructure blocker — Issue #36
+
+GitHub Actions is failing before runner allocation/steps on #34 and #35. A dedicated allocation-only diagnostic branch also fails without checkout, Python, dependencies or repository code.
+
+Observed across `ubuntu-22.04`, `ubuntu-24.04` and `windows-2022`, including diagnostic attempt 2 at 2026-09-14 03:51Z:
+
+```text
+job.status = completed
+job.conclusion = failure
+job.steps = []
+runner_id = 0
+runner_name = ""
+runner_group_id = 0
+check_run.output.annotations_count = 1
+```
+
+The isolated S2 Research CI reproduces the same pre-step failure. This rules out a failure specific to the product code, Python setup, checkout action, the S1 workflow, or one runner image. The exact upstream/account cause remains unproven because the current connector cannot read the check-run annotations endpoint; billing, entitlement, policy and platform-capacity explanations must not be asserted without that evidence.
+
+This state means:
+
+```text
+REMOTE_CI = NOT_EXECUTED_VALIDLY
+RUNNER_ALLOCATION = BLOCKED
+PR_34_MERGE = BLOCKED
+PR_35_MERGE = BLOCKED
+```
+
+It is not converted to PASS and is not bypassed by local-only evidence.
+
+## Speculative Sprint 2 — PR #37
+
+PR #37 is isolated future-sprint development and MUST NOT be retargeted or merged into Sprint 1.
+
+```text
+CLASSIFICATION = SPECULATIVE_S2
+PR = #37
+HEAD_AT_REVIEW = d50a6623076a3c1bd4d6692a49c03235a1ab4083
+BASE = integration/s2-research
+DELTA = 5_FILES_1_COMMIT
+S2_RESEARCH_CI = NOT_EXECUTED_VALIDLY
+S2_RESEARCH_CI_RUN = 34804392134
+FORMAL_REPLAY_IN_S1 = FORBIDDEN
+ECONOMIC_BACKTEST = ABSENT
+FINANCIAL_EXECUTION = ABSENT
+```
+
+The increment consumes immutable Observer `EventEnvelope` values and implements one finite causal replay lane per `(provider, capture_scope)`. It requires known UTC `knowledge_time`, preserves caller-supplied order, rejects causal regressions and duplicate EventIds, exposes inclusive monotonic knowledge cutoffs and exact rational virtual pacing. It does not read wall clock, sleep, connect to providers, load credentials, invoke strategy/ML, simulate costs/slippage/P&L, or create execution/financial artifacts.
+
+The isolated `s2-research-ci.yml` covers tests, Ruff, mypy, compileall, dependency validation, diff checks and frozen Foundation verification. It intentionally excludes the canonical S1 boundary inventory because formal replay/research capability is forbidden in the S1 promotion surface and is being developed only in separate S2 staging. A future Sprint 2 gate must define its own scope/capability boundary before promotion.
+
+Structural self-review of the exact final head found no blocker in the declared scope. Independent review and valid remote CI remain pending. No Sprint 2 acceptance is claimed.
+
+## Review state
+
+```text
+PR_34_EXACT_HEAD_STRUCTURAL_SELF_REVIEW = COMPLETE
+PR_34_INDEPENDENT_REVIEW = PENDING
+PR_35_EXACT_HEAD_STRUCTURAL_SELF_REVIEW = COMPLETE
+PR_35_INDEPENDENT_REVIEW = PENDING
+PR_37_EXACT_HEAD_STRUCTURAL_SELF_REVIEW = COMPLETE
+PR_37_INDEPENDENT_REVIEW = PENDING
+```
+
+Self/author structural review documents findings but never satisfies the independent-review requirement.
+
+## Remaining sequence
+
+```text
+1. Restore valid GitHub-hosted runner allocation (Issue #36).
+2. Run Remote Python CI, BTG provider verification and pinned upstream verification on PR #34 exact HEAD.
+3. Obtain independent review on that exact green HEAD.
+4. Merge PR #34 only after all mandatory checks pass.
+5. Retarget PR #35 to the integrated sprint baseline and reconfirm its effective four-file delta.
+6. Run full exact-head CI and independent review for PR #35; integrate only if green.
+7. Provision read-only BTG Data Services API key outside repository/chat.
+8. Execute the controlled laboratory: WIN family, exact point-in-time contract, realtime trades.
+9. Collect provider evidence for authentication, discovery, confirmation-before-subscription, observation and disconnect/close.
+10. If restart is tested, create a new explicit run/session; never rely on vendor auto-reconnect.
+11. Update exact-final-tree RQM/XC and NEG-CAP evidence.
+12. Execute official Security Diff Scan when its supported interface is available, or apply only an explicitly authorized governance treatment.
+13. Re-adjudicate all 11 Sprint 1 exit criteria conjunctively.
+14. Keep PR #37 isolated as SPECULATIVE work; after runner restoration, obtain valid S2 Research CI and independent review without promoting it before a future Sprint 2 gate.
+```
+
+No step above authorizes financial execution, trading credentials or real money.

@@ -28,3 +28,4 @@ Estados sugeridos: `Proposta`, `Aceita`, `Rejeitada`, `Substituída`.
 - [0020 — Refinamento de RuntimePhase, SafetyPosture e Readiness](0020-refinement-runtime-phase-safety-posture-and-readiness.md)
 - [0021 — Refinamento de provenance, Runs, capture e lineage](0021-refinement-provenance-runs-capture-and-lineage.md)
 - [0022 — Refinamento de Ledger, projeções financeiras e Exposure](0022-refinement-ledger-financial-projections-and-exposure.md)
+- [0023 — Provedor inicial de Market Data: BTG Solutions Data Services](0023-initial-market-data-provider-btg-solutions-data-services.md)
