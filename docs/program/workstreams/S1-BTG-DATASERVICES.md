@@ -57,7 +57,7 @@ O cliente oficial mantém sua autenticação somente no processo/sessão necess�
 
 ## DD-68 — próximo gate humano
 
-Antes da primeira captura real deve ser selecionado o primeiro instrumento de laboratório. Nenhum ticker é default do runtime. Os símbolos presentes nos testes (`WINX26`) são exclusivamente fixtures e não constituem decisão DD-68.
+Antes da primeira captura real deve ser selecionado o primeiro instrumento de laboratório. Nenhum ticker é default do runtime. O identificador `TEST-DERIV-1` usado nos testes é explicitamente sintético e não constitui decisão DD-68.
 
 ## Evidência ainda necessária
 
