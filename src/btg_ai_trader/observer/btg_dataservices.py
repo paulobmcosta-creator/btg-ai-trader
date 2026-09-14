@@ -249,13 +249,13 @@ class BtgDataServicesSubscription:
             raise
 
     def request_available_instruments(self) -> None:
+        client = self._require_client()
         if self._subscribed:
             raise RuntimeError("instrument discovery is only allowed before subscription")
         if self._discovery_requested:
             raise RuntimeError("instrument discovery was already requested")
         if self._control_sink is None:
             raise RuntimeError("instrument discovery requires a control_sink")
-        client = self._require_client()
         client.available_to_subscribe()
         self._discovery_requested = True
 
