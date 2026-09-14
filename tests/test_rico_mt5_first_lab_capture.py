@@ -5,9 +5,9 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
-from scripts import rico_mt5_first_lab_capture as capture
 
 from btg_ai_trader.observer.storage_records import EvidenceRecord, decode_record
+from scripts import rico_mt5_first_lab_capture as capture
 
 
 DISCOVERY = (
