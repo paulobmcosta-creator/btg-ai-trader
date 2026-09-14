@@ -151,10 +151,19 @@ def test_health_transition_is_observable_and_persisted_with_journal_reference(
     assert _advance(observer, index=1, sample=stale) is StepStatus.ADMITTED
 
     evidence = [item for item in _decoded(archive) if isinstance(item, EvidenceRecord)]
-    decisions = [item for item in evidence if b"fixture-observation-decision-plan" in item.raw]
-    assert len(decisions) == 2
-    transition_record = decisions[-1]
-    body = json.loads(transition_record.raw)
+    decoded_decisions = [
+        (item, json.loads(item.raw))
+        for item in evidence
+        if b"fixture-observation-decision-plan" in item.raw
+    ]
+    assert len(decoded_decisions) == 2
+    transitions = [
+        (item, body)
+        for item, body in decoded_decisions
+        if body["health_previous_observation"] is not None
+    ]
+    assert len(transitions) == 1
+    transition_record, body = transitions[0]
 
     previous = body["health_previous_observation"]["health"]
     current = body["health_before_queue_commit"]["health"]
