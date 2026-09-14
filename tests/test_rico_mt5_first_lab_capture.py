@@ -1,8 +1,8 @@
 """Offline tests for the Rico/MT5 controlled local evidence harness."""
 
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Callable
 
 import pytest
 from scripts import rico_mt5_first_lab_capture as capture
@@ -213,9 +213,8 @@ def test_capture_requires_complete_exact_discovery_match(tmp_path: Path) -> None
 
 
 def test_harness_has_no_terminal_account_position_or_order_surface() -> None:
-    source = (Path(__file__).resolve().parents[1] / "scripts" / "rico_mt5_first_lab_capture.py").read_text(
-        encoding="utf-8"
-    )
+    harness = Path(__file__).resolve().parents[1] / "scripts" / "rico_mt5_first_lab_capture.py"
+    source = harness.read_text(encoding="utf-8")
     prohibited = (
         "import MetaTrader5",
         "from MetaTrader5",
