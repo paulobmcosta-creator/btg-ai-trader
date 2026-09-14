@@ -110,6 +110,16 @@ def test_custom_symbol_or_bad_accounting_fails_closed(tmp_path: Path) -> None:
         _reader(path).poll_snapshot()
 
 
+def test_server_total_accounting_fails_closed(tmp_path: Path) -> None:
+    path = tmp_path / "discovery.ndjson"
+    impossible = _snapshot("WINV26", enumeration_errors=100).replace(
+        b'"server_symbol_total":100', b'"server_symbol_total":1'
+    )
+    path.write_bytes(impossible)
+    with pytest.raises(DiscoveryProtocolError, match="server symbol accounting"):
+        _reader(path).poll_snapshot()
+
+
 def test_duplicate_or_out_of_prefix_symbol_fails_closed(tmp_path: Path) -> None:
     path = tmp_path / "discovery.ndjson"
     path.write_bytes(_snapshot("WINV26", "WINV26"))
