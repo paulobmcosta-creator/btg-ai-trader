@@ -81,9 +81,7 @@ class FakeFactory:
         self.credentials: list[str] = []
         self.settings: list[BtgDataServicesSettings] = []
 
-    def __call__(
-        self, credential: str, settings: BtgDataServicesSettings
-    ) -> FakeVendorClient:
+    def __call__(self, credential: str, settings: BtgDataServicesSettings) -> Any:
         self.credentials.append(credential)
         self.settings.append(settings)
         return self.client
