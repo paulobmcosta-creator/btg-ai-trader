@@ -18,36 +18,24 @@ class DiscoveryProtocolError(RuntimeError):
 
 @dataclass(frozen=True, slots=True)
 class RicoMt5DiscoveredSymbol:
-    """Provider symbol metadata observed without creating a canonical instrument mapping."""
+    """A provider symbol name observed without creating a canonical instrument mapping."""
 
     symbol: str
-    start_time: int
-    expiration_time: int
-    digits: int
 
     def __post_init__(self) -> None:
         require_text(self.symbol, "symbol")
-        for name in ("start_time", "expiration_time", "digits"):
-            value = getattr(self, name)
-            if type(value) is not int or value < 0:
-                raise ValueError(f"{name} must be an explicit non-negative integer")
-        if (
-            self.expiration_time
-            and self.start_time
-            and self.expiration_time <= self.start_time
-        ):
-            raise ValueError("symbol expiration must follow start time when both are known")
 
 
 @dataclass(frozen=True, slots=True)
 class RicoMt5DiscoverySnapshot:
-    """One immutable broker-symbol enumeration, preserving ambiguity and candidate multiplicity."""
+    """One immutable server-symbol enumeration preserving ambiguity and uncertainty."""
 
     snapshot_id: str
     prefix: str
     server_symbol_total: int
     prefix_matches: int
     excluded_custom: int
+    prefix_errors: int
     enumeration_errors: int
     symbols: tuple[RicoMt5DiscoveredSymbol, ...]
 
@@ -59,6 +47,7 @@ class RicoMt5DiscoverySnapshot:
             "server_symbol_total",
             "prefix_matches",
             "excluded_custom",
+            "prefix_errors",
             "enumeration_errors",
         ):
             value = getattr(self, name)
@@ -68,7 +57,8 @@ class RicoMt5DiscoverySnapshot:
             not isinstance(item, RicoMt5DiscoveredSymbol) for item in self.symbols
         ):
             raise ValueError("symbols must be an immutable tuple of discovered symbols")
-        if self.prefix_matches != len(self.symbols) + self.excluded_custom:
+        accounted = len(self.symbols) + self.excluded_custom + self.prefix_errors
+        if self.prefix_matches != accounted:
             raise ValueError("prefix match accounting does not reconcile")
         names = tuple(item.symbol for item in self.symbols)
         if len(names) != len(set(names)):
@@ -78,7 +68,7 @@ class RicoMt5DiscoverySnapshot:
 
     @property
     def enumeration_complete(self) -> bool:
-        return self.enumeration_errors == 0
+        return self.enumeration_errors == 0 and self.prefix_errors == 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -168,6 +158,7 @@ class RicoMt5DiscoveryReader:
                     "prefix_matches",
                     "emitted_symbols",
                     "excluded_custom",
+                    "prefix_errors",
                     "enumeration_errors",
                 },
             )
@@ -184,6 +175,7 @@ class RicoMt5DiscoveryReader:
                     server_symbol_total=server_symbol_total,
                     prefix_matches=_nonnegative_int(record, "prefix_matches"),
                     excluded_custom=_nonnegative_int(record, "excluded_custom"),
+                    prefix_errors=_nonnegative_int(record, "prefix_errors"),
                     enumeration_errors=_nonnegative_int(record, "enumeration_errors"),
                     symbols=tuple(symbols),
                 )
@@ -211,27 +203,13 @@ class RicoMt5DiscoveryReader:
 def _parse_symbol(record: dict[str, object]) -> RicoMt5DiscoveredSymbol:
     _require_keys(
         record,
-        {
-            "schema",
-            "record_type",
-            "snapshot_id",
-            "symbol",
-            "custom",
-            "start_time",
-            "expiration_time",
-            "digits",
-        },
+        {"schema", "record_type", "snapshot_id", "symbol", "custom"},
     )
     _require_schema_and_type(record, "symbol")
     if record.get("custom") is not False:
         raise DiscoveryProtocolError("custom symbols must not enter broker discovery evidence")
     try:
-        return RicoMt5DiscoveredSymbol(
-            symbol=_text(record, "symbol"),
-            start_time=_nonnegative_int(record, "start_time"),
-            expiration_time=_nonnegative_int(record, "expiration_time"),
-            digits=_nonnegative_int(record, "digits"),
-        )
+        return RicoMt5DiscoveredSymbol(symbol=_text(record, "symbol"))
     except (TypeError, ValueError) as exc:
         raise DiscoveryProtocolError(str(exc)) from exc
 
