@@ -60,6 +60,8 @@ class RicoMt5DiscoverySnapshot:
         accounted = len(self.symbols) + self.excluded_custom + self.prefix_errors
         if self.prefix_matches != accounted:
             raise ValueError("prefix match accounting does not reconcile")
+        if self.prefix_matches + self.enumeration_errors > self.server_symbol_total:
+            raise ValueError("server symbol accounting does not reconcile")
         names = tuple(item.symbol for item in self.symbols)
         if len(names) != len(set(names)):
             raise ValueError("discovery snapshot contains duplicate provider symbols")
