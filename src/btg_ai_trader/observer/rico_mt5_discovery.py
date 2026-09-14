@@ -1,9 +1,9 @@
 """Passive parsing of Rico/MT5 symbol-discovery snapshots; no terminal control API."""
 
-from dataclasses import dataclass
 import json
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import BinaryIO
 
 from btg_ai_trader.observer.values import require_text
 
@@ -31,7 +31,11 @@ class RicoMt5DiscoveredSymbol:
             value = getattr(self, name)
             if type(value) is not int or value < 0:
                 raise ValueError(f"{name} must be an explicit non-negative integer")
-        if self.expiration_time and self.start_time and self.expiration_time <= self.start_time:
+        if (
+            self.expiration_time
+            and self.start_time
+            and self.expiration_time <= self.start_time
+        ):
             raise ValueError("symbol expiration must follow start time when both are known")
 
 
@@ -127,7 +131,9 @@ class RicoMt5DiscoveryReader:
         self._offset = next_offset
         return snapshot
 
-    def _read_snapshot(self, source: Any) -> tuple[RicoMt5DiscoverySnapshot, int] | None:
+    def _read_snapshot(
+        self, source: BinaryIO
+    ) -> tuple[RicoMt5DiscoverySnapshot, int] | None:
         begin = self._read_record(source)
         if begin is None:
             return None
@@ -168,7 +174,9 @@ class RicoMt5DiscoveryReader:
             _require_schema_and_type(record, "snapshot_end")
             emitted = _nonnegative_int(record, "emitted_symbols")
             if emitted != len(symbols):
-                raise DiscoveryProtocolError("declared emitted symbol count does not match records")
+                raise DiscoveryProtocolError(
+                    "declared emitted symbol count does not match records"
+                )
             try:
                 snapshot = RicoMt5DiscoverySnapshot(
                     snapshot_id=snapshot_id,
@@ -183,7 +191,7 @@ class RicoMt5DiscoveryReader:
                 raise DiscoveryProtocolError(str(exc)) from exc
             return snapshot, source.tell()
 
-    def _read_record(self, source: Any) -> dict[str, object] | None:
+    def _read_record(self, source: BinaryIO) -> dict[str, object] | None:
         line = source.readline(self._settings.max_record_bytes + 2)
         if not line or not line.endswith(b"\n"):
             if len(line) > self._settings.max_record_bytes:
