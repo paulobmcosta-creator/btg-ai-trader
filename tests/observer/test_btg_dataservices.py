@@ -121,7 +121,7 @@ def test_subscription_preserves_websocket_text_as_raw_utf8_before_domain_decode(
     assert factory.credentials == ["test-only-placeholder"]
     assert factory.settings == [_settings()]
     assert client.run_options == {
-        "reconnect": True,
+        "reconnect": False,
         "spawn_thread": False,
         "default_logs": False,
     }
@@ -198,6 +198,7 @@ def test_settings_fail_closed_outside_authorized_b3_derivatives_surface() -> Non
         {"data_type": "books"},
         {"data_subtype": "stocks"},
         {"feed": "C"},
+        {"reconnect": True},
         {"reconnect": 1},
     ):
         with pytest.raises(ValueError):
