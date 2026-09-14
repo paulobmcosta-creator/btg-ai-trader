@@ -73,16 +73,9 @@ class _VendorClient(Protocol):
 
 @dataclass(frozen=True, slots=True)
 class BtgDataServicesSettings:
-    """Explicit single-instrument subscription settings.
-
-    The resolved Sprint 1 first-lab profile uses the defaults
-    ``stream_type='realtime'`` and ``data_type='trades'``. Candle modes remain
-    available for later explicit work but are not the approved initial real
-    capture profile.
-    """
+    """Connection settings independent from the point-in-time instrument decision."""
 
     capture_scope: str
-    instrument: str
     stream_type: str = "realtime"
     exchange: str = "b3"
     data_type: str = "trades"
@@ -93,7 +86,6 @@ class BtgDataServicesSettings:
     def __post_init__(self) -> None:
         for value, name in (
             (self.capture_scope, "capture_scope"),
-            (self.instrument, "instrument"),
             (self.stream_type, "stream_type"),
             (self.exchange, "exchange"),
             (self.data_type, "data_type"),
@@ -120,14 +112,6 @@ class BtgDataServicesSettings:
             return RawChannel.TICK
         return RawChannel.CANDLE
 
-    @property
-    def reference(self) -> ProviderInstrumentRef:
-        return ProviderInstrumentRef(
-            BTG_DATASERVICES_PROVIDER,
-            self.capture_scope,
-            self.instrument,
-        )
-
 
 class _ClientFactory(Protocol):
     def __call__(
@@ -141,6 +125,7 @@ class BtgDataServicesSubscription:
     __slots__ = (
         "_client",
         "_client_factory",
+        "_confirmed_instrument",
         "_control_sink",
         "_credential_source",
         "_error_sink",
@@ -176,6 +161,7 @@ class BtgDataServicesSubscription:
         self._error_sink = error_sink
         self._client_factory = client_factory
         self._client: _VendorClient | None = None
+        self._confirmed_instrument: str | None = None
         self._subscribed = False
 
     def describe_capabilities(self) -> ProviderCapabilities:
@@ -208,10 +194,17 @@ class BtgDataServicesSubscription:
                 raise RuntimeError("control message received without configured control_sink")
             self._control_sink(payload)
             return
+        instrument = self._confirmed_instrument
+        if instrument is None:
+            raise RuntimeError("subscribed state requires a confirmed instrument")
         self._frame_sink(
             RawFrame(
                 payload=payload,
-                reference=self._settings.reference,
+                reference=ProviderInstrumentRef(
+                    BTG_DATASERVICES_PROVIDER,
+                    self._settings.capture_scope,
+                    instrument,
+                ),
                 channel=self._settings.raw_channel,
             )
         )
@@ -225,7 +218,7 @@ class BtgDataServicesSubscription:
             self._error_sink("connection-closed")
 
     def start(self) -> None:
-        """Connect without subscribing; discovery/confirmation must happen first."""
+        """Connect without selecting or subscribing an instrument."""
         if self._client is not None:
             raise RuntimeError("subscription session is already started")
         credential = self._credential_source()
@@ -248,26 +241,31 @@ class BtgDataServicesSubscription:
             raise RuntimeError("instrument discovery requires a control_sink")
         self._require_client().available_to_subscribe()
 
-    def subscribe_confirmed(self) -> None:
-        """Subscribe only after the caller has confirmed the configured instrument point-in-time."""
+    def subscribe_confirmed(self, instrument: str) -> None:
+        """Subscribe only after point-in-time confirmation of ``instrument`` by the caller."""
         client = self._require_client()
-        if self._subscribed:
+        if self._subscribed or self._confirmed_instrument is not None:
             raise RuntimeError("instrument is already subscribed")
+        require_text(instrument, "instrument")
+        self._confirmed_instrument = instrument
         self._subscribed = True
         try:
-            client.subscribe([self._settings.instrument], initial_snapshot=False)
+            client.subscribe([instrument], initial_snapshot=False)
         except Exception:
             self._subscribed = False
+            self._confirmed_instrument = None
             raise
 
     def close(self) -> None:
         client = self._require_client()
+        instrument = self._confirmed_instrument
         try:
-            if self._subscribed:
-                client.unsubscribe([self._settings.instrument])
+            if self._subscribed and instrument is not None:
+                client.unsubscribe([instrument])
         finally:
             client.close()
             self._client = None
+            self._confirmed_instrument = None
             self._subscribed = False
 
     def _require_client(self) -> _VendorClient:
