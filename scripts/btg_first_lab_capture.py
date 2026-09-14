@@ -47,6 +47,8 @@ FIRST_LAB_DATA_TYPE = "trades"
 FIRST_LAB_SUBTYPE = "derivatives"
 PROVIDER_LABEL = ProvenanceLabel(BTG_DATASERVICES_PROVIDER)
 WIN_CONTRACT = re.compile(r"^WIN[A-Z][0-9]{2}$")
+DISCOVERY_EVENT = "available_to_subscribe"
+DISCOVERY_SYMBOL_KEYS = ("tickers", "symbols")
 
 
 def _canonical_json(value: object) -> bytes:
@@ -62,29 +64,30 @@ def _canonical_json(value: object) -> bytes:
     ).encode("utf-8")
 
 
-def _instrument_in_string_list(value: object, instrument: str) -> bool:
-    """Accept symbols only from explicit JSON lists made entirely of strings.
+def _recognized_discovery_symbols(value: object) -> tuple[str, ...] | None:
+    """Return symbols only from a bounded, explicitly recognized discovery response.
 
-    The public vendor documentation does not promise a response schema for
-    ``available_to_subscribe``. Requiring a real list avoids treating request echoes,
-    error text or arbitrary scalar metadata as availability evidence. Nested objects
-    are traversed only to find such lists. Unknown shapes fail closed.
+    The provider does not publish a stable discovery-response schema. The harness
+    therefore accepts only a top-level discovery event with a dedicated symbol-list
+    field. Unknown, nested, echoed or error-shaped payloads remain evidence only and
+    never authorize subscription.
     """
-    if isinstance(value, list):
-        if value and all(isinstance(item, str) for item in value):
-            return instrument in value
-        return any(
-            _instrument_in_string_list(item, instrument)
-            for item in value
-            if isinstance(item, list | dict)
-        )
-    if isinstance(value, dict):
-        return any(_instrument_in_string_list(item, instrument) for item in value.values())
-    return False
+    if not isinstance(value, dict) or value.get("event") != DISCOVERY_EVENT:
+        return None
+    if "error" in value:
+        return None
+    for key in DISCOVERY_SYMBOL_KEYS:
+        symbols = value.get(key)
+        if not isinstance(symbols, list) or not symbols:
+            continue
+        if not all(isinstance(item, str) for item in symbols):
+            return None
+        return tuple(symbols)
+    return None
 
 
 def discovery_confirms_instrument(payloads: list[bytes], instrument: str) -> bool:
-    """Require the exact WIN contract in an explicit provider JSON string list."""
+    """Require the exact WIN contract in a recognized provider discovery response."""
     if WIN_CONTRACT.fullmatch(instrument) is None:
         raise ValueError("first-lab instrument must be a concrete WIN contract, e.g. WINV26")
     for payload in payloads:
@@ -92,7 +95,8 @@ def discovery_confirms_instrument(payloads: list[bytes], instrument: str) -> boo
             parsed: object = json.loads(payload.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError):
             continue
-        if _instrument_in_string_list(parsed, instrument):
+        symbols = _recognized_discovery_symbols(parsed)
+        if symbols is not None and instrument in symbols:
             return True
     return False
 
