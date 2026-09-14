@@ -129,6 +129,7 @@ class BtgDataServicesSubscription:
         "_control_sink",
         "_credential_source",
         "_error_sink",
+        "_expected_close",
         "_frame_sink",
         "_settings",
         "_subscribed",
@@ -163,6 +164,7 @@ class BtgDataServicesSubscription:
         self._client: _VendorClient | None = None
         self._confirmed_instrument: str | None = None
         self._subscribed = False
+        self._expected_close = False
 
     def describe_capabilities(self) -> ProviderCapabilities:
         ticks = (
@@ -214,7 +216,7 @@ class BtgDataServicesSubscription:
             self._error_sink(type(error).__name__)
 
     def _on_close(self, _status: object, _message: object) -> None:
-        if self._error_sink is not None:
+        if not self._expected_close and self._error_sink is not None:
             self._error_sink("connection-closed")
 
     def start(self) -> None:
@@ -224,6 +226,7 @@ class BtgDataServicesSubscription:
         credential = self._credential_source()
         require_text(credential, "credential")
         client = self._client_factory(credential, self._settings)
+        self._expected_close = False
         self._client = client
         client.run(
             on_message=self._on_message,
@@ -259,6 +262,7 @@ class BtgDataServicesSubscription:
     def close(self) -> None:
         client = self._require_client()
         instrument = self._confirmed_instrument
+        self._expected_close = True
         try:
             if self._subscribed and instrument is not None:
                 client.unsubscribe([instrument])
