@@ -64,25 +64,40 @@ def _canonical_json(value: object) -> bytes:
     ).encode("utf-8")
 
 
-def _recognized_discovery_symbols(value: object) -> tuple[str, ...] | None:
-    """Return symbols only from a bounded, explicitly recognized discovery response.
-
-    The provider does not publish a stable discovery-response schema. The harness
-    therefore accepts only a top-level discovery event with a dedicated symbol-list
-    field. Unknown, nested, echoed or error-shaped payloads remain evidence only and
-    never authorize subscription.
-    """
-    if not isinstance(value, dict) or value.get("event") != DISCOVERY_EVENT:
+def _string_symbols(value: object) -> tuple[str, ...] | None:
+    if not isinstance(value, list) or not value:
         return None
+    if not all(isinstance(item, str) for item in value):
+        return None
+    return tuple(value)
+
+
+def _symbols_from_mapping(value: dict[object, object]) -> tuple[str, ...] | None:
     if "error" in value:
         return None
     for key in DISCOVERY_SYMBOL_KEYS:
-        symbols = value.get(key)
-        if not isinstance(symbols, list) or not symbols:
-            continue
-        if not all(isinstance(item, str) for item in symbols):
-            return None
-        return tuple(symbols)
+        symbols = _string_symbols(value.get(key))
+        if symbols is not None:
+            return symbols
+    return None
+
+
+def _recognized_discovery_symbols(value: object) -> tuple[str, ...] | None:
+    """Return symbols only from bounded, explicitly recognized discovery responses.
+
+    The provider does not publish a stable discovery-response schema. The harness
+    therefore recognizes only an explicit top-level discovery event or a single
+    ``response`` envelope containing a dedicated symbol-list field. Unknown, echoed,
+    mixed or error-shaped payloads remain evidence only and never authorize subscription.
+    """
+    if not isinstance(value, dict):
+        return None
+    if value.get("event") == DISCOVERY_EVENT:
+        return _symbols_from_mapping(value)
+    if set(value) == {"response"}:
+        response = value.get("response")
+        if isinstance(response, dict):
+            return _symbols_from_mapping(response)
     return None
 
 
