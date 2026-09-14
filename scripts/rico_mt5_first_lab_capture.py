@@ -473,7 +473,9 @@ def run_first_lab(
             now_ns = monotonic_ns()
             if capture_deadline_ns is None:
                 if now_ns > discovery_deadline_ns:
-                    raise RuntimeError("complete Rico/MT5 discovery snapshot did not arrive in time")
+                    raise RuntimeError(
+                        "complete Rico/MT5 discovery snapshot did not arrive in time"
+                    )
                 before = discovery.offset
                 snapshot = discovery.poll_snapshot()
                 if snapshot is not None:
@@ -481,10 +483,14 @@ def run_first_lab(
                     raw_snapshot = _read_exact_prefix(discovery_path, after)[before:after]
                     evidence.record(raw_snapshot, "rico-discovery-snapshot", wall_now())
                     if snapshot.prefix != "WIN" or not snapshot.enumeration_complete:
-                        raise RuntimeError("Rico/MT5 discovery snapshot is incomplete or wrong-prefix")
+                        raise RuntimeError(
+                            "Rico/MT5 discovery snapshot is incomplete or wrong-prefix"
+                        )
                     candidates = tuple(item.symbol for item in snapshot.symbols)
                     if instrument not in candidates:
-                        raise RuntimeError("explicit WIN instrument is absent from discovery evidence")
+                        raise RuntimeError(
+                            "explicit WIN instrument is absent from discovery evidence"
+                        )
                     confirmation = _canonical_json(
                         {
                             "schema": 1,
@@ -584,7 +590,9 @@ def run_first_lab(
         if candle_count < MIN_CANDLE_FRAMES:
             raise RuntimeError("qualification capture requires at least one finalized candle frame")
         if health_failed or previous_health is None:
-            raise RuntimeError("qualification capture did not preserve a continuously ready health path")
+            raise RuntimeError(
+                "qualification capture did not preserve a continuously ready health path"
+            )
 
         finished_at = wall_now()
         _persist_buffers(
@@ -645,7 +653,12 @@ def run_first_lab(
                     "trading_capability": False,
                 }
             )
-            evidence.record(failure, "rico-session-failed", stopped_at, TechnicalEventKind.ANOMALY)
+            evidence.record(
+                failure,
+                "rico-session-failed",
+                stopped_at,
+                TechnicalEventKind.ANOMALY,
+            )
         evidence.stop(stopped_at)
 
 
