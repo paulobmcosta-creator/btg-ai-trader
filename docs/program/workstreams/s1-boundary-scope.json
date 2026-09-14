@@ -9,7 +9,7 @@
     "src/btg_ai_trader/__init__.py": "51fe12b40527662de8a62ec04ce0ff39c5591c67",
     "src/btg_ai_trader/observer/__init__.py": "f1f98d389ddd7b205a6d2969cf8d0f455d728259",
     "src/btg_ai_trader/observer/admission.py": "372c0f20fb3361193a2b3154422d4990e48806fa",
-    "src/btg_ai_trader/observer/btg_dataservices.py": "3bf0b7dd1b1223bda4973c1d10ae84e1c3f2bdb3",
+    "src/btg_ai_trader/observer/btg_dataservices.py": "15b3b768a53d01a4c575d1425cf3a0ae9c577387",
     "src/btg_ai_trader/observer/composition.py": "c2823cb754c481ac78ea64d7b41681b7eea24c92",
     "src/btg_ai_trader/observer/dedup.py": "8da04c84636106a07d6c9d60df7a36e143b081e0",
     "src/btg_ai_trader/observer/discovery.py": "9b63d019a0fdb4a6d61ae76617f9c2a4e0b5d655",
