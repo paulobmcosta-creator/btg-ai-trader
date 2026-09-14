@@ -96,6 +96,14 @@ def _settings(**overrides: Any) -> BtgDataServicesSettings:
     return BtgDataServicesSettings(**values)  # type: ignore[arg-type]
 
 
+def test_first_lab_defaults_are_realtime_trades_without_vendor_reconnect() -> None:
+    settings = _settings()
+    assert settings.stream_type == "realtime"
+    assert settings.data_type == "trades"
+    assert settings.raw_channel is RawChannel.TICK
+    assert settings.reconnect is False
+
+
 def test_subscription_preserves_websocket_text_as_raw_utf8_before_domain_decode() -> None:
     client = FakeVendorClient()
     factory = FakeFactory(client)
