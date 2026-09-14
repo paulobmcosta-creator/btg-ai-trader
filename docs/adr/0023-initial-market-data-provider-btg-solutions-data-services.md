@@ -47,9 +47,19 @@ Política inicial:
 
 ## DD-68 — primeiro laboratório
 
-Permanece **UNDECIDED** até a primeira captura real. Nenhum ticker, contrato futuro ou timeframe será hardcoded por este ADR.
+A decisão DD-68 foi **parcialmente resolvida** por coordenação humana em 2026-09-14:
 
-A implementação deverá exigir instrumento explicitamente configurado e resolução point-in-time. A escolha do primeiro laboratório será registrada antes da primeira captura real.
+- família inicial do laboratório: `WIN`;
+- contrato futuro concreto: resolução e confirmação point-in-time no BTG Data Services imediatamente antes da captura;
+- nenhum ticker concreto é default permanente do runtime;
+- fallback automático, ranking implícito, troca silenciosa de vencimento e rollover invisível são proibidos;
+- se o contrato pretendido estiver ausente, ambíguo ou não puder ser causalmente resolvido, a captura não inicia.
+
+O símbolo concreto selecionado para uma sessão deve ser fixado no respectivo run/capture context antes da subscription e não pode ser trocado silenciosamente durante a sessão.
+
+A granularidade/timeframe do primeiro laboratório permanece **UNDECIDED** e deve ser explicitamente resolvida antes da primeira captura real. Defaults de adapter/fixture não contam como decisão DD-68.
+
+O registro operacional detalhado está em `docs/program/workstreams/S1-DD68-FIRST-LAB.md`.
 
 ## Restrições de segurança
 
@@ -71,7 +81,7 @@ A presença do pacote oficial de Data Services não autoriza nenhuma outra API d
 4. callback preservando o payload textual recebido antes da decodificação de domínio;
 5. subscription/unsubscription/lifecycle testados sem capability financeira;
 6. integração do novo módulo ao boundary/NEG-CAP inventory;
-7. captura real somente após DD-68 e disponibilidade de API key read-only;
+7. resolução explícita da granularidade/timeframe de DD-68, API key read-only externa e captura real controlada com contrato WIN resolvido point-in-time;
 8. Security Diff Scan oficial ou tratamento explícito do gate correspondente.
 
 ## Consequências
