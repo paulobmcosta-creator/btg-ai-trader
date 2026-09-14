@@ -88,7 +88,9 @@ class RicoMt5BridgeReader:
                 record = source.readline(self._settings.max_record_bytes + 2)
         except FileNotFoundError:
             if self._offset:
-                raise BridgeContinuityError("bridge file disappeared after data was consumed") from None
+                raise BridgeContinuityError(
+                    "bridge file disappeared after data was consumed"
+                ) from None
             return None
 
         if not record.endswith(b"\n"):
