@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "assembly_revision": "2358c85540630c7fb521e565c5475dadbcfe42d5",
+  "assembly_revision": "065f1d698029cfb55debbf04de2b1d32aa0a01a8",
   "composition_status": "SCOPED_TESTS_IMPLEMENTED",
   "files": {
     ".python-version": "e4fba2183587225f216eeada4c78dfab6b2e65f5",
@@ -25,6 +25,7 @@
     "src/btg_ai_trader/observer/storage.py": "8c495be4e223c33cd9db6a5d39d22b2dbcdbf5c6",
     "src/btg_ai_trader/observer/storage_records.py": "0a182f00e0470d88141d9613d50bc662901677f3",
     "src/btg_ai_trader/observer/temporal.py": "6a405cbd162976ab504bc150776e932a1a0c91cd",
+    "src/btg_ai_trader/observer/temporal_lineage.py": "cd50620e96ce15d4db77f480694547cbb813435a",
     "src/btg_ai_trader/observer/values.py": "47bb307e565ad251c781e371ff5ad55f8be4b892",
     "src/btg_ai_trader/py.typed": "8b137891791fe96927ad78e64b0aad7bded08bdc"
   }
