@@ -104,10 +104,11 @@ def test_first_lab_defaults_are_realtime_trades_without_vendor_reconnect() -> No
     assert settings.reconnect is False
 
 
-def test_subscription_preserves_websocket_text_as_raw_utf8_before_domain_decode() -> None:
+def test_discovery_happens_before_subscription_and_control_payload_stays_separate() -> None:
     client = FakeVendorClient()
     factory = FakeFactory(client)
     frames: list[RawFrame] = []
+    controls: list[bytes] = []
     credential_reads = 0
 
     def credential_source() -> str:
@@ -120,10 +121,9 @@ def test_subscription_preserves_websocket_text_as_raw_utf8_before_domain_decode(
         credential_source,
         frames.append,
         client_factory=factory,
+        control_sink=controls.append,
     )
     subscription.start()
-    raw = '{"event":"trade","symbol":"TEST-DERIV-1","px":123456.0}'
-    client.emit(raw)
 
     assert credential_reads == 1
     assert factory.credentials == ["test-only-placeholder"]
@@ -133,23 +133,56 @@ def test_subscription_preserves_websocket_text_as_raw_utf8_before_domain_decode(
         "spawn_thread": False,
         "default_logs": False,
     }
+    assert client.subscriptions == []
+
+    subscription.request_available_instruments()
+    discovery = '{"event":"available_to_subscribe","tickers":["TEST-DERIV-1"]}'
+    client.emit(discovery)
+
+    assert client.discovery_requests == 1
+    assert controls == [discovery.encode("utf-8")]
+    assert frames == []
+
+    subscription.subscribe_confirmed()
+    trade = '{"event":"trade","symbol":"TEST-DERIV-1","px":123456.0}'
+    client.emit(trade)
+
     assert client.subscriptions == [["TEST-DERIV-1"]]
     assert frames == [
         RawFrame(
-            raw.encode("utf-8"),
+            trade.encode("utf-8"),
             _settings().reference,
             RawChannel.TICK,
         )
     ]
 
 
-def test_adapter_exposes_passive_discovery_and_lifecycle_only() -> None:
+def test_discovery_requires_explicit_control_sink_and_never_auto_subscribes() -> None:
     client = FakeVendorClient()
     subscription = BtgDataServicesSubscription(
         _settings(),
         lambda: "test-only-placeholder",
         lambda _frame: None,
         client_factory=FakeFactory(client),
+    )
+    subscription.start()
+
+    with pytest.raises(RuntimeError, match="requires a control_sink"):
+        subscription.request_available_instruments()
+
+    assert client.discovery_requests == 0
+    assert client.subscriptions == []
+
+
+def test_adapter_exposes_passive_discovery_and_lifecycle_only() -> None:
+    client = FakeVendorClient()
+    controls: list[bytes] = []
+    subscription = BtgDataServicesSubscription(
+        _settings(),
+        lambda: "test-only-placeholder",
+        lambda _frame: None,
+        client_factory=FakeFactory(client),
+        control_sink=controls.append,
     )
 
     forbidden = {
@@ -165,6 +198,7 @@ def test_adapter_exposes_passive_discovery_and_lifecycle_only() -> None:
 
     subscription.start()
     subscription.request_available_instruments()
+    subscription.subscribe_confirmed()
     subscription.close()
 
     assert client.discovery_requests == 1
@@ -172,6 +206,23 @@ def test_adapter_exposes_passive_discovery_and_lifecycle_only() -> None:
     assert client.closed is True
     with pytest.raises(RuntimeError, match="not started"):
         subscription.request_available_instruments()
+
+
+def test_discovery_is_forbidden_after_subscription() -> None:
+    subscription = BtgDataServicesSubscription(
+        _settings(),
+        lambda: "test-only-placeholder",
+        lambda _frame: None,
+        client_factory=FakeFactory(FakeVendorClient()),
+        control_sink=lambda _payload: None,
+    )
+    subscription.start()
+    subscription.subscribe_confirmed()
+
+    with pytest.raises(RuntimeError, match="only allowed before subscription"):
+        subscription.request_available_instruments()
+    with pytest.raises(RuntimeError, match="already subscribed"):
+        subscription.subscribe_confirmed()
 
 
 def test_capabilities_are_scoped_and_do_not_invent_sequence_or_resolution() -> None:
@@ -220,10 +271,25 @@ def test_callback_rejects_non_text_payload_without_optimistic_serialization() ->
         lambda: "test-only-placeholder",
         lambda _frame: None,
         client_factory=FakeFactory(client),
+        control_sink=lambda _payload: None,
     )
     subscription.start()
     with pytest.raises(TypeError, match="text WebSocket payload"):
         client.emit(b"already-bytes")
+
+
+def test_unsolicited_control_message_without_sink_fails_closed() -> None:
+    client = FakeVendorClient()
+    subscription = BtgDataServicesSubscription(
+        _settings(),
+        lambda: "test-only-placeholder",
+        lambda _frame: None,
+        client_factory=FakeFactory(client),
+    )
+    subscription.start()
+
+    with pytest.raises(RuntimeError, match="control message received"):
+        client.emit('{"event":"control"}')
 
 
 def test_error_sink_receives_only_exception_type_not_message() -> None:
@@ -253,6 +319,21 @@ def test_double_start_and_close_before_start_fail_closed() -> None:
     subscription.start()
     with pytest.raises(RuntimeError, match="already started"):
         subscription.start()
+
+
+def test_close_before_subscription_does_not_send_unsubscribe() -> None:
+    client = FakeVendorClient()
+    subscription = BtgDataServicesSubscription(
+        _settings(),
+        lambda: "test-only-placeholder",
+        lambda _frame: None,
+        client_factory=FakeFactory(client),
+    )
+    subscription.start()
+    subscription.close()
+
+    assert client.unsubscriptions == []
+    assert client.closed is True
 
 
 def test_settings_keep_no_latency_or_timestamp_claim_until_measured() -> None:
