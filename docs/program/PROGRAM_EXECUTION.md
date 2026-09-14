@@ -163,7 +163,7 @@ runner_group_id = 0
 check_run.output.annotations_count = 1
 ```
 
-This rules out a failure specific to the product code, Python setup, checkout action or one runner image. The exact upstream/account cause remains unproven because the current connector cannot read the check-run annotations endpoint; billing, entitlement, policy and platform-capacity explanations must not be asserted without that evidence.
+The isolated S2 Research CI reproduces the same pre-step failure. This rules out a failure specific to the product code, Python setup, checkout action, the S1 workflow, or one runner image. The exact upstream/account cause remains unproven because the current connector cannot read the check-run annotations endpoint; billing, entitlement, policy and platform-capacity explanations must not be asserted without that evidence.
 
 This state means:
 
@@ -183,8 +183,11 @@ PR #37 is isolated future-sprint development and MUST NOT be retargeted or merge
 ```text
 CLASSIFICATION = SPECULATIVE_S2
 PR = #37
-HEAD_AT_REVIEW = 21e22e0eb8f7be3f6269397c178e5ff3bc958092
+HEAD_AT_REVIEW = d50a6623076a3c1bd4d6692a49c03235a1ab4083
 BASE = integration/s2-research
+DELTA = 5_FILES_1_COMMIT
+S2_RESEARCH_CI = NOT_EXECUTED_VALIDLY
+S2_RESEARCH_CI_RUN = 34804392134
 FORMAL_REPLAY_IN_S1 = FORBIDDEN
 ECONOMIC_BACKTEST = ABSENT
 FINANCIAL_EXECUTION = ABSENT
@@ -192,7 +195,9 @@ FINANCIAL_EXECUTION = ABSENT
 
 The increment consumes immutable Observer `EventEnvelope` values and implements one finite causal replay lane per `(provider, capture_scope)`. It requires known UTC `knowledge_time`, preserves caller-supplied order, rejects causal regressions and duplicate EventIds, exposes inclusive monotonic knowledge cutoffs and exact rational virtual pacing. It does not read wall clock, sleep, connect to providers, load credentials, invoke strategy/ML, simulate costs/slippage/P&L, or create execution/financial artifacts.
 
-Structural self-review of the exact head found no blocker in the declared scope. Independent review and valid remote CI remain pending. No Sprint 2 acceptance is claimed.
+The isolated `s2-research-ci.yml` covers tests, Ruff, mypy, compileall, dependency validation, diff checks and frozen Foundation verification. It intentionally excludes the canonical S1 boundary inventory because formal replay/research capability is forbidden in the S1 promotion surface and is being developed only in separate S2 staging. A future Sprint 2 gate must define its own scope/capability boundary before promotion.
+
+Structural self-review of the exact final head found no blocker in the declared scope. Independent review and valid remote CI remain pending. No Sprint 2 acceptance is claimed.
 
 ## Review state
 
@@ -223,7 +228,7 @@ Self/author structural review documents findings but never satisfies the indepen
 11. Update exact-final-tree RQM/XC and NEG-CAP evidence.
 12. Execute official Security Diff Scan when its supported interface is available, or apply only an explicitly authorized governance treatment.
 13. Re-adjudicate all 11 Sprint 1 exit criteria conjunctively.
-14. In parallel only as SPECULATIVE work, keep PR #37 isolated; validate/review it when remote runners return, without promoting it before a future Sprint 2 gate.
+14. Keep PR #37 isolated as SPECULATIVE work; after runner restoration, obtain valid S2 Research CI and independent review without promoting it before a future Sprint 2 gate.
 ```
 
 No step above authorizes financial execution, trading credentials or real money.
