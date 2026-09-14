@@ -1,7 +1,7 @@
 """Offline tests for the Rico/MT5 controlled local evidence harness."""
 
+import datetime
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -40,7 +40,7 @@ class FakeClock:
         self.ns = 0
         self.on_first_sleep = on_first_sleep
         self.sleep_calls = 0
-        self.base = datetime(2026, 9, 14, 19, tzinfo=UTC)
+        self.base = datetime.datetime(2026, 9, 14, 19, tzinfo=datetime.UTC)
 
     def monotonic_ns(self) -> int:
         self.ns += 100_000_000
@@ -52,8 +52,8 @@ class FakeClock:
             self.on_first_sleep()
         self.sleep_calls += 1
 
-    def wall_now(self) -> datetime:
-        return self.base + timedelta(microseconds=self.ns // 1000)
+    def wall_now(self) -> datetime.datetime:
+        return self.base + datetime.timedelta(microseconds=self.ns // 1000)
 
 
 def _paths(tmp_path: Path) -> tuple[Path, Path, Path, Path]:
