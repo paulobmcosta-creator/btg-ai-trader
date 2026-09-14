@@ -67,13 +67,13 @@ PR #34 implements the smallest read-only provider boundary. Current design requi
 
 ```text
 connect
--> provider discovery
+-> provider discovery request
 -> external point-in-time contract confirmation
 -> subscribe_confirmed(exact_symbol)
 -> raw observation
 ```
 
-The adapter settings do not contain a preselected ticker. Pre-subscription messages are control/discovery evidence, not instrument-labelled Market Data `RawFrame`s. Automatic vendor reconnect is disabled fail-closed. Intentional local close is distinguished from unexpected disconnect so a normal shutdown does not become a false provider failure.
+The adapter settings do not contain a preselected ticker. `subscribe_confirmed()` is impossible until the adapter has successfully issued `available_to_subscribe()`. Pre-subscription messages are control/discovery evidence, not instrument-labelled Market Data `RawFrame`s. Automatic vendor reconnect is disabled fail-closed. Intentional local close is distinguished from unexpected disconnect so a normal shutdown does not become a false provider failure.
 
 PR #34 remains draft and unmerged until current-head remote CI actually executes successfully. No API key is stored in GitHub; the adapter accepts an external runtime credential source only.
 
@@ -101,22 +101,43 @@ See `docs/program/workstreams/S1-DD68-FIRST-LAB.md`.
 
 ## Controlled capture harness — PR #35
 
-PR #35 is a stacked draft on PR #34 and prepares the first real read-only laboratory without executing it.
+PR #35 is a stacked draft on PR #34 and prepares the first real read-only laboratory without executing it. Its effective delta is intentionally limited to four files: runbook, scripts policy, harness and offline tests.
+
+The harness executes one causal read-only provider session with one RunId:
+
+```text
+connect with no preselected ticker
+-> available_to_subscribe
+-> persist raw discovery/control evidence
+-> exact WIN confirmation
+-> persist explicit confirmation evidence
+-> subscribe_confirmed(exact_symbol)
+-> observe realtime provider messages
+-> require at least one trade for exact_symbol
+-> unsubscribe
+-> close
+-> persist canonical summary
+```
+
+This same-session design removes a time-of-check/time-of-use gap that existed in an earlier draft using separate discovery/capture connections.
 
 The harness:
 
 - obtains the Data Services API key only from `BTG_DATASERVICES_API_KEY` in the authorized process environment;
-- executes discovery and capture as distinct sessions with distinct RunIds;
+- never receives the API key as a CLI/config argument and never persists or hashes its value;
+- starts the vendor client with an empty instrument list;
 - persists discovery/control payloads using the existing EvidenceArchive/AuditJournal model;
-- requires the exact operator-supplied WIN contract to be present in provider discovery evidence;
-- opens a fresh capture session and subscribes only after that confirmation;
+- requires the exact operator-supplied WIN contract to be present in provider discovery evidence before subscription;
+- persists an explicit confirmation artifact before `subscribe_confirmed(exact_symbol)`;
 - counts only JSON `trade` events whose `symbol` equals the confirmed contract as successful market observations;
-- persists post-subscription non-trade messages but does not count them as market-data success;
-- requires at least one confirmed trade frame;
-- never persists, logs or hashes the API-key value;
+- preserves post-subscription non-trade messages but does not count them as market-data success;
+- fails closed if discovery does not confirm the candidate or if zero confirmed trade frames arrive;
+- has offline fake-provider tests proving single-session causality and that a synthetic credential is absent from persisted artifacts;
 - has not used any real API key or network session.
 
-PR #35 must not be integrated before #34. After #34 integration it must be reanchored/retargeted so the effective delta is only the harness, tests and runbook, then receive exact-head CI/review.
+The S1 boundary inventory remains intentionally scoped to the importable runtime/configuration surface. The harness does not become canonical runtime merely by existing under `scripts/`. Ruff, mypy and compileall cover `scripts`, while dedicated harness tests cover its credential/evidence lifecycle. The official Security Diff Scan remains a separate mandatory final gate unless human governance explicitly changes that requirement.
+
+PR #35 must not be integrated before #34. It is kept reanchored on the current #34 head while stacked. After #34 integrates into `sprint/1-market-observer`, #35 must be retargeted to that integrated baseline and its four-file effective delta reconfirmed before promotion.
 
 ## Current infrastructure blocker — Issue #36
 
@@ -142,21 +163,33 @@ PR_35_MERGE = BLOCKED
 
 It is not converted to PASS and is not bypassed by local-only evidence.
 
+## Review state
+
+```text
+PR_34_EXACT_HEAD_STRUCTURAL_REVIEW = REQUIRED_AFTER_LAST_CHANGES
+PR_34_INDEPENDENT_REVIEW = PENDING
+PR_35_EXACT_HEAD_STRUCTURAL_REVIEW = REQUIRED
+PR_35_INDEPENDENT_REVIEW = PENDING
+```
+
+Self/author structural review may document findings but does not satisfy the independent-review requirement.
+
 ## Remaining sequence
 
 ```text
 1. Restore valid GitHub Actions runner execution (Issue #36).
 2. Run Remote Python CI, BTG provider verification and pinned upstream verification on PR #34 exact HEAD.
-3. Reconfirm independent review on that exact green HEAD.
+3. Obtain independent review on that exact green HEAD.
 4. Merge PR #34 only after all mandatory checks pass.
-5. Reanchor/retarget PR #35 onto the integrated provider baseline.
-6. Run full exact-head CI/review for PR #35 and integrate only if green.
+5. Retarget PR #35 to the integrated sprint baseline and reconfirm its effective four-file delta.
+6. Run full exact-head CI and independent review for PR #35; integrate only if green.
 7. Provision read-only BTG Data Services API key outside repository/chat.
 8. Execute the controlled laboratory: WIN family, exact point-in-time contract, realtime trades.
-9. Collect provider evidence for authentication, discovery, confirmation-before-subscription, observation, disconnect/close and explicit restart.
-10. Update exact-final-tree RQM/XC and NEG-CAP evidence.
-11. Execute official Security Diff Scan when its supported interface is available, or apply only an explicitly authorized governance treatment.
-12. Re-adjudicate all 11 Sprint 1 exit criteria conjunctively.
+9. Collect provider evidence for authentication, discovery, confirmation-before-subscription, observation and disconnect/close.
+10. If restart is tested, create a new explicit run/session; never rely on vendor auto-reconnect.
+11. Update exact-final-tree RQM/XC and NEG-CAP evidence.
+12. Execute official Security Diff Scan when its supported interface is available, or apply only an explicitly authorized governance treatment.
+13. Re-adjudicate all 11 Sprint 1 exit criteria conjunctively.
 ```
 
 No step above authorizes financial execution, trading credentials or real money.
