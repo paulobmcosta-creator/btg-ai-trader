@@ -6,7 +6,7 @@
 AUTHORITATIVE_STATE = GITHUB_REMOTE
 REPOSITORY = paulobmcosta-creator/btg-ai-trader
 SPRINT_BRANCH = sprint/1-market-observer
-CURRENT_INTEGRATED_BASELINE = e3217863462aabea1d6a8851d6a0c6e04781fada
+CURRENT_INTEGRATED_BASELINE = ac3d1083f483bb85220f7637d21b4d5a4e34b11d
 FOUNDATION_0A_TO_0F = FORMALLY_CLOSED
 SPRINT_1_LIFECYCLE = OPEN
 S1_A_AUTHORIZED = YES
@@ -22,11 +22,11 @@ SPRINT1_ACCEPTANCE = NOT_GRANTED
 PROMOTION_TO_SPRINT_2 = NO
 SECURITY_DIFF_SCAN = NOT_EXECUTED
 
-RICO_MT5_OFFLINE_TICK_BRIDGE = IMPLEMENTED
-RICO_MT5_OFFLINE_FINAL_CANDLE_BRIDGE = IMPLEMENTED
-RICO_MT5_OFFLINE_SYMBOL_DISCOVERY = IMPLEMENTED
-RICO_MT5_RUNTIME_RUNBOOK = docs/program/workstreams/S1-RICO-MT5-FIRST-RUNTIME-QUALIFICATION.md
-RICO_MT5_RUNTIME_EVIDENCE_HARNESS = NOT_YET_MATERIALIZED
+RICO_MT5_OFFLINE_TICK_BRIDGE = INTEGRATED
+RICO_MT5_OFFLINE_FINAL_CANDLE_BRIDGE = INTEGRATED
+RICO_MT5_OFFLINE_SYMBOL_DISCOVERY = INTEGRATED
+RICO_MT5_RUNTIME_RUNBOOK = INTEGRATED
+RICO_MT5_RUNTIME_EVIDENCE_HARNESS = INTEGRATED_OFFLINE_TESTED
 
 REAL_MONEY = NO
 LIVE_TRADING = NO
@@ -41,7 +41,7 @@ Historical execution detail remains in Git history and prior PRs. This living fi
 
 The frozen Foundation artifacts remain unchanged. The Sprint 1 contract remains passive Market Observer only. Formal causal replay belongs to Sprint 2 and deterministic economic backtesting belongs to Sprint 3.
 
-The negative capability baseline remains authoritative: no Strategy operational path, TradeIntent operational path, RiskAuthorization Engine, OrderIntent, OrderPlan, ExecutionOrder, Paper execution, broker execution, financial ledger mutation or real-money authority may appear in Sprint 1.
+The negative-capability baseline remains authoritative: no Strategy operational path, TradeIntent operational path, RiskAuthorization Engine, OrderIntent, OrderPlan, ExecutionOrder, Paper execution, broker execution, financial ledger mutation or real-money authority may appear in Sprint 1.
 
 ## Provider history and current authority
 
@@ -74,12 +74,13 @@ Rico / MT5 server
       -> finalized candle observations
       -> bounded append-only FILE_COMMON transport
          -> trusted Python bridge/discovery readers
-            -> later admission and technical-evidence processing
+            -> local read-only evidence harness
+               -> canonical technical evidence / provenance / health / latency
 ```
 
 The bridge is deliberately one-way. The trusted Python runtime does not import the dual-use `MetaTrader5` package and receives no terminal-control, account, position or order interface.
 
-The integrated offline surface now covers raw ticks, genuinely finalized candles and passive server-symbol discovery. Symbol discovery preserves all candidates and does not rank, select or silently create a canonical instrument mapping. Fixture/file tests are not realtime provider evidence; runtime feed fidelity remains unknown until qualification.
+The integrated offline surface covers raw ticks, genuinely finalized candles, passive server-symbol discovery and the local evidence harness. Symbol discovery preserves all candidates and does not rank, select or silently create a canonical instrument mapping. Fixture/file tests are not realtime provider evidence; runtime feed fidelity remains unknown until qualification.
 
 ## Negative capabilities for the selected boundary
 
@@ -108,9 +109,9 @@ The BTG secure real-lab workflow was appropriate while BTG Data Services was the
 
 The BTG adapter, its unit tests and its non-authenticated provider-surface verification remain historical technical reference only; they do not authorize or schedule a BTG real session.
 
-## Runtime qualification runbook
+## Runtime qualification runbook and harness
 
-The controlled operator procedure for the first Rico/MT5 session is materialized at:
+The controlled operator procedure is materialized at:
 
 ```text
 docs/program/workstreams/S1-RICO-MT5-FIRST-RUNTIME-QUALIFICATION.md
@@ -118,35 +119,29 @@ docs/program/workstreams/S1-RICO-MT5-FIRST-RUNTIME-QUALIFICATION.md
 
 The runbook requires a concrete zero-cost entitlement check, Investor/read-only authorization, unique append-only session namespaces, passive WIN discovery, explicit point-in-time symbol mapping and a separate qualifying realtime tick/candle phase. It prohibits using an order attempt as a read-only test.
 
-The runbook itself is not runtime evidence and does not change Issue #45 acceptance state.
-
-## Runtime evidence instrumentation gap
-
-The offline provider boundary is implemented, but a Rico-specific controlled evidence harness has not yet been materialized. Raw NDJSON files alone do not automatically establish all required provenance, heartbeat/staleness and observable-latency evidence.
-
-Therefore:
+The integrated local harness is:
 
 ```text
-RICO_RAW_TRANSPORT = READY_FOR_CONTROLLED_RUNTIME_USE
-RICO_SYMBOL_DISCOVERY_PARSER = READY_FOR_CONTROLLED_RUNTIME_USE
-RICO_RUNTIME_EVIDENCE_HARNESS = OPEN_WORK
-RICO_REAL_SESSION = BLOCKED_FROM_FINAL_QUALIFICATION_UNTIL_EVIDENCE_PATH_IS_READY
+scripts/rico_mt5_first_lab_capture.py
 ```
 
-A real observation may be technically possible before that harness exists, but it must not be treated as sufficient Sprint 1 qualification evidence. The preferred sequence is to materialize the read-only evidence path first so the first controlled session is not needlessly repeated.
+It consumes only the append-only discovery/tick/candle files. It records RunId, code revision, config hash, provider CaptureContext, preserved raw prefixes, local monotonic ingress-to-validated-availability evidence and health/staleness samples. It has no MT5 control API, account API, order API, credential input or economic authority.
+
+The runbook and offline-tested harness are implementation evidence only. Neither is runtime provider evidence and neither changes Issue #45 acceptance state.
 
 ## Runtime qualification gate
 
 Rico can be promoted to `SPRINT1_PROVIDER_QUALIFIED = YES` only after evidence demonstrates all of the following:
 
 1. MT5 activation in the concrete Rico account with no additional recurring platform/market-data charge under the qualified account state.
-2. Discovery of the current WIN contract and exact provider symbol.
-3. Realtime WIN observations sufficient for AC-05 and AC-07.
-4. Investor/read-only authorization with trading disabled, without introducing an order test.
-5. Bridge execution as a custom MQL5 indicator only.
-6. Trusted Python path without `MetaTrader5`, master password or account/order APIs.
-7. Required timestamp, provenance, heartbeat and latency evidence.
-8. No minimum real-money operation required to retain the entitlement used by the qualification.
+2. No minimum real-money operation is required to retain the entitlement used by the qualification.
+3. Investor/read-only authorization is established locally without exposing credentials to Git, chat or command-line arguments and without using an order attempt as a test.
+4. Passive discovery identifies the current WIN candidate set and the exact provider symbol is resolved explicitly for that session.
+5. Realtime WIN observations satisfy the applicable AC-05/AC-07 evidence requirements, including genuine tick flow and at least one genuinely finalized candle.
+6. The bridge executes as a custom MQL5 indicator only.
+7. The trusted Python path remains free of `MetaTrader5`, master password and account/order APIs.
+8. Required raw/passive evidence, provenance, heartbeat/staleness and local latency evidence is preserved and reviewed.
+9. Runtime thresholds are adjudicated from real-feed evidence; fixture thresholds are not promoted automatically.
 
 Failure of any item rejects the Rico qualification under the current constraints; it does not relax the Sprint 1 contract.
 
@@ -154,8 +149,9 @@ Failure of any item rejects the Rico qualification under the current constraints
 
 ```text
 FIXTURE_AND_OFFLINE_ENGINEERING_EVIDENCE = AVAILABLE
-RICO_OFFLINE_TICK_AND_CANDLE_TRANSPORT = IMPLEMENTED
-RICO_OFFLINE_SYMBOL_DISCOVERY = IMPLEMENTED
+RICO_OFFLINE_TICK_AND_CANDLE_TRANSPORT = INTEGRATED
+RICO_OFFLINE_SYMBOL_DISCOVERY = INTEGRATED
+RICO_OFFLINE_EVIDENCE_HARNESS = INTEGRATED_AND_TESTED
 REAL_RICO_MT5_EVIDENCE = NOT_EXECUTED
 REALTIME_AC_05_AC_07 = NOT_YET_SATISFIED_BY_RICO
 RUNTIME_PROVENANCE_HEARTBEAT_LATENCY_EVIDENCE = NOT_YET_SATISFIED_BY_RICO
@@ -168,15 +164,15 @@ Historical BTG fixture/provider evidence remains auditable but is not relabeled 
 ## Remaining Sprint 1 sequence
 
 ```text
-1. Materialize and validate a Rico-specific local read-only evidence harness that consumes only the append-only discovery/tick/candle files and existing Observer evidence primitives.
-2. Confirm MT5 R$0 activation in the user's concrete Rico account and confirm that the entitlement requires no minimum real-money operation.
-3. Establish MT5 Investor/read-only authorization locally; never expose master/investor credentials to Git, shell arguments or chat.
+1. Confirm MT5 R$0 activation in the user's concrete Rico account and confirm that the entitlement requires no minimum real-money operation.
+2. Establish MT5 Investor/read-only authorization locally; never expose master/investor credentials to Git, shell arguments or chat.
+3. Create one fresh local session namespace for discovery/tick/candle append-only files and one controlled evidence output root.
 4. Execute passive WIN discovery and explicitly resolve the concrete current provider symbol without automatic rollover/selection.
-5. Execute one controlled realtime observation session with the custom indicator bridge for the exact confirmed symbol.
-6. Preserve and reconcile raw/passive evidence, timestamps, provenance, heartbeat/staleness and latency without exposing credentials.
-7. Reconcile the real-provider evidence against AC-01/02/03/05/07 and the RQM matrix.
-8. Re-run exact-final-tree CI and negative-capability verification.
-9. Execute the official Security Diff Scan on the exact final Sprint 1 tree when the official action is available.
+5. Execute one controlled realtime observation session with the custom indicator bridge and the integrated local evidence harness for the exact confirmed symbol.
+6. Preserve and review raw/passive evidence, timestamps, provenance, heartbeat/staleness and local monotonic latency without exposing credentials.
+7. Reconcile the real-provider evidence against AC-01/02/03/04/05/07/08/09/12/13 and the RQM matrix without upgrading unsupported claims.
+8. Re-run exact-final-tree CI and negative-capability verification after runtime evidence/documentation reconciliation.
+9. Execute the official Security Diff Scan on the exact final Sprint 1 tree when the official action is available, unless governance explicitly authorizes a different treatment.
 10. Adjudicate all Sprint 1 exit criteria conjunctively.
 11. Promote to Sprint 2 only after formal Sprint 1 PASS.
 ```
