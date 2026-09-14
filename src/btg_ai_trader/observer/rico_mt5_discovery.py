@@ -3,7 +3,7 @@
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import BinaryIO
+from typing import Any
 
 from btg_ai_trader.observer.values import require_text
 
@@ -14,6 +14,11 @@ class DiscoveryContinuityError(RuntimeError):
 
 class DiscoveryProtocolError(RuntimeError):
     """A complete discovery snapshot violates the bridge protocol."""
+
+
+def _require_nonnegative_count(value: object, name: str) -> None:
+    if type(value) is not int or value < 0:
+        raise ValueError(f"{name} must be an explicit non-negative integer")
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,16 +48,11 @@ class RicoMt5DiscoverySnapshot:
         require_text(self.snapshot_id, "snapshot_id")
         if not isinstance(self.prefix, str):
             raise TypeError("prefix must be str")
-        for name in (
-            "server_symbol_total",
-            "prefix_matches",
-            "excluded_custom",
-            "prefix_errors",
-            "enumeration_errors",
-        ):
-            value = getattr(self, name)
-            if type(value) is not int or value < 0:
-                raise ValueError(f"{name} must be an explicit non-negative integer")
+        _require_nonnegative_count(self.server_symbol_total, "server_symbol_total")
+        _require_nonnegative_count(self.prefix_matches, "prefix_matches")
+        _require_nonnegative_count(self.excluded_custom, "excluded_custom")
+        _require_nonnegative_count(self.prefix_errors, "prefix_errors")
+        _require_nonnegative_count(self.enumeration_errors, "enumeration_errors")
         if type(self.symbols) is not tuple or any(
             not isinstance(item, RicoMt5DiscoveredSymbol) for item in self.symbols
         ):
@@ -124,7 +124,7 @@ class RicoMt5DiscoveryReader:
         return snapshot
 
     def _read_snapshot(
-        self, source: BinaryIO
+        self, source: Any
     ) -> tuple[RicoMt5DiscoverySnapshot, int] | None:
         begin = self._read_record(source)
         if begin is None:
@@ -185,7 +185,7 @@ class RicoMt5DiscoveryReader:
                 raise DiscoveryProtocolError(str(exc)) from exc
             return snapshot, source.tell()
 
-    def _read_record(self, source: BinaryIO) -> dict[str, object] | None:
+    def _read_record(self, source: Any) -> dict[str, object] | None:
         line = source.readline(self._settings.max_record_bytes + 2)
         if not line or not line.endswith(b"\n"):
             if len(line) > self._settings.max_record_bytes:
@@ -195,7 +195,7 @@ class RicoMt5DiscoveryReader:
             raise DiscoveryProtocolError("discovery record exceeded max_record_bytes")
         try:
             value = json.loads(line.decode("ascii"))
-        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        except ValueError as exc:
             raise DiscoveryProtocolError("discovery record is not canonical ASCII JSON") from exc
         if not isinstance(value, dict):
             raise DiscoveryProtocolError("discovery record must be a JSON object")
