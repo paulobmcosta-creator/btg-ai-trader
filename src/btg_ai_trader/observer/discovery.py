@@ -1,6 +1,5 @@
 """Passive point-in-time discovery over evidenced instrument-registry snapshots."""
 
-from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -10,17 +9,17 @@ from btg_ai_trader.observer.temporal import require_utc
 from btg_ai_trader.observer.values import require_text
 
 
-@dataclass(frozen=True, slots=True, init=False)
+@dataclass(frozen=True, slots=True)
 class InstrumentDiscovery:
     """All admissible mappings; this evidence never ranks or selects a contract."""
 
     matches: tuple[InstrumentMapping, ...]
 
-    def __init__(self, matches: Iterable[InstrumentMapping]) -> None:
-        copied = tuple(matches)
-        if any(not isinstance(item, InstrumentMapping) for item in copied):
-            raise ValueError("discovery evidence must contain InstrumentMapping records")
-        object.__setattr__(self, "matches", copied)
+    def __post_init__(self) -> None:
+        if type(self.matches) is not tuple or any(
+            not isinstance(item, InstrumentMapping) for item in self.matches
+        ):
+            raise ValueError("discovery evidence must be an immutable tuple of InstrumentMapping")
 
 
 def discover_instruments(
@@ -41,7 +40,7 @@ def discover_instruments(
     require_text(capture_scope, "capture_scope")
     require_utc(valid_at, "valid_at")
     require_utc(knowledge_cutoff, "knowledge_cutoff")
-    return InstrumentDiscovery(
+    matches = tuple(
         item
         for item in registry.mappings
         if item.family_id == family_id
@@ -51,3 +50,4 @@ def discover_instruments(
         and item.valid_from <= valid_at
         and (item.valid_until is None or valid_at < item.valid_until)
     )
+    return InstrumentDiscovery(matches)
