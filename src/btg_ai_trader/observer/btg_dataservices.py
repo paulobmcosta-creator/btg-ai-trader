@@ -78,7 +78,7 @@ class BtgDataServicesSettings:
     data_type: str = "trades"
     data_subtype: str = "derivatives"
     feed: str = "A"
-    reconnect: bool = True
+    reconnect: bool = False
 
     def __post_init__(self) -> None:
         for value, name in (
@@ -101,8 +101,8 @@ class BtgDataServicesSettings:
             raise ValueError("Sprint 1 initial BTG adapter is restricted to derivatives")
         if self.feed not in {"A", "B"}:
             raise ValueError("feed must be A or B")
-        if type(self.reconnect) is not bool:
-            raise ValueError("reconnect must be boolean")
+        if self.reconnect is not False:
+            raise ValueError("automatic vendor reconnect is disabled in Sprint 1")
 
     @property
     def raw_channel(self) -> RawChannel:
@@ -212,7 +212,7 @@ class BtgDataServicesSubscription:
             on_message=self._on_message,
             on_error=self._on_error,
             on_close=self._on_close,
-            reconnect=self._settings.reconnect,
+            reconnect=False,
             spawn_thread=False,
             default_logs=False,
         )
