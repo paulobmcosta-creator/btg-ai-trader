@@ -128,6 +128,7 @@ class BtgDataServicesSubscription:
         "_confirmed_instrument",
         "_control_sink",
         "_credential_source",
+        "_discovery_requested",
         "_error_sink",
         "_expected_close",
         "_frame_sink",
@@ -163,6 +164,7 @@ class BtgDataServicesSubscription:
         self._client_factory = client_factory
         self._client: _VendorClient | None = None
         self._confirmed_instrument: str | None = None
+        self._discovery_requested = False
         self._subscribed = False
         self._expected_close = False
 
@@ -227,26 +229,41 @@ class BtgDataServicesSubscription:
         require_text(credential, "credential")
         client = self._client_factory(credential, self._settings)
         self._expected_close = False
+        self._discovery_requested = False
         self._client = client
-        client.run(
-            on_message=self._on_message,
-            on_error=self._on_error,
-            on_close=self._on_close,
-            reconnect=False,
-            spawn_thread=False,
-            default_logs=False,
-        )
+        try:
+            client.run(
+                on_message=self._on_message,
+                on_error=self._on_error,
+                on_close=self._on_close,
+                reconnect=False,
+                spawn_thread=False,
+                default_logs=False,
+            )
+        except Exception:
+            self._expected_close = True
+            try:
+                client.close()
+            finally:
+                self._client = None
+            raise
 
     def request_available_instruments(self) -> None:
         if self._subscribed:
             raise RuntimeError("instrument discovery is only allowed before subscription")
+        if self._discovery_requested:
+            raise RuntimeError("instrument discovery was already requested")
         if self._control_sink is None:
             raise RuntimeError("instrument discovery requires a control_sink")
-        self._require_client().available_to_subscribe()
+        client = self._require_client()
+        client.available_to_subscribe()
+        self._discovery_requested = True
 
     def subscribe_confirmed(self, instrument: str) -> None:
         """Subscribe only after point-in-time confirmation of ``instrument`` by the caller."""
         client = self._require_client()
+        if not self._discovery_requested:
+            raise RuntimeError("instrument discovery must be requested before subscription")
         if self._subscribed or self._confirmed_instrument is not None:
             raise RuntimeError("instrument is already subscribed")
         require_text(instrument, "instrument")
@@ -264,12 +281,15 @@ class BtgDataServicesSubscription:
         instrument = self._confirmed_instrument
         self._expected_close = True
         try:
-            if self._subscribed and instrument is not None:
-                client.unsubscribe([instrument])
+            try:
+                if self._subscribed and instrument is not None:
+                    client.unsubscribe([instrument])
+            finally:
+                client.close()
         finally:
-            client.close()
             self._client = None
             self._confirmed_instrument = None
+            self._discovery_requested = False
             self._subscribed = False
 
     def _require_client(self) -> _VendorClient:
