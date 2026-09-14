@@ -10,6 +10,7 @@ DD_43 = TRIGGERED
 DD_68 = UNDECIDED
 REAL_PROVIDER_CONNECTION = NOT_EXECUTED
 REAL_CAPTURE = NOT_EXECUTED
+VENDOR_AUTO_RECONNECT = DISABLED
 TRADING_CAPABILITY = ABSENT
 ```
 
@@ -28,13 +29,21 @@ A documentação oficial confirma suporte a B3, `derivatives`, `trades`, candles
 ## Implementação nesta branch
 
 - ADR-0023 materializa DD-60 e a política DD-43.
-- `BtgDataServicesSettings` restringe a primeira integração a B3/derivatives, SSL do binding real e tipos de dados `trades`, `candles-1S` e `candles-1M`.
+- `BtgDataServicesSettings` restringe a primeira integração a B3/derivatives e tipos de dados `trades`, `candles-1S` e `candles-1M`.
 - `BtgDataServicesSubscription` expõe apenas lifecycle read-only, subscription, discovery passivo, capabilities e callback raw.
 - O wrapper recebe `credential_source` e não armazena o segredo no próprio adapter.
 - O wrapper recebe `client_factory` por injeção; o runtime S1 continua sem import externo direto e o boundary fail-closed não é relaxado.
 - O pacote oficial é um extra opcional explícito `btg-data`, não uma dependência runtime universal.
 - CI separada instala o extra e verifica a presença apenas dos métodos read-only necessários, sem instanciar o cliente e sem autenticar.
 - Testes usam cliente fake; nenhuma API key real, rede ou conta é usada.
+
+## Reconnect fail-closed
+
+A fonte oficial do cliente mostra que, no `on_close`, o reconnect interno chama `run(...)` novamente sem repassar `spawn_thread` e `default_logs`, que retornariam aos defaults. Além disso, uma assinatura feita depois de `run()` não passa a integrar automaticamente `self.instruments` do cliente para resubscription na reconexão.
+
+Por isso, o Sprint 1 **desabilita o reconnect automático do vendor**. `BtgDataServicesSettings(reconnect=True)` falha fechado e o wrapper sempre chama `run(..., reconnect=False, spawn_thread=False, default_logs=False)`.
+
+Após uma queda, a recuperação deverá encerrar a sessão e criar explicitamente uma nova sessão/subscription auditável. Isso preserva configuração, observabilidade e causalidade em vez de aceitar reconnect implícito com defaults diferentes.
 
 ## Fronteira de payload
 
@@ -66,7 +75,7 @@ Antes da primeira captura real deve ser selecionado o primeiro instrumento de la
 3. revisão independente do diff;
 4. escolha DD-68;
 5. provisão de API key read-only fora do repositório;
-6. sessão real controlada provando autenticação, discovery, subscribe, ticks/candles, heartbeat/reconnect e raw capture;
+6. sessão real controlada provando autenticação, discovery, subscribe, ticks/candles, heartbeat/disconnect e restart explícito com raw capture;
 7. atualização da matriz RQM/XC no SHA integrado;
 8. Security Diff Scan oficial antes do gate final, ou waiver humano explícito conforme governança.
 
