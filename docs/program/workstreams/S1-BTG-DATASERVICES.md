@@ -7,7 +7,11 @@ DD_60 = ACCEPTED
 PROVIDER = BTG Solutions Data Services
 ADR = ADR-0023
 DD_43 = TRIGGERED
-DD_68 = UNDECIDED
+DD_68 = PARTIALLY_RESOLVED
+DD_68_INSTRUMENT_FAMILY = WIN
+DD_68_CONCRETE_CONTRACT = RESOLVE_POINT_IN_TIME
+DD_68_AUTO_FALLBACK = FORBIDDEN
+DD_68_TIMEFRAME_OR_GRANULARITY = UNDECIDED
 REAL_PROVIDER_CONNECTION = NOT_EXECUTED
 REAL_CAPTURE = NOT_EXECUTED
 VENDOR_AUTO_RECONNECT = DISABLED
@@ -15,6 +19,8 @@ TRADING_CAPABILITY = ABSENT
 ```
 
 A seleção humana de DD-60 ocorreu em 2026-09-14: `Aprovo DD-60 = BTG Solutions Data Services`.
+
+A decisão humana de laboratório DD-68 também foi registrada em 2026-09-14: a família inicial é `WIN`; o contrato futuro concreto deve ser resolvido e confirmado point-in-time no BTG Data Services imediatamente antes de cada captura real; fallback/rollover silencioso é proibido. O timeframe/granularidade permanece aberto até antes da primeira captura real. Ver [`S1-DD68-FIRST-LAB.md`](S1-DD68-FIRST-LAB.md).
 
 ## Fontes oficiais consultadas
 
@@ -64,18 +70,24 @@ O adapter não deve:
 
 O cliente oficial mantém sua autenticação somente no processo/sessão necessária à conexão.
 
-## DD-68 — próximo gate humano
+## DD-68 — laboratório WIN
 
-Antes da primeira captura real deve ser selecionado o primeiro instrumento de laboratório. Nenhum ticker é default do runtime. O identificador `TEST-DERIV-1` usado nos testes é explicitamente sintético e não constitui decisão DD-68.
+A família `WIN` foi aprovada como primeiro laboratório. Nenhum ticker concreto é default permanente do runtime.
+
+Antes de cada captura real, o sistema deverá resolver no discovery do BTG Data Services qual contrato WIN concreto será usado e confirmar sua disponibilidade point-in-time. O símbolo selecionado fica fixo para aquele run/capture context. Se a resolução for ausente, ambígua ou inválida, a captura não inicia.
+
+É proibido fallback automático, ranking implícito, troca silenciosa para outro vencimento ou rollover invisível. O identificador `TEST-DERIV-1` continua sendo somente fixture.
+
+A granularidade/timeframe ainda não foi decidida e deve ser resolvida antes da primeira captura real. Defaults do adapter não contam como decisão DD-68.
 
 ## Evidência ainda necessária
 
-1. CI completa desta branch;
-2. CI específica do extra oficial;
-3. revisão independente do diff;
-4. escolha DD-68;
+1. CI atual do HEAD desta branch executado com runners funcionais;
+2. CI específica do extra oficial no HEAD atual;
+3. revisão independente do diff atual;
+4. decisão humana sobre timeframe/granularidade do primeiro laboratório;
 5. provisão de API key read-only fora do repositório;
-6. sessão real controlada provando autenticação, discovery, subscribe, ticks/candles, heartbeat/disconnect e restart explícito com raw capture;
+6. sessão real controlada provando autenticação, discovery point-in-time do contrato WIN, subscribe, observação, heartbeat/disconnect e restart explícito com raw capture;
 7. atualização da matriz RQM/XC no SHA integrado;
 8. Security Diff Scan oficial antes do gate final, ou waiver humano explícito conforme governança.
 
