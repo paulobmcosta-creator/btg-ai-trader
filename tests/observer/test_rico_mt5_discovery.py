@@ -16,24 +16,29 @@ INDICATOR = ROOT / "tools" / "mt5" / "RicoMarketDataBridge.mq5"
 PYTHON_DISCOVERY = ROOT / "src" / "btg_ai_trader" / "observer" / "rico_mt5_discovery.py"
 
 
-def _snapshot(*symbols: str, enumeration_errors: int = 0) -> bytes:
+def _snapshot(
+    *symbols: str,
+    prefix_errors: int = 0,
+    enumeration_errors: int = 0,
+) -> bytes:
     records = [
         b'{"schema":1,"record_type":"snapshot_begin","snapshot_id":"s1",'
         b'"prefix":"WIN","server_symbol_total":100}\n'
     ]
-    for index, symbol in enumerate(symbols):
+    for symbol in symbols:
         records.append(
             (
                 '{"schema":1,"record_type":"symbol","snapshot_id":"s1",'
-                f'"symbol":"{symbol}","custom":false,"start_time":1,'
-                f'"expiration_time":{10 + index},"digits":0}}\n'
+                f'"symbol":"{symbol}","custom":false}}\n'
             ).encode("ascii")
         )
+    prefix_matches = len(symbols) + prefix_errors
     records.append(
         (
             '{"schema":1,"record_type":"snapshot_end","snapshot_id":"s1",'
-            f'"prefix_matches":{len(symbols)},"emitted_symbols":{len(symbols)},'
-            f'"excluded_custom":0,"enumeration_errors":{enumeration_errors}}}\n'
+            f'"prefix_matches":{prefix_matches},"emitted_symbols":{len(symbols)},'
+            f'"excluded_custom":0,"prefix_errors":{prefix_errors},'
+            f'"enumeration_errors":{enumeration_errors}}}\n'
         ).encode("ascii")
     )
     return b"".join(records)
@@ -116,12 +121,14 @@ def test_duplicate_or_out_of_prefix_symbol_fails_closed(tmp_path: Path) -> None:
         _reader(path).poll_snapshot()
 
 
-def test_enumeration_error_is_preserved_instead_of_hidden(tmp_path: Path) -> None:
+def test_discovery_errors_are_preserved_instead_of_hidden(tmp_path: Path) -> None:
     path = tmp_path / "discovery.ndjson"
-    path.write_bytes(_snapshot("WINV26", enumeration_errors=1))
+    path.write_bytes(_snapshot("WINV26", prefix_errors=1, enumeration_errors=2))
     snapshot = _reader(path).poll_snapshot()
     assert snapshot is not None
-    assert snapshot.enumeration_errors == 1
+    assert snapshot.prefix_errors == 1
+    assert snapshot.enumeration_errors == 2
+    assert snapshot.prefix_matches == 2
     assert snapshot.enumeration_complete is False
 
 
@@ -166,14 +173,15 @@ def test_indicator_discovery_enumerates_without_market_watch_mutation() -> None:
     assert 'DiscoveryPrefix = "WIN"' in source
     assert "SymbolsTotal(false)" in source
     assert "SymbolName(i, false)" in source
-    assert "SYMBOL_CUSTOM" in source
-    assert "SYMBOL_START_TIME" in source
-    assert "SYMBOL_EXPIRATION_TIME" in source
-    assert "SYMBOL_DIGITS" in source
+    assert "SymbolExist(name, custom)" in source
     assert '"custom\\\":false' in source
+    assert "prefix_errors" in source
 
     prohibited = (
         "SymbolSelect(",
+        "SYMBOL_START_TIME",
+        "SYMBOL_EXPIRATION_TIME",
+        "SYMBOL_DIGITS",
         "OrderSend",
         "OrderCheck",
         "OrderCalcMargin",
