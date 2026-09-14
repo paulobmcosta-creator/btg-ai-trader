@@ -90,7 +90,7 @@ The integrated baseline remains passive and provider-agnostic. PR #34 adds the s
 | RQM-035 | SATISFIED | Structural inventory, AST boundary and runtime NEG-CAP demonstrate no strategy/order/execution/economic authority. |
 | RQM-036 | BLOCKED_SECURITY_SCAN | Current integrated tree has no execution SDK dependency or trading-credential consumption; official Security Diff Scan remains absent. PR #34 must be re-evaluated on exact final tree. |
 | RQM-037 | SATISFIED | Nontrivial observed market data terminates in technical evidence/queue decisions only. |
-| RQM-038 | SATISFIED | Candle interval/finalization/knowledge availability are distinct and future availability is rejected; first real lab is explicitly trades/realtime, not candles. |
+| RQM-038 | SATISFIED | Candle interval/finalization/knowledge availability are distinct and future availability is rejected; first real lab is explicitly `trades/realtime`, not candles. |
 | RQM-039 | SATISFIED | Derived technical artifacts cannot claim temporal availability earlier or more certain than their ancestors. |
 | RQM-040 | SATISFIED_FIXTURE_SCOPE | Causal point-in-time discovery returns all admissible mappings without ranking, rollover or implicit contract selection; DD-68 requires this before each WIN capture. |
 | RQM-041 | SATISFIED_FIXTURE_SCOPE | Integrated run/config/input/raw hashes and deterministic reprocessing provide capture traceability. |
@@ -116,7 +116,7 @@ This is an evidence classification, not a formal Sprint 1 PASS.
 | AC-04 Read-Only Provider Authentication | REQUIRED_IF_TRIGGERED | PENDING_REAL_PROVIDER_EVIDENCE — DD-43 policy and adapter boundary exist; no real API-key session executed |
 | AC-05 Read-Only Market-Data Subscription | REQUIRED_CORE | PENDING_PROVIDER_INTEGRATION / PENDING_REAL_PROVIDER_EVIDENCE — PR #34 implements read-only subscription boundary; no real session yet |
 | AC-06 Historical Request | PERMITTED_OPTIONAL | NOT_TRIGGERED_CONDITIONAL |
-| AC-07 Tick & Candle Observation | REQUIRED_CORE | SATISFIED_FIXTURE_SCOPE; DD-68 first real lab selects trades/realtime |
+| AC-07 Tick & Candle Observation | REQUIRED_CORE | SATISFIED_FIXTURE_SCOPE; DD-68 first real lab selects `trades/realtime` |
 | AC-08 Heartbeat & Liveness | REQUIRED_CORE | SATISFIED_FIXTURE_SCOPE; real provider disconnect/restart evidence pending |
 | AC-09 Observable Latency Measurement | REQUIRED_CORE | SATISFIED_FIXTURE_SCOPE |
 | AC-10 Quality / Admission | REQUIRED_CORE | SATISFIED_FIXTURE_SCOPE |
@@ -129,7 +129,7 @@ This is an evidence classification, not a formal Sprint 1 PASS.
 
 `DD-60` is resolved: human coordination selected **BTG Solutions Data Services**, materialized by ADR-0023 in PR #34. DD-43 is triggered with an external-secret / memory-only policy; no trading credential is authorized.
 
-`DD-68` is resolved for the first Sprint 1 laboratory:
+`DD-68` is fully resolved for the first Sprint 1 laboratory:
 
 ```text
 INSTRUMENT_FAMILY = WIN
