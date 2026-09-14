@@ -18,6 +18,8 @@ jobs:
   capture:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    environment:
+      name: btg-readonly-lab
     steps:
       - name: Check out laboratory request commit
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -122,20 +124,20 @@ jobs:
           python -m pip install -e ".[btg-data]"
           python -m pip check
 
-      - name: Require external read-only and evidence-encryption secrets
+      - name: Require protected laboratory secrets
         id: preflight
         shell: bash
         env:
-          BTG_DATASERVICES_API_KEY: ${{ secrets.BTG_DATASERVICES_API_KEY }}
-          BTG_EVIDENCE_PASSPHRASE: ${{ secrets.BTG_EVIDENCE_PASSPHRASE }}
+          BTG_DATASERVICES_API_KEY: ${{ secrets.BTG_LAB_DATASERVICES_API_KEY }}
+          BTG_EVIDENCE_PASSPHRASE: ${{ secrets.BTG_LAB_EVIDENCE_PASSPHRASE }}
         run: |
           set -euo pipefail
           if [[ -z "${BTG_DATASERVICES_API_KEY:-}" ]]; then
-            echo "BTG_DATASERVICES_API_KEY is not configured." >&2
+            echo "BTG_LAB_DATASERVICES_API_KEY is not configured in the protected environment." >&2
             exit 1
           fi
           if [[ -z "${BTG_EVIDENCE_PASSPHRASE:-}" || ${#BTG_EVIDENCE_PASSPHRASE} -lt 24 ]]; then
-            echo "BTG_EVIDENCE_PASSPHRASE must be configured as a strong single-line secret." >&2
+            echo "BTG_LAB_EVIDENCE_PASSPHRASE must be a strong protected environment secret." >&2
             exit 1
           fi
           gpg --version >/dev/null
@@ -145,7 +147,7 @@ jobs:
         continue-on-error: true
         shell: bash
         env:
-          BTG_DATASERVICES_API_KEY: ${{ secrets.BTG_DATASERVICES_API_KEY }}
+          BTG_DATASERVICES_API_KEY: ${{ secrets.BTG_LAB_DATASERVICES_API_KEY }}
         run: |
           set -euo pipefail
           evidence_root="$RUNNER_TEMP/btg-evidence-root"
@@ -159,12 +161,89 @@ jobs:
             --discovery-seconds "${{ steps.request.outputs.discovery_seconds }}" \
             --capture-seconds "${{ steps.request.outputs.capture_seconds }}"
 
+      - name: Emit sanitized technical summary
+        id: summary
+        if: ${{ steps.capture.outcome == 'success' }}
+        shell: bash
+        env:
+          LAB_INSTRUMENT: ${{ steps.request.outputs.instrument }}
+          LAB_CODE_REVISION: ${{ steps.request.outputs.code_revision }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          from btg_ai_trader.observer.storage_records import EvidenceRecord, decode_record
+
+          root = Path(os.environ["RUNNER_TEMP"]) / "btg-evidence-root"
+          sessions = [path for path in root.iterdir() if path.is_dir()]
+          if len(sessions) != 1:
+              raise SystemExit("expected exactly one evidence session")
+          session = sessions[0]
+          archive_files = sorted((session / "archive").glob("*.json"))
+          journal_files = sorted((session / "journal").glob("*.json"))
+          capture_summary = None
+          run_ids: set[str] = set()
+          for path in archive_files:
+              record = decode_record(path.read_bytes())
+              if not isinstance(record, EvidenceRecord):
+                  continue
+              if record.capture is not None:
+                  run_ids.add(record.capture.run_id.value)
+              try:
+                  payload = json.loads(record.raw.decode("utf-8"))
+              except (UnicodeDecodeError, json.JSONDecodeError):
+                  continue
+              if (
+                  isinstance(payload, dict)
+                  and payload.get("provider") == "btg-solutions-data-services"
+                  and "confirmed_trade_frames" in payload
+                  and "other_post_subscription_frames" in payload
+              ):
+                  capture_summary = payload
+
+          if capture_summary is None or len(run_ids) != 1:
+              raise SystemExit("canonical capture summary/run identity not found")
+          run_id = next(iter(run_ids))
+          if capture_summary.get("run_id") != run_id:
+              raise SystemExit("capture summary RunId mismatch")
+
+          sanitized = {
+              "schema": 1,
+              "provider": "btg-solutions-data-services",
+              "instrument": os.environ["LAB_INSTRUMENT"],
+              "code_revision": os.environ["LAB_CODE_REVISION"],
+              "run_id": run_id,
+              "confirmed_trade_frames": int(capture_summary["confirmed_trade_frames"]),
+              "other_post_subscription_frames": int(
+                  capture_summary["other_post_subscription_frames"]
+              ),
+              "evidence_records": len(archive_files),
+              "journal_records": len(journal_files),
+              "trading_capability": False,
+          }
+          output_path = Path(os.environ["RUNNER_TEMP"]) / "btg-s1-sanitized-summary.json"
+          output_path.write_text(
+              json.dumps(sanitized, sort_keys=True, separators=(",", ":")) + "\n",
+              encoding="utf-8",
+          )
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as output:
+              print("## BTG S1 sanitized capture summary", file=output)
+              print("```json", file=output)
+              print(json.dumps(sanitized, sort_keys=True), file=output)
+              print("```", file=output)
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              print(f"path={output_path}", file=output)
+          PY
+
       - name: Encrypt technical evidence before artifact handling
         id: encrypt
         if: ${{ always() && steps.preflight.outcome == 'success' && steps.capture.outcome != 'skipped' }}
         shell: bash
         env:
-          BTG_EVIDENCE_PASSPHRASE: ${{ secrets.BTG_EVIDENCE_PASSPHRASE }}
+          BTG_EVIDENCE_PASSPHRASE: ${{ secrets.BTG_LAB_EVIDENCE_PASSPHRASE }}
         run: |
           set -euo pipefail
           evidence_root="$RUNNER_TEMP/btg-evidence-root"
@@ -189,22 +268,23 @@ jobs:
           echo "artifact_path=$encrypted" >> "$GITHUB_OUTPUT"
           echo "checksum_path=$checksum" >> "$GITHUB_OUTPUT"
 
-      - name: Upload encrypted evidence only
+      - name: Upload encrypted evidence and sanitized summary
         id: upload
         if: ${{ always() && steps.encrypt.outcome == 'success' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: btg-s1-encrypted-evidence-${{ github.run_id }}
+          name: btg-s1-protected-evidence-${{ github.run_id }}
           path: |
             ${{ steps.encrypt.outputs.artifact_path }}
             ${{ steps.encrypt.outputs.checksum_path }}
+            ${{ steps.summary.outputs.path }}
           if-no-files-found: error
           retention-days: 14
           compression-level: 0
           overwrite: false
           include-hidden-files: false
 
-      - name: Enforce successful capture and encrypted evidence preservation
+      - name: Enforce successful capture and protected evidence preservation
         if: ${{ always() }}
         shell: bash
         run: |
@@ -213,11 +293,15 @@ jobs:
             echo "Controlled capture did not complete successfully." >&2
             exit 1
           fi
+          if [[ "${{ steps.summary.outcome }}" != "success" ]]; then
+            echo "Sanitized technical summary was not produced successfully." >&2
+            exit 1
+          fi
           if [[ "${{ steps.encrypt.outcome }}" != "success" ]]; then
             echo "Evidence encryption did not complete successfully." >&2
             exit 1
           fi
           if [[ "${{ steps.upload.outcome }}" != "success" ]]; then
-            echo "Encrypted evidence artifact was not preserved successfully." >&2
+            echo "Protected evidence artifact was not preserved successfully." >&2
             exit 1
           fi
