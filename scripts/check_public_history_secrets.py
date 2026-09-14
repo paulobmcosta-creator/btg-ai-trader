@@ -30,6 +30,17 @@ CREDENTIAL_ASSIGNMENT = re.compile(
     r"[A-Za-z0-9_.-]*)\s*[:=]\s*[\"']?([^\s\"'#]+)"
 )
 
+ASSIGNMENT_SCAN_SUFFIXES = {
+    ".cfg",
+    ".conf",
+    ".env",
+    ".ini",
+    ".json",
+    ".toml",
+    ".yaml",
+    ".yml",
+}
+
 PLACEHOLDER_VALUES = {
     "changeme",
     "dummy",
@@ -71,11 +82,21 @@ def _git_bytes(*args: str, input_bytes: bytes | None = None) -> bytes:
     return completed.stdout
 
 
+def _scan_assignments(location: str) -> bool:
+    path = PurePosixPath(location)
+    return path.name.casefold().startswith(".env") or path.suffix.casefold() in (
+        ASSIGNMENT_SCAN_SUFFIXES
+    )
+
+
 def _scan_tokens(location: str, text: str) -> set[Finding]:
     findings: set[Finding] = set()
     for rule, pattern in TOKEN_PATTERNS.items():
         if pattern.search(text):
             findings.add(Finding(rule=rule, location=location))
+
+    if not _scan_assignments(location):
+        return findings
 
     for match in CREDENTIAL_ASSIGNMENT.finditer(text):
         value = match.group(2).strip().strip("\"'")
@@ -92,7 +113,9 @@ def _scan_tokens(location: str, text: str) -> set[Finding]:
 
 
 def _reachable_objects() -> list[tuple[str, str]]:
-    raw = _git_bytes("rev-list", "--objects", "--all").decode("utf-8", errors="surrogateescape")
+    raw = _git_bytes("rev-list", "--objects", "--all").decode(
+        "utf-8", errors="surrogateescape"
+    )
     seen: set[str] = set()
     objects: list[tuple[str, str]] = []
     for line in raw.splitlines():
@@ -110,10 +133,14 @@ def _blob_findings() -> set[Finding]:
         if path and any(pattern.search(path) for pattern in SENSITIVE_PATH_PATTERNS):
             findings.add(Finding(rule="sensitive-path-in-history", location=path))
 
-        object_type = _git_bytes("cat-file", "-t", sha).decode("ascii", errors="replace").strip()
+        object_type = _git_bytes("cat-file", "-t", sha).decode(
+            "ascii", errors="replace"
+        ).strip()
         if object_type != "blob":
             continue
-        size_text = _git_bytes("cat-file", "-s", sha).decode("ascii", errors="replace").strip()
+        size_text = _git_bytes("cat-file", "-s", sha).decode(
+            "ascii", errors="replace"
+        ).strip()
         try:
             size = int(size_text)
         except ValueError as error:
@@ -149,7 +176,7 @@ def main() -> int:
     if findings:
         print("PUBLIC_HISTORY_SECRET_SCAN = FINDINGS")
         for finding in sorted(findings):
-            print(f"{finding.rule}: {PurePosixPath(finding.location).as_posix()}")
+            print(f"{finding.rule}: {finding.location}")
         print("Secret-like values are intentionally not printed.")
         return 1
 
