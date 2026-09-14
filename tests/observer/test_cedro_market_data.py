@@ -348,7 +348,7 @@ def test_invalid_credential_shape_fails_before_client_creation() -> None:
     factory = FakeFactory(client)
     subscription = CedroMarketDataSubscription(
         _settings(),
-        lambda: ("only-one",),  # type: ignore[return-value]
+        lambda: ("only-one",),  # type: ignore[arg-type]
         lambda _frame: None,
         client_factory=factory,
     )
