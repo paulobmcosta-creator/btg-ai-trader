@@ -21,6 +21,7 @@ from btg_ai_trader.observer.identity import (
     TradableInstrumentId,
 )
 from btg_ai_trader.observer.instruments import InstrumentMapping, InstrumentRegistry
+from btg_ai_trader.observer.latency import LatencyObservedStep, advance_with_latency
 from btg_ai_trader.observer.provenance import CodeRevision
 from btg_ai_trader.observer.provider import (
     CapabilitySupport,
@@ -131,26 +132,46 @@ def test_transit_latency_rejects_backward_or_inconsistent_monotonic_evidence() -
         TransitLatencyEvidence("clock-a", 125, 180, 54)
 
 
-def test_latency_measurement_pairs_with_real_fixture_observer_boundary(tmp_path: Path) -> None:
+def test_runtime_boundary_emits_latency_with_real_fixture_observer(tmp_path: Path) -> None:
     observer = _observer(tmp_path)
     assert observer.start().status is StepStatus.STARTED
 
     # Adapter/owner readings are explicit values from one monotonic clock scope. The event's
     # wall-clock timestamp is deliberately unrelated and is never used to derive this metric.
-    ingress_ns = 1_000
     sample = HealthSample("clock-a", 1_075, 1_050, 1_060)
-    latency = measure_transit_latency(sample.clock_scope, ingress_ns, sample.now_ns)
-
-    result = observer.advance(
+    observed = advance_with_latency(
+        observer,
         IngressMetadata(NOW, MissingReason.UNKNOWN, 0),
+        ingress_ns=1_000,
         valid_at=NOW,
         knowledge_cutoff=NOW,
         frontier=None,
         health_sample=sample,
     )
 
-    assert result.status is StepStatus.ADMITTED
-    assert latency.clock_scope == observer.config.clock_scope
-    assert latency.latency_ns == 75
-    assert result.health is not None
-    assert result.health.health.sample == sample
+    assert observed == LatencyObservedStep(observed.step, observed.latency)
+    assert observed.step.status is StepStatus.ADMITTED
+    assert observed.latency.clock_scope == observer.config.clock_scope
+    assert observed.latency.latency_ns == 75
+    assert observed.step.health is not None
+    assert observed.step.health.health.sample == sample
+
+
+def test_runtime_boundary_rejects_wrong_scope_before_observer_advance(tmp_path: Path) -> None:
+    observer = _observer(tmp_path)
+    assert observer.start().status is StepStatus.STARTED
+    sample = HealthSample("other-clock", 1_075, 1_050, 1_060)
+
+    with pytest.raises(ValueError, match="clock scope"):
+        advance_with_latency(
+            observer,
+            IngressMetadata(NOW, MissingReason.UNKNOWN, 0),
+            ingress_ns=1_000,
+            valid_at=NOW,
+            knowledge_cutoff=NOW,
+            frontier=None,
+            health_sample=sample,
+        )
+
+    assert observer.pending_raw is None
+    assert observer.queue.snapshot.accepted == 0
