@@ -12,6 +12,9 @@ ACTIVE_PROVIDER_BRANCH = s1/20-btg-dataservices-adapter
 ACTIVE_CAPTURE_PR = #35
 ACTIVE_CAPTURE_BRANCH = s1/21-btg-controlled-capture-harness
 ACTIONS_BLOCKER_ISSUE = #36
+SPECULATIVE_S2_PR = #37
+SPECULATIVE_S2_BRANCH = s2/01-causal-market-replay
+SPECULATIVE_S2_BASE = integration/s2-research
 FOUNDATION_0A_TO_0F = FORMALLY_CLOSED
 SPRINT_1_LIFECYCLE = OPEN
 S1_A_AUTHORIZED = YES
@@ -32,6 +35,8 @@ The historical/canonical Foundation artifacts remain unchanged:
 - `docs/foundation/0F-E_sprint1_entry_contract.md`;
 - `docs/foundation/0F-F_foundation_final_gate.md`;
 - `docs/protocols/quantitative/TRACEABILITY.md` remains the canonical QPI authority.
+
+The frozen 0F-E Replay Boundary remains authoritative: Sprint 1 preserves replay inputs/evidence but does not contain formal replay; Sprint 2 owns formal causal market-data replay; Sprint 3 owns deterministic economic backtesting.
 
 ## Integrated Sprint 1 core
 
@@ -127,13 +132,16 @@ The harness:
 - never receives the API key as a CLI/config argument and never persists or hashes its value;
 - starts the vendor client with an empty instrument list;
 - persists discovery/control payloads using the existing EvidenceArchive/AuditJournal model;
-- requires the exact operator-supplied WIN contract to be present in provider discovery evidence before subscription;
+- requires the exact operator-supplied WIN contract to appear in an explicit JSON list of strings in discovery evidence before subscription;
+- does not accept scalar echoes such as `requested`, `message` or `error` as availability confirmation;
 - persists an explicit confirmation artifact before `subscribe_confirmed(exact_symbol)`;
 - counts only JSON `trade` events whose `symbol` equals the confirmed contract as successful market observations;
 - preserves post-subscription non-trade messages but does not count them as market-data success;
 - fails closed if discovery does not confirm the candidate or if zero confirmed trade frames arrive;
-- has offline fake-provider tests proving single-session causality and that a synthetic credential is absent from persisted artifacts;
+- has offline fake-provider tests proving single-session causality, scalar-echo rejection and that a synthetic credential is absent from persisted artifacts;
 - has not used any real API key or network session.
+
+The public BTG client surface confirms discovery is a separate operation but does not provide a stable discovery-response schema in the reviewed documentation. Therefore unknown or ambiguous real response shapes must fail closed while raw evidence is preserved for review.
 
 The S1 boundary inventory remains intentionally scoped to the importable runtime/configuration surface. The harness does not become canonical runtime merely by existing under `scripts/`. Ruff, mypy and compileall cover `scripts`, while dedicated harness tests cover its credential/evidence lifecycle. The official Security Diff Scan remains a separate mandatory final gate unless human governance explicitly changes that requirement.
 
@@ -141,43 +149,68 @@ PR #35 must not be integrated before #34. It is kept reanchored on the current #
 
 ## Current infrastructure blocker — Issue #36
 
-GitHub Actions is currently failing before runner steps start on both #34 and #35:
+GitHub Actions is failing before runner allocation/steps on #34 and #35. A dedicated allocation-only diagnostic branch also fails without checkout, Python, dependencies or repository code.
+
+Observed across `ubuntu-22.04`, `ubuntu-24.04` and `windows-2022`, including diagnostic attempt 2 at 2026-09-14 03:51Z:
 
 ```text
 job.status = completed
 job.conclusion = failure
-job.steps = null / []
-job.logs_url = null
+job.steps = []
+runner_id = 0
+runner_name = ""
+runner_group_id = 0
 check_run.output.annotations_count = 1
 ```
 
-Representative affected runs are recorded in Issue #36. The current connector can observe the annotation count but cannot access the annotations endpoint, so no unverified root-cause label is assigned.
+This rules out a failure specific to the product code, Python setup, checkout action or one runner image. The exact upstream/account cause remains unproven because the current connector cannot read the check-run annotations endpoint; billing, entitlement, policy and platform-capacity explanations must not be asserted without that evidence.
 
 This state means:
 
 ```text
 REMOTE_CI = NOT_EXECUTED_VALIDLY
+RUNNER_ALLOCATION = BLOCKED
 PR_34_MERGE = BLOCKED
 PR_35_MERGE = BLOCKED
 ```
 
 It is not converted to PASS and is not bypassed by local-only evidence.
 
+## Speculative Sprint 2 — PR #37
+
+PR #37 is isolated future-sprint development and MUST NOT be retargeted or merged into Sprint 1.
+
+```text
+CLASSIFICATION = SPECULATIVE_S2
+PR = #37
+HEAD_AT_REVIEW = 21e22e0eb8f7be3f6269397c178e5ff3bc958092
+BASE = integration/s2-research
+FORMAL_REPLAY_IN_S1 = FORBIDDEN
+ECONOMIC_BACKTEST = ABSENT
+FINANCIAL_EXECUTION = ABSENT
+```
+
+The increment consumes immutable Observer `EventEnvelope` values and implements one finite causal replay lane per `(provider, capture_scope)`. It requires known UTC `knowledge_time`, preserves caller-supplied order, rejects causal regressions and duplicate EventIds, exposes inclusive monotonic knowledge cutoffs and exact rational virtual pacing. It does not read wall clock, sleep, connect to providers, load credentials, invoke strategy/ML, simulate costs/slippage/P&L, or create execution/financial artifacts.
+
+Structural self-review of the exact head found no blocker in the declared scope. Independent review and valid remote CI remain pending. No Sprint 2 acceptance is claimed.
+
 ## Review state
 
 ```text
-PR_34_EXACT_HEAD_STRUCTURAL_REVIEW = REQUIRED_AFTER_LAST_CHANGES
+PR_34_EXACT_HEAD_STRUCTURAL_SELF_REVIEW = COMPLETE
 PR_34_INDEPENDENT_REVIEW = PENDING
-PR_35_EXACT_HEAD_STRUCTURAL_REVIEW = REQUIRED
+PR_35_EXACT_HEAD_STRUCTURAL_SELF_REVIEW = COMPLETE
 PR_35_INDEPENDENT_REVIEW = PENDING
+PR_37_EXACT_HEAD_STRUCTURAL_SELF_REVIEW = COMPLETE
+PR_37_INDEPENDENT_REVIEW = PENDING
 ```
 
-Self/author structural review may document findings but does not satisfy the independent-review requirement.
+Self/author structural review documents findings but never satisfies the independent-review requirement.
 
 ## Remaining sequence
 
 ```text
-1. Restore valid GitHub Actions runner execution (Issue #36).
+1. Restore valid GitHub-hosted runner allocation (Issue #36).
 2. Run Remote Python CI, BTG provider verification and pinned upstream verification on PR #34 exact HEAD.
 3. Obtain independent review on that exact green HEAD.
 4. Merge PR #34 only after all mandatory checks pass.
@@ -190,6 +223,7 @@ Self/author structural review may document findings but does not satisfy the ind
 11. Update exact-final-tree RQM/XC and NEG-CAP evidence.
 12. Execute official Security Diff Scan when its supported interface is available, or apply only an explicitly authorized governance treatment.
 13. Re-adjudicate all 11 Sprint 1 exit criteria conjunctively.
+14. In parallel only as SPECULATIVE work, keep PR #37 isolated; validate/review it when remote runners return, without promoting it before a future Sprint 2 gate.
 ```
 
 No step above authorizes financial execution, trading credentials or real money.
