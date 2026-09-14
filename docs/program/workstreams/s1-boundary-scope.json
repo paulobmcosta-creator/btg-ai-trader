@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "assembly_revision": "5fb9854e405d368a36409d533fa73fc476fa572f",
+  "assembly_revision": "149ecb88a30145784813620ecd46222248b6e743",
   "composition_status": "SCOPED_TESTS_IMPLEMENTED",
   "files": {
     ".python-version": "e4fba2183587225f216eeada4c78dfab6b2e65f5",
@@ -25,7 +25,7 @@
     "src/btg_ai_trader/observer/provider.py": "c359738a20e5870069bcf6b266ea43483b7f8c37",
     "src/btg_ai_trader/observer/raw_source.py": "b9a394743569e4630978a1e042cee7262efa7463",
     "src/btg_ai_trader/observer/rico_mt5_bridge.py": "66e832804dfbec81dd83c40adc0d3de277f4aead",
-    "src/btg_ai_trader/observer/rico_mt5_discovery.py": "b38d0d9d8de0dbd893876b8051aeb9f8bf44a9ed",
+    "src/btg_ai_trader/observer/rico_mt5_discovery.py": "dcb3a444b81a6351352d5b80e5a62142ed51770a",
     "src/btg_ai_trader/observer/storage.py": "8c495be4e223c33cd9db6a5d39d22b2dbcdbf5c6",
     "src/btg_ai_trader/observer/storage_records.py": "0a182f00e0470d88141d9613d50bc662901677f3",
     "src/btg_ai_trader/observer/temporal.py": "6a405cbd162976ab504bc150776e932a1a0c91cd",
