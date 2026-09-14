@@ -14,7 +14,9 @@ Transit/ingestion latency evidence is represented from two explicit readings of 
 
 The library never converts event timestamps or wall-clock UTC into monotonic time. It never reads a clock implicitly. Backwards readings fail closed. Clock scope is explicit and validated. The evidence is an immutable typed value and has no operational side effect.
 
-For the S1 fixture boundary, integration tests pair this measurement with an actual `FixtureObserver` advance using the same explicit monotonic sample. A future real provider must supply its own ingress reading from the same monotonic scope; this decision does not select DD-60 or DD-54 concurrency.
+For the S1 fixture runtime, `advance_with_latency` is the explicit composition boundary: it validates that the supplied `HealthSample` uses the Observer's configured clock scope, derives `TransitLatencyEvidence` from the caller-supplied monotonic ingress reading and that sample's monotonic `now_ns`, executes the real `FixtureObserver.advance`, and returns the resulting `StepResult` paired with that latency evidence. Scope mismatch or backwards readings fail before a valid observed step can be returned.
+
+A future real provider must supply its own ingress reading from the same monotonic scope; this decision does not select DD-60 or DD-54 concurrency.
 
 ## Limits
 
