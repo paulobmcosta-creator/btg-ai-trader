@@ -47,7 +47,12 @@ def _mapping(
     )
 
 
-def _discover(registry: InstrumentRegistry, *, valid_at: datetime = T0, cutoff: datetime = T0) -> InstrumentDiscovery:
+def _discover(
+    registry: InstrumentRegistry,
+    *,
+    valid_at: datetime = T0,
+    cutoff: datetime = T0,
+) -> InstrumentDiscovery:
     return discover_instruments(
         registry,
         FAMILY,
@@ -109,16 +114,17 @@ def test_discovered_reference_can_be_resolved_separately_at_same_point_in_time()
     assert resolution.family_id == FAMILY
 
 
-def test_discovery_copies_finite_input_and_remains_immutable() -> None:
-    source = [_mapping(REF_A, FIRST)]
-    discovery = InstrumentDiscovery(source)
-    source.clear()
-    assert len(discovery.matches) == 1
+def test_discovery_requires_immutable_tuple_and_remains_frozen() -> None:
+    mapping = _mapping(REF_A, FIRST)
+    discovery = InstrumentDiscovery((mapping,))
+    assert discovery.matches == (mapping,)
     field_name = "matches"
     with pytest.raises(FrozenInstanceError):
         setattr(discovery, field_name, ())
+    with pytest.raises(ValueError, match="immutable tuple"):
+        InstrumentDiscovery(cast(tuple[InstrumentMapping, ...], [mapping]))
     with pytest.raises(ValueError, match="InstrumentMapping"):
-        InstrumentDiscovery([cast(InstrumentMapping, "bad")])
+        InstrumentDiscovery((cast(InstrumentMapping, "bad"),))
 
 
 def test_discovery_requires_typed_family_nonempty_labels_and_unambiguous_utc_boundaries() -> None:
