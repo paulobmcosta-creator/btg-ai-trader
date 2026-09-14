@@ -15,8 +15,16 @@ from btg_ai_trader.observer.values import MissingReason, require_text
 BTG_DATASERVICES_PROVIDER = "btg-solutions-data-services"
 
 
-class _Callback(Protocol):
-    def __call__(self, *args: object, **kwargs: object) -> None: ...
+class _MessageCallback(Protocol):
+    def __call__(self, data: object, /) -> None: ...
+
+
+class _ErrorCallback(Protocol):
+    def __call__(self, error: object, /) -> None: ...
+
+
+class _CloseCallback(Protocol):
+    def __call__(self, status: object, message: object, /) -> None: ...
 
 
 class _CredentialSource(Protocol):
@@ -24,11 +32,11 @@ class _CredentialSource(Protocol):
 
 
 class _FrameSink(Protocol):
-    def __call__(self, frame: RawFrame) -> None: ...
+    def __call__(self, frame: RawFrame, /) -> None: ...
 
 
 class _ErrorSink(Protocol):
-    def __call__(self, error_type: str) -> None: ...
+    def __call__(self, error_type: str, /) -> None: ...
 
 
 class _VendorClient(Protocol):
@@ -36,10 +44,10 @@ class _VendorClient(Protocol):
 
     def run(
         self,
-        on_open: _Callback | None = None,
-        on_message: _Callback | None = None,
-        on_error: _Callback | None = None,
-        on_close: _Callback | None = None,
+        on_open: object | None = None,
+        on_message: _MessageCallback | None = None,
+        on_error: _ErrorCallback | None = None,
+        on_close: _CloseCallback | None = None,
         reconnect: bool = True,
         spawn_thread: bool = True,
         default_logs: bool = True,
