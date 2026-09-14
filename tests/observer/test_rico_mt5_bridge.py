@@ -20,21 +20,29 @@ INDICATOR = ROOT / "tools" / "mt5" / "RicoMarketDataBridge.mq5"
 PYTHON_BRIDGE = ROOT / "src" / "btg_ai_trader" / "observer" / "rico_mt5_bridge.py"
 
 
-def settings(path: Path, *, max_record_bytes: int = 16_384) -> RicoMt5BridgeSettings:
+def settings(
+    path: Path,
+    *,
+    channel: RawChannel = RawChannel.TICK,
+    max_record_bytes: int = 16_384,
+) -> RicoMt5BridgeSettings:
     return RicoMt5BridgeSettings(
         capture_scope="rico-mt5-offline-fixture",
         symbol="WINV26",
         path=path,
+        channel=channel,
         max_record_bytes=max_record_bytes,
     )
 
 
-def test_capabilities_do_not_claim_unverified_runtime_fidelity(tmp_path: Path) -> None:
+def test_capabilities_cover_tick_and_candle_without_claiming_runtime_fidelity(
+    tmp_path: Path,
+) -> None:
     descriptor = RicoMt5BridgeReader(settings(tmp_path / "bridge.ndjson")).describe_capabilities()
     assert descriptor.provider == RICO_MT5_PROVIDER
     assert descriptor.capture_scope == "rico-mt5-offline-fixture"
     assert descriptor.ticks is CapabilitySupport.SUPPORTED
-    assert descriptor.candles is CapabilitySupport.UNSUPPORTED
+    assert descriptor.candles is CapabilitySupport.SUPPORTED
     assert descriptor.source_sequence is CapabilitySupport.UNKNOWN
     assert descriptor.timestamp_resolution is MissingReason.UNKNOWN
     assert descriptor.fidelity is FidelityMode.UNKNOWN
@@ -60,6 +68,30 @@ def test_missing_or_incomplete_file_does_not_fabricate_exhaustion_or_frame(tmp_p
     assert frame.reference.scope == "rico-mt5-offline-fixture"
     assert frame.reference.symbol == "WINV26"
     assert reader.offset == len(frame.payload)
+
+
+def test_candle_reader_routes_complete_payload_without_rewriting_it(tmp_path: Path) -> None:
+    path = tmp_path / "candles.ndjson"
+    payload = b'{"finality":"FINAL","bridge_sequence":1}\n'
+    path.write_bytes(payload)
+    reader = RicoMt5BridgeReader(settings(path, channel=RawChannel.CANDLE))
+
+    frame = reader.poll_next()
+    assert frame is not None
+    assert frame.payload == payload
+    assert frame.channel is RawChannel.CANDLE
+    assert frame.reference.provider == RICO_MT5_PROVIDER
+    assert frame.reference.symbol == "WINV26"
+
+
+def test_invalid_channel_is_rejected(tmp_path: Path) -> None:
+    with pytest.raises(TypeError):
+        RicoMt5BridgeSettings(
+            capture_scope="scope",
+            symbol="WINV26",
+            path=tmp_path / "bridge.ndjson",
+            channel="CANDLE",  # type: ignore[arg-type]
+        )
 
 
 def test_order_and_duplicate_records_are_preserved(tmp_path: Path) -> None:
@@ -123,16 +155,40 @@ def test_python_bridge_has_no_mt5_or_execution_surface() -> None:
         assert token not in source
 
 
-def test_mql5_bridge_is_custom_indicator_with_shared_append_only_transport() -> None:
+def test_mql5_bridge_is_custom_indicator_with_separate_tick_and_candle_transports() -> None:
     source = INDICATOR.read_text(encoding="utf-8")
     assert "#property indicator_chart_window" in source
     assert "#property indicator_plots 0" in source
     assert "OnCalculate(" in source
+    assert "TickBridgeFile" in source
+    assert "CandleBridgeFile" in source
     assert "FILE_READ | FILE_WRITE" in source
     assert "FILE_SHARE_READ" in source
     assert "FILE_COMMON" in source
-    assert "FileSeek(bridge_handle, 0, SEEK_END)" in source
+    assert "FileSeek(handle, 0, SEEK_END)" in source
     assert "SymbolInfoTick(_Symbol, tick)" in source
+
+    for array_name in (
+        "time",
+        "open",
+        "high",
+        "low",
+        "close",
+        "tick_volume",
+        "volume",
+        "spread",
+    ):
+        assert f"ArraySetAsSeries({array_name}, true)" in source
+
+    assert "current_bar_open != time[0]" in source
+    assert "(long)time[1]" in source
+    assert "(long)time[0]" in source
+    assert "PeriodSeconds(_Period)" in source
+    assert "open[1]" in source
+    assert "high[1]" in source
+    assert "low[1]" in source
+    assert "close[1]" in source
+    assert "FINAL" in source
 
     prohibited = (
         "OrderSend",

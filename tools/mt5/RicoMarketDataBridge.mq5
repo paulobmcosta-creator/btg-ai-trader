@@ -4,10 +4,14 @@
 #property indicator_chart_window
 #property indicator_plots 0
 
-input string BridgeFile = "btg_ai_trader\\rico_mt5_ticks.ndjson";
+input string TickBridgeFile = "btg_ai_trader\\rico_mt5_ticks.ndjson";
+input string CandleBridgeFile = "btg_ai_trader\\rico_mt5_candles.ndjson";
 
-int bridge_handle = INVALID_HANDLE;
-long bridge_sequence = 0;
+int tick_bridge_handle = INVALID_HANDLE;
+int candle_bridge_handle = INVALID_HANDLE;
+long tick_bridge_sequence = 0;
+long candle_bridge_sequence = 0;
+datetime current_bar_open = 0;
 
 string EscapeJson(string value)
 {
@@ -16,20 +20,51 @@ string EscapeJson(string value)
    return value;
 }
 
-int OnInit()
+int OpenAppendBridge(string path)
 {
-   bridge_handle = FileOpen(
-      BridgeFile,
+   int handle = FileOpen(
+      path,
       FILE_READ | FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_SHARE_READ | FILE_COMMON,
       0
    );
-   if(bridge_handle == INVALID_HANDLE)
+   if(handle == INVALID_HANDLE)
+      return INVALID_HANDLE;
+   if(!FileSeek(handle, 0, SEEK_END))
+   {
+      FileClose(handle);
+      return INVALID_HANDLE;
+   }
+   return handle;
+}
+
+bool WriteBridgeLine(const int handle, const string line)
+{
+   if(FileWriteString(handle, line + "\n") <= 0)
+      return false;
+   FileFlush(handle);
+   return true;
+}
+
+void CloseBridge(const int handle)
+{
+   if(handle != INVALID_HANDLE)
+   {
+      FileFlush(handle);
+      FileClose(handle);
+   }
+}
+
+int OnInit()
+{
+   tick_bridge_handle = OpenAppendBridge(TickBridgeFile);
+   if(tick_bridge_handle == INVALID_HANDLE)
       return INIT_FAILED;
 
-   if(!FileSeek(bridge_handle, 0, SEEK_END))
+   candle_bridge_handle = OpenAppendBridge(CandleBridgeFile);
+   if(candle_bridge_handle == INVALID_HANDLE)
    {
-      FileClose(bridge_handle);
-      bridge_handle = INVALID_HANDLE;
+      CloseBridge(tick_bridge_handle);
+      tick_bridge_handle = INVALID_HANDLE;
       return INIT_FAILED;
    }
    return INIT_SUCCEEDED;
@@ -37,12 +72,10 @@ int OnInit()
 
 void OnDeinit(const int reason)
 {
-   if(bridge_handle != INVALID_HANDLE)
-   {
-      FileFlush(bridge_handle);
-      FileClose(bridge_handle);
-      bridge_handle = INVALID_HANDLE;
-   }
+   CloseBridge(tick_bridge_handle);
+   CloseBridge(candle_bridge_handle);
+   tick_bridge_handle = INVALID_HANDLE;
+   candle_bridge_handle = INVALID_HANDLE;
 }
 
 int OnCalculate(
@@ -58,32 +91,77 @@ int OnCalculate(
    const int &spread[]
 )
 {
-   if(bridge_handle == INVALID_HANDLE)
+   if(tick_bridge_handle == INVALID_HANDLE || candle_bridge_handle == INVALID_HANDLE)
       return prev_calculated;
+
+   ArraySetAsSeries(time, true);
+   ArraySetAsSeries(open, true);
+   ArraySetAsSeries(high, true);
+   ArraySetAsSeries(low, true);
+   ArraySetAsSeries(close, true);
+   ArraySetAsSeries(tick_volume, true);
+   ArraySetAsSeries(volume, true);
+   ArraySetAsSeries(spread, true);
 
    MqlTick tick;
-   if(!SymbolInfoTick(_Symbol, tick))
-      return prev_calculated;
+   if(SymbolInfoTick(_Symbol, tick))
+   {
+      tick_bridge_sequence++;
+      string tick_line = StringFormat(
+         "{\"schema\":1,\"provider\":\"rico-mt5\",\"symbol\":\"%s\","
+         "\"time_msc\":%I64d,\"bid\":%s,\"ask\":%s,\"last\":%s,"
+         "\"volume\":%I64u,\"volume_real\":%s,\"flags\":%u,"
+         "\"bridge_sequence\":%I64d}",
+         EscapeJson(_Symbol),
+         tick.time_msc,
+         DoubleToString(tick.bid, _Digits),
+         DoubleToString(tick.ask, _Digits),
+         DoubleToString(tick.last, _Digits),
+         tick.volume,
+         DoubleToString(tick.volume_real, 8),
+         tick.flags,
+         tick_bridge_sequence
+      );
+      if(!WriteBridgeLine(tick_bridge_handle, tick_line))
+         return prev_calculated;
+   }
 
-   bridge_sequence++;
-   string line = StringFormat(
-      "{\"schema\":1,\"provider\":\"rico-mt5\",\"symbol\":\"%s\","
-      "\"time_msc\":%I64d,\"bid\":%s,\"ask\":%s,\"last\":%s,"
-      "\"volume\":%I64u,\"volume_real\":%s,\"flags\":%u,"
-      "\"bridge_sequence\":%I64d}",
-      EscapeJson(_Symbol),
-      tick.time_msc,
-      DoubleToString(tick.bid, _Digits),
-      DoubleToString(tick.ask, _Digits),
-      DoubleToString(tick.last, _Digits),
-      tick.volume,
-      DoubleToString(tick.volume_real, 8),
-      tick.flags,
-      bridge_sequence
-   );
+   if(rates_total < 2)
+      return rates_total;
 
-   if(FileWriteString(bridge_handle, line + "\n") <= 0)
-      return prev_calculated;
-   FileFlush(bridge_handle);
+   if(current_bar_open == 0)
+   {
+      current_bar_open = time[0];
+      return rates_total;
+   }
+
+   if(current_bar_open != time[0])
+   {
+      candle_bridge_sequence++;
+      string candle_line = StringFormat(
+         "{\"schema\":1,\"provider\":\"rico-mt5\",\"symbol\":\"%s\","
+         "\"interval_start\":%I64d,\"interval_end\":%I64d,"
+         "\"timeframe_seconds\":%d,\"finality\":\"FINAL\","
+         "\"open\":%s,\"high\":%s,\"low\":%s,\"close\":%s,"
+         "\"tick_volume\":%I64d,\"volume\":%I64d,\"spread\":%d,"
+         "\"bridge_sequence\":%I64d}",
+         EscapeJson(_Symbol),
+         (long)time[1],
+         (long)time[0],
+         PeriodSeconds(_Period),
+         DoubleToString(open[1], _Digits),
+         DoubleToString(high[1], _Digits),
+         DoubleToString(low[1], _Digits),
+         DoubleToString(close[1], _Digits),
+         tick_volume[1],
+         volume[1],
+         spread[1],
+         candle_bridge_sequence
+      );
+      if(!WriteBridgeLine(candle_bridge_handle, candle_line))
+         return prev_calculated;
+      current_bar_open = time[0];
+   }
+
    return rates_total;
 }

@@ -30,6 +30,7 @@ class RicoMt5BridgeSettings:
     capture_scope: str
     symbol: str
     path: Path
+    channel: RawChannel = RawChannel.TICK
     max_record_bytes: int = 16_384
 
     def __post_init__(self) -> None:
@@ -37,6 +38,8 @@ class RicoMt5BridgeSettings:
         require_text(self.symbol, "symbol")
         if not isinstance(self.path, Path):
             raise TypeError("path must be pathlib.Path")
+        if not isinstance(self.channel, RawChannel):
+            raise TypeError("channel must be RawChannel")
         if type(self.max_record_bytes) is not int or self.max_record_bytes <= 0:
             raise ValueError("max_record_bytes must be an explicit positive integer")
 
@@ -63,12 +66,12 @@ class RicoMt5BridgeReader:
         return self._offset
 
     def describe_capabilities(self) -> ProviderCapabilities:
-        """Declare only the offline bridge surface; runtime feed fidelity remains unknown."""
+        """Declare offline bridge channels; runtime feed fidelity remains unknown."""
         return ProviderCapabilities(
             provider=RICO_MT5_PROVIDER,
             capture_scope=self._settings.capture_scope,
             ticks=CapabilitySupport.SUPPORTED,
-            candles=CapabilitySupport.UNSUPPORTED,
+            candles=CapabilitySupport.SUPPORTED,
             source_sequence=CapabilitySupport.UNKNOWN,
             timestamp_resolution=MissingReason.UNKNOWN,
             fidelity=FidelityMode.UNKNOWN,
@@ -101,4 +104,4 @@ class RicoMt5BridgeReader:
             raise BridgeRecordTooLargeError("bridge record exceeded max_record_bytes")
 
         self._offset += len(record)
-        return RawFrame(record, self._reference, RawChannel.TICK)
+        return RawFrame(record, self._reference, self._settings.channel)
