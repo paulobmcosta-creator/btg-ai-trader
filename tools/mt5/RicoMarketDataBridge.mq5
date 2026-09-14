@@ -6,6 +6,8 @@
 
 input string TickBridgeFile = "btg_ai_trader\\rico_mt5_ticks.ndjson";
 input string CandleBridgeFile = "btg_ai_trader\\rico_mt5_candles.ndjson";
+input string DiscoveryBridgeFile = "btg_ai_trader\\rico_mt5_discovery.ndjson";
+input string DiscoveryPrefix = "WIN";
 
 int tick_bridge_handle = INVALID_HANDLE;
 int candle_bridge_handle = INVALID_HANDLE;
@@ -54,8 +56,96 @@ void CloseBridge(const int handle)
    }
 }
 
+bool WriteDiscoverySnapshot()
+{
+   int handle = OpenAppendBridge(DiscoveryBridgeFile);
+   if(handle == INVALID_HANDLE)
+      return false;
+
+   string snapshot_id = StringFormat(
+      "%I64d-%I64u",
+      (long)TimeLocal(),
+      GetMicrosecondCount()
+   );
+   int total = SymbolsTotal(false);
+   int prefix_matches = 0;
+   int emitted_symbols = 0;
+   int excluded_custom = 0;
+   int enumeration_errors = 0;
+
+   string begin = StringFormat(
+      "{\"schema\":1,\"record_type\":\"snapshot_begin\","
+      "\"snapshot_id\":\"%s\",\"prefix\":\"%s\",\"server_symbol_total\":%d}",
+      EscapeJson(snapshot_id),
+      EscapeJson(DiscoveryPrefix),
+      total
+   );
+   if(!WriteBridgeLine(handle, begin))
+   {
+      CloseBridge(handle);
+      return false;
+   }
+
+   for(int i = 0; i < total; i++)
+   {
+      string name = SymbolName(i, false);
+      if(name == "")
+      {
+         enumeration_errors++;
+         continue;
+      }
+      if(DiscoveryPrefix != "" && StringFind(name, DiscoveryPrefix) != 0)
+         continue;
+
+      prefix_matches++;
+      bool custom = (bool)SymbolInfoInteger(name, SYMBOL_CUSTOM);
+      if(custom)
+      {
+         excluded_custom++;
+         continue;
+      }
+
+      long start_time = SymbolInfoInteger(name, SYMBOL_START_TIME);
+      long expiration_time = SymbolInfoInteger(name, SYMBOL_EXPIRATION_TIME);
+      long digits = SymbolInfoInteger(name, SYMBOL_DIGITS);
+      string line = StringFormat(
+         "{\"schema\":1,\"record_type\":\"symbol\",\"snapshot_id\":\"%s\","
+         "\"symbol\":\"%s\",\"custom\":false,\"start_time\":%I64d,"
+         "\"expiration_time\":%I64d,\"digits\":%I64d}",
+         EscapeJson(snapshot_id),
+         EscapeJson(name),
+         start_time,
+         expiration_time,
+         digits
+      );
+      if(!WriteBridgeLine(handle, line))
+      {
+         CloseBridge(handle);
+         return false;
+      }
+      emitted_symbols++;
+   }
+
+   string ending = StringFormat(
+      "{\"schema\":1,\"record_type\":\"snapshot_end\","
+      "\"snapshot_id\":\"%s\",\"prefix_matches\":%d,\"emitted_symbols\":%d,"
+      "\"excluded_custom\":%d,\"enumeration_errors\":%d}",
+      EscapeJson(snapshot_id),
+      prefix_matches,
+      emitted_symbols,
+      excluded_custom,
+      enumeration_errors
+   );
+   bool written = WriteBridgeLine(handle, ending);
+   CloseBridge(handle);
+   return written;
+}
+
 int OnInit()
 {
+   if(!WriteDiscoverySnapshot())
+      return INIT_FAILED;
+
    tick_bridge_handle = OpenAppendBridge(TickBridgeFile);
    if(tick_bridge_handle == INVALID_HANDLE)
       return INIT_FAILED;
