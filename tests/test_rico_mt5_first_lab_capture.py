@@ -9,7 +9,6 @@ from scripts import rico_mt5_first_lab_capture as capture
 
 from btg_ai_trader.observer.storage_records import EvidenceRecord, decode_record
 
-
 DISCOVERY = (
     b'{"schema":1,"record_type":"snapshot_begin","snapshot_id":"s1",'
     b'"prefix":"WIN","server_symbol_total":10}\n'
