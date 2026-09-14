@@ -69,7 +69,13 @@ class _VendorClient(Protocol):
 
 @dataclass(frozen=True, slots=True)
 class BtgDataServicesSettings:
-    """Explicit single-instrument subscription settings; DD-68 supplies the instrument later."""
+    """Explicit single-instrument subscription settings.
+
+    The resolved Sprint 1 first-lab profile uses the defaults
+    ``stream_type='realtime'`` and ``data_type='trades'``. Candle modes remain
+    available for later explicit work but are not the approved initial real
+    capture profile.
+    """
 
     capture_scope: str
     instrument: str
