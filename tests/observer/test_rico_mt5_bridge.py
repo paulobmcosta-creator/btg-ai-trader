@@ -86,11 +86,11 @@ def test_candle_reader_routes_complete_payload_without_rewriting_it(tmp_path: Pa
 
 def test_invalid_channel_is_rejected(tmp_path: Path) -> None:
     with pytest.raises(TypeError):
-        RicoMt5BridgeSettings(  # type: ignore[arg-type]
+        RicoMt5BridgeSettings(
             capture_scope="scope",
             symbol="WINV26",
             path=tmp_path / "bridge.ndjson",
-            channel="CANDLE",
+            channel="CANDLE",  # type: ignore[arg-type]
         )
 
 
