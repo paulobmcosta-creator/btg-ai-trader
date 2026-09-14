@@ -35,6 +35,10 @@ class _FrameSink(Protocol):
     def __call__(self, frame: RawFrame, /) -> None: ...
 
 
+class _ControlSink(Protocol):
+    def __call__(self, payload: bytes, /) -> None: ...
+
+
 class _ErrorSink(Protocol):
     def __call__(self, error_type: str, /) -> None: ...
 
@@ -132,15 +136,17 @@ class _ClientFactory(Protocol):
 
 
 class BtgDataServicesSubscription:
-    """Narrow read-only wrapper; no credential is stored by the BTG AI Trader adapter itself."""
+    """Narrow read-only wrapper with explicit discovery-before-subscription lifecycle."""
 
     __slots__ = (
         "_client",
         "_client_factory",
+        "_control_sink",
         "_credential_source",
         "_error_sink",
         "_frame_sink",
         "_settings",
+        "_subscribed",
     )
 
     def __init__(
@@ -150,12 +156,15 @@ class BtgDataServicesSubscription:
         frame_sink: _FrameSink,
         *,
         client_factory: _ClientFactory,
+        control_sink: _ControlSink | None = None,
         error_sink: _ErrorSink | None = None,
     ) -> None:
         if not isinstance(settings, BtgDataServicesSettings):
             raise TypeError("settings must be BtgDataServicesSettings")
         if not callable(credential_source) or not callable(frame_sink):
             raise TypeError("credential_source and frame_sink must be callable")
+        if control_sink is not None and not callable(control_sink):
+            raise TypeError("control_sink must be callable")
         if error_sink is not None and not callable(error_sink):
             raise TypeError("error_sink must be callable")
         if not callable(client_factory):
@@ -163,9 +172,11 @@ class BtgDataServicesSubscription:
         self._settings = settings
         self._credential_source = credential_source
         self._frame_sink = frame_sink
+        self._control_sink = control_sink
         self._error_sink = error_sink
         self._client_factory = client_factory
         self._client: _VendorClient | None = None
+        self._subscribed = False
 
     def describe_capabilities(self) -> ProviderCapabilities:
         ticks = (
@@ -191,9 +202,15 @@ class BtgDataServicesSubscription:
     def _on_message(self, data: object) -> None:
         if type(data) is not str:
             raise TypeError("BTG Data Services callback must provide a text WebSocket payload")
+        payload = data.encode("utf-8")
+        if not self._subscribed:
+            if self._control_sink is None:
+                raise RuntimeError("control message received without configured control_sink")
+            self._control_sink(payload)
+            return
         self._frame_sink(
             RawFrame(
-                payload=data.encode("utf-8"),
+                payload=payload,
                 reference=self._settings.reference,
                 channel=self._settings.raw_channel,
             )
@@ -208,8 +225,9 @@ class BtgDataServicesSubscription:
             self._error_sink("connection-closed")
 
     def start(self) -> None:
+        """Connect without subscribing; discovery/confirmation must happen first."""
         if self._client is not None:
-            raise RuntimeError("subscription is already started")
+            raise RuntimeError("subscription session is already started")
         credential = self._credential_source()
         require_text(credential, "credential")
         client = self._client_factory(credential, self._settings)
@@ -222,20 +240,37 @@ class BtgDataServicesSubscription:
             spawn_thread=False,
             default_logs=False,
         )
-        client.subscribe([self._settings.instrument], initial_snapshot=False)
 
     def request_available_instruments(self) -> None:
+        if self._subscribed:
+            raise RuntimeError("instrument discovery is only allowed before subscription")
+        if self._control_sink is None:
+            raise RuntimeError("instrument discovery requires a control_sink")
         self._require_client().available_to_subscribe()
+
+    def subscribe_confirmed(self) -> None:
+        """Subscribe only after the caller has confirmed the configured instrument point-in-time."""
+        client = self._require_client()
+        if self._subscribed:
+            raise RuntimeError("instrument is already subscribed")
+        self._subscribed = True
+        try:
+            client.subscribe([self._settings.instrument], initial_snapshot=False)
+        except Exception:
+            self._subscribed = False
+            raise
 
     def close(self) -> None:
         client = self._require_client()
         try:
-            client.unsubscribe([self._settings.instrument])
+            if self._subscribed:
+                client.unsubscribe([self._settings.instrument])
         finally:
             client.close()
             self._client = None
+            self._subscribed = False
 
     def _require_client(self) -> _VendorClient:
         if self._client is None:
-            raise RuntimeError("subscription is not started")
+            raise RuntimeError("subscription session is not started")
         return self._client
