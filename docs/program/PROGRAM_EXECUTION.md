@@ -66,23 +66,28 @@ Automatic vendor reconnect is disabled fail-closed. Recovery after disconnect re
 
 ## DD-68 — first laboratory
 
-Human coordination approved the stable instrument subject and resolution policy:
+Human coordination fully resolved the first laboratory:
 
 ```text
-DD_68 = PARTIALLY_RESOLVED
+DD_68 = RESOLVED
 INSTRUMENT_FAMILY = WIN
 CONCRETE_CONTRACT = RESOLVE_POINT_IN_TIME
 AUTO_FALLBACK = FORBIDDEN
-TIMEFRAME_OR_GRANULARITY = UNDECIDED
+AUTO_ROLLOVER = FORBIDDEN
+STREAM_TYPE = realtime
+DATA_GRANULARITY = trades
+INITIAL_CANDLES = NO
 ```
 
 Before every real capture, provider discovery must confirm the exact WIN contract that will be fixed for that run/capture context. If resolution is absent, ambiguous or invalid, capture does not start. No automatic rollover, ranking or silent contract substitution is allowed.
+
+The first real laboratory consumes the real-time trade stream. Candle streams are outside this first capture profile and cannot silently replace the approved input.
 
 See `docs/program/workstreams/S1-DD68-FIRST-LAB.md`.
 
 ## Current infrastructure blocker
 
-Latest GitHub Actions attempts for PR #34 have been failing before any job step starts (`steps=null`, no usable job logs). This is recorded as an execution-infrastructure blocker, not converted to PASS and not bypassed by merging.
+Recent GitHub Actions attempts for PR #34 have been failing before any job step starts (`steps=null`, no usable job logs). This is recorded as an execution-infrastructure blocker, not converted to PASS and not bypassed by merging.
 
 ## Remaining sequence
 
@@ -91,9 +96,9 @@ Latest GitHub Actions attempts for PR #34 have been failing before any job step 
 2. Re-run provider-specific verification, full Python CI and pinned upstream verification.
 3. Obtain/reconfirm independent review on the exact green head.
 4. Merge PR #34 only after those checks pass.
-5. Resolve DD-68 timeframe/granularity before first real capture.
-6. Provision read-only BTG Data Services API key outside repository/chat.
-7. Execute controlled real read-only discovery/capture with a point-in-time WIN contract.
+5. Provision read-only BTG Data Services API key outside repository/chat.
+6. Execute controlled real read-only discovery/capture using the DD-68 profile: WIN, exact point-in-time contract, trades/realtime.
+7. Collect provider evidence for authentication, discovery, subscription, observation, heartbeat/disconnect, explicit restart and raw capture.
 8. Update exact-final-tree RQM/XC evidence.
 9. Execute official Security Diff Scan when its interface is available, or apply only an explicitly authorized governance treatment.
 10. Re-adjudicate all 11 Sprint 1 exit criteria conjunctively.
