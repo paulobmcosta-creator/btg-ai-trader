@@ -47,17 +47,20 @@ Política inicial:
 
 ## DD-68 — primeiro laboratório
 
-A decisão DD-68 foi **parcialmente resolvida** por coordenação humana em 2026-09-14:
+A decisão DD-68 foi **resolvida** por coordenação humana em 2026-09-14:
 
 - família inicial do laboratório: `WIN`;
 - contrato futuro concreto: resolução e confirmação point-in-time no BTG Data Services imediatamente antes da captura;
 - nenhum ticker concreto é default permanente do runtime;
 - fallback automático, ranking implícito, troca silenciosa de vencimento e rollover invisível são proibidos;
-- se o contrato pretendido estiver ausente, ambíguo ou não puder ser causalmente resolvido, a captura não inicia.
+- se o contrato pretendido estiver ausente, ambíguo ou não puder ser causalmente resolvido, a captura não inicia;
+- granularidade inicial: `trades`;
+- stream inicial: `realtime`;
+- candles não integram o primeiro laboratório real.
 
 O símbolo concreto selecionado para uma sessão deve ser fixado no respectivo run/capture context antes da subscription e não pode ser trocado silenciosamente durante a sessão.
 
-A granularidade/timeframe do primeiro laboratório permanece **UNDECIDED** e deve ser explicitamente resolvida antes da primeira captura real. Defaults de adapter/fixture não contam como decisão DD-68.
+A capacidade de candle do adapter permanece disponível para trabalho futuro, mas qualquer uso posterior exige configuração explícita e não altera retroativamente o primeiro laboratório.
 
 O registro operacional detalhado está em `docs/program/workstreams/S1-DD68-FIRST-LAB.md`.
 
@@ -81,9 +84,9 @@ A presença do pacote oficial de Data Services não autoriza nenhuma outra API d
 4. callback preservando o payload textual recebido antes da decodificação de domínio;
 5. subscription/unsubscription/lifecycle testados sem capability financeira;
 6. integração do novo módulo ao boundary/NEG-CAP inventory;
-7. resolução explícita da granularidade/timeframe de DD-68, API key read-only externa e captura real controlada com contrato WIN resolvido point-in-time;
+7. API key read-only externa e captura real controlada com contrato WIN resolvido point-in-time em `trades/realtime`;
 8. Security Diff Scan oficial ou tratamento explícito do gate correspondente.
 
 ## Consequências
 
-DD-60 deixa de ser blocker decisório. DD-43 passa a estar acionado, mas não exige armazenar qualquer segredo no GitHub. DD-61 continua não acionado porque MT5 não foi selecionado. O spike MT5 permanece histórico/experimental e não entra na baseline canônica do provider.
+DD-60 deixa de ser blocker decisório. DD-43 passa a estar acionado, mas não exige armazenar qualquer segredo no GitHub. DD-68 deixa de ser blocker decisório; resta executar a captura real conforme o perfil aprovado. DD-61 continua não acionado porque MT5 não foi selecionado. O spike MT5 permanece histórico/experimental e não entra na baseline canônica do provider.
