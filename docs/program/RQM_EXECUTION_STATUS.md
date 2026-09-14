@@ -2,19 +2,21 @@
 
 This is a current evidence snapshot, not a normative rewrite and not a Sprint 1 approval record. Immutable authority remains `docs/foundation/0F-E_sprint1_entry_contract.md`.
 
-## Current transition state
+## Integrated baseline
 
 ```text
 SPRINT_BRANCH = sprint/1-market-observer
-INTEGRATED_IMPLEMENTATION_BASELINE = b763ad20b857c016fecd4ca004c6d0e191df1435
-ACTIVE_PROVIDER_TRANSITION = s1/23-zero-cost-cedro-provider
+INTEGRATED_IMPLEMENTATION_BASELINE = 5a9fa177b609e56e06e7835b291beac821c8bbd6
+PR_34_PROVIDER = MERGED
+PR_35_CAPTURE_HARNESS = MERGED
+PR_40_SECURE_LAB_RUNNER = MERGED
 FOUNDATION_0A_TO_0F = FORMALLY_CLOSED
-ZERO_ADDITIONAL_COST = REQUIRED
-DD_60 = REDECIDED_CEDRO_MARKET_DATA_FREE_TRIAL
-ADR_0024 = ACCEPTED_ON_TRANSITION_BRANCH
-BTG_ADAPTER = NON_CANONICAL_REFERENCE_IMPLEMENTATION
-CEDRO_ADAPTER = NOT_IMPLEMENTED
+DD_60_INITIAL_REAL_PROVIDER = ACCEPTED_BTG_SOLUTIONS_DATA_SERVICES
 DD_68_FIRST_LAB = RESOLVED_WIN_TRADES_REALTIME
+AC_05_PROVIDER_ADAPTER = INTEGRATED_READ_ONLY
+CONTROLLED_CAPTURE_HARNESS = INTEGRATED_READ_ONLY
+SECURE_REAL_LAB_RUNNER = INTEGRATED_NOT_EXECUTED
+BTG_LAB_ENVIRONMENT = EXTERNAL_CONFIGURATION_NOT_VERIFIED
 REAL_PROVIDER_SESSION = NOT_EXECUTED
 SECURITY_DIFF_SCAN = NOT_EXECUTED
 SPRINT1_ACCEPTANCE = NOT_GRANTED
@@ -22,24 +24,18 @@ REAL_MONEY_PATH = ABSENT
 TRADING_CAPABILITY = ABSENT
 ```
 
-## Provider-selection evidence
+## Principal integrated evidence
 
-The provider decision changed because the project owner requires zero additional financial cost.
+| Area | Evidence | Result |
+|---|---|---|
+| Observer core | PRs #28–#33 | Passive observation, provenance, latency, transition evidence, temporal lineage and point-in-time discovery integrated |
+| Selected provider | PR #34 | BTG Data Services read-only adapter integrated after exact-head CI/provider/upstream PASS |
+| Capture harness | PR #35 | One-session WIN/realtime/trades harness integrated after fail-closed discovery remediation and exact-head PASS |
+| Secure laboratory runner | PR #40 | Protected-environment runner integrated after exact-head tests/Ruff/mypy/compile/dependencies/Foundation/boundary/diff/upstream PASS |
 
-The frozen contract was **not** relaxed. Provider research established:
+## 41 RQMs
 
-| Candidate | Zero cost | B3/BM&F futures | Streaming realtime | Trades | S1 qualification result |
-|---|---:|---:|---:|---:|---|
-| BTG Solutions Data Services | No for the required real service | Yes | Yes | Yes | Superseded for qualification due cost constraint |
-| B3 public D-1/historical | Yes | Yes | No | Historical/EOD only | Research/replay source only |
-| brapi WIN/WDO no-token endpoints | Yes | Yes | No | EOD/daily | Research/test source only |
-| Cedro Market Data free trial | Yes during advertised 7-day trial | Yes | Yes | Yes | **Selected for real S1 qualification** |
-
-The Cedro public documentation also states that its Market Data API cannot send orders; Trading is a separate API family. The S1 adapter must physically exclude the Trading family.
-
-## RQM summary
-
-Provider transition does not erase provider-agnostic/fixture evidence already established, but selected-provider claims must be requalified against Cedro.
+The per-RQM classification remains unchanged by PR #40 because the runner prepares execution but does not supply real provider evidence.
 
 ```text
 SATISFIED_OR_FIXTURE_SCOPE = 39
@@ -48,81 +44,72 @@ PARTIAL = 0
 TOTAL = 41
 ```
 
-Material caveats:
+Material limits remain:
 
-- RQM-017/022/024/028/041 retain fixture/provider-contract evidence, but Cedro-specific real evidence is pending.
-- RQM-018 and RQM-036 remain blocked by the official Security Diff Scan.
-- prior BTG real-provider implementation evidence is historical/reference evidence, not Cedro qualification evidence.
+- RQM-017/022/024/028/041 retain fixture/integrated implementation evidence but await real-provider qualification where applicable.
+- RQM-018 remains `BLOCKED_SECURITY_SCAN`: structural/config/possible-secret checks pass, but the official Security Diff Scan has not executed.
+- RQM-036 remains `BLOCKED_SECURITY_SCAN`: no order/account/execution SDK path or trading-credential consumption exists in the integrated tree, but the official Security Diff Scan is still absent.
 
-## Positive capability view during transition
+## Positive capability view
 
 | Capability | Current state |
 |---|---|
-| AC-01 Instrument Discovery & Resolution | SATISFIED_FIXTURE_SCOPE; Cedro real confirmation pending |
-| AC-02 Provider Symbol / Reference Mapping | SATISFIED_FIXTURE_SCOPE; Cedro mapping pending |
-| AC-03 Provider Capability Discovery | PROVIDER_TRANSITION_PENDING |
-| AC-04 Read-Only Provider Authentication | PROVIDER_TRANSITION_PENDING — Cedro Market Data credentials only |
-| AC-05 Read-Only Market-Data Subscription | PROVIDER_TRANSITION_PENDING — Cedro streaming adapter not yet integrated |
-| AC-06 Historical Request | PERMITTED_OPTIONAL; B3/brapi may support research after qualification |
-| AC-07 Tick & Candle Observation | SATISFIED_FIXTURE_SCOPE; real Cedro `trades/realtime` pending |
-| AC-08 Heartbeat & Liveness | SATISFIED_FIXTURE_SCOPE; Cedro behavior pending |
+| AC-01 Instrument Discovery & Resolution | SATISFIED_FIXTURE_SCOPE; real provider discovery pending |
+| AC-02 Provider Symbol / Reference Mapping | SATISFIED_FIXTURE_SCOPE; DD-68 point-in-time policy fixed |
+| AC-03 Provider Capability Discovery | IMPLEMENTED_INTEGRATED; real evidence pending |
+| AC-04 Read-Only Provider Authentication | PENDING_REAL_PROVIDER_EVIDENCE |
+| AC-05 Read-Only Market-Data Subscription | IMPLEMENTED_INTEGRATED / PENDING_REAL_PROVIDER_EVIDENCE |
+| AC-06 Historical Request | NOT_TRIGGERED_CONDITIONAL |
+| AC-07 Tick & Candle Observation | SATISFIED_FIXTURE_SCOPE; first real lab is `trades/realtime` |
+| AC-08 Heartbeat & Liveness | SATISFIED_FIXTURE_SCOPE; real provider behavior pending |
 | AC-09 Observable Latency Measurement | SATISFIED_FIXTURE_SCOPE |
 | AC-10 Quality / Admission | SATISFIED_FIXTURE_SCOPE |
 | AC-11 Invalid Event Quarantine | SATISFIED |
-| AC-12 Capture Context & Provenance | SATISFIED_FIXTURE_SCOPE; real Cedro run pending |
-| AC-13 Technical Evidence Persistence | SATISFIED_FIXTURE_SCOPE |
+| AC-12 Capture Context & Provenance | SATISFIED_FIXTURE_SCOPE; real run pending |
+| AC-13 Technical Evidence Persistence | SATISFIED_FIXTURE_SCOPE; canonical store integrated |
 | AC-14 Telemetry / Dedup / Backpressure | SATISFIED |
 
-## Credential / negative-capability boundary for Cedro
+## Secure laboratory state
 
-Allowed:
-
-```text
-Market Data /SignIn
-Cedro market-data username/password from external secret storage
-JSESSIONID in transient session memory only
-market-data quote/discovery/streaming surfaces
-```
-
-Explicitly forbidden:
+PR #40 does not qualify the provider by itself. It adds a controlled execution boundary with:
 
 ```text
-API Trading
-/services/negotiation/*
-brokerServiceLogin
-user-identifier for trading
-broker account / financial account
-send/edit/cancel order
-financial/custody/guarantee APIs
+ENVIRONMENT = btg-readonly-lab
+LAB_API_KEY_SECRET = BTG_LAB_DATASERVICES_API_KEY
+LAB_EVIDENCE_SECRET = BTG_LAB_EVIDENCE_PASSPHRASE
+REQUEST_BRANCH = lab/btg-s1-first-capture
+REQUEST_FILE = config/btg-first-lab-request.json
+RAW_PUBLIC_ARTIFACT = NO
+ENCRYPTED_RAW_ARTIFACT = YES
+SANITIZED_REMOTE_SUMMARY = YES
 ```
 
-Any Cedro adapter or runner that imports, references or consumes those forbidden surfaces fails the Sprint 1 gate.
+The current GitHub connector cannot inspect or modify Environment/secrets administration, so actual configuration of those external controls is not asserted.
 
 ## 11 Exit Criteria
 
 | XC | Status | Evidence / blocker |
 |---|---|---|
-| XC-01 Required capabilities | PARTIAL | Observer core exists; selected Cedro provider adapter/session pending |
-| XC-02 Decision gates | SATISFIED_DECISION_SCOPE | DD-60 redecided to Cedro free trial; DD-68 unchanged; DD-43 constrained to market-data credentials |
+| XC-01 Required capabilities | PARTIAL | Provider and runner are integrated; real authenticated provider evidence absent |
+| XC-02 Decision gates | SATISFIED | DD-60/DD-68 resolved; DD-43 policy defined |
 | XC-03 All 41 RQMs | PARTIAL | 39 direct/fixture; RQM-018 and RQM-036 await official Security Diff Scan |
-| XC-04 HQI/QPI evidence | PARTIAL | Technical causal evidence present; Cedro real-provider/security evidence incomplete |
-| XC-05 NEG-CAP-01..10 | SATISFIED_LAST_INTEGRATED_TREE | Must be re-run after Cedro adapter integration |
-| XC-06 READ_ONLY_BY_CONSTRUCTION | SATISFIED_LAST_INTEGRATED_TREE | Cedro implementation must preserve this invariant |
-| XC-07 STRUCTURAL_ESCALATION | SATISFIED_LAST_INTEGRATED_TREE | Cedro implementation must not expose Trading API by config/credential swap |
-| XC-08 Zero trading credentials / ledger mutation | PARTIAL | No trading credential/ledger path; Cedro adapter + official scan still pending |
-| XC-09 Strict code / typing / lint | SATISFIED_LAST_INTEGRATED_TREE | Must rerun on Cedro exact heads/final tree |
-| XC-10 RunManifest / CaptureContext | SATISFIED_FIXTURE_SCOPE | Real Cedro session pending |
-| XC-11 No Sprint-2+ escape | SATISFIED_CURRENT_SCOPE | No formal replay/Paper/Risk/strategy/execution added by provider transition |
+| XC-04 HQI/QPI evidence | PARTIAL | Technical causal evidence present; real-provider/security evidence incomplete |
+| XC-05 NEG-CAP-01..10 | SATISFIED_CURRENT_TREE | No strategy/order/execution/economic authority introduced through PR #40 |
+| XC-06 READ_ONLY_BY_CONSTRUCTION | SATISFIED_CURRENT_TREE | Provider, harness and runner are market-data-only by construction |
+| XC-07 STRUCTURAL_ESCALATION | SATISFIED_CURRENT_TREE | Config/credential swap cannot create financial execution capability |
+| XC-08 Zero trading credentials / ledger mutation | PARTIAL | No trading credential/ledger path; official scan and final evidence outstanding |
+| XC-09 Strict code / typing / lint | SATISFIED_INTEGRATION_EVIDENCE | #34/#35/#40 exact heads were green before merge; final-tree rerun still required after final evidence tree |
+| XC-10 RunManifest / CaptureContext | SATISFIED_FIXTURE_SCOPE | Integrated harness emits canonical context; real WIN session pending |
+| XC-11 No Sprint-2+ escape | SATISFIED_CURRENT_TREE | Formal replay/Paper/Risk/strategy/execution remain outside Sprint 1 graph |
 
 ## Remaining blockers before formal Sprint 1 PASS
 
 ```text
-B1 = CEDRO_ADAPTER: implement/test narrow read-only Market Data adapter without starting trial
-B2 = CEDRO_TRIAL_ACCESS: request/receive free 7-day Market Data credentials only after adapter is green
-B3 = REAL_PROVIDER_SESSION: execute controlled WIN realtime-trades discovery/confirmation/subscription/capture
-B4 = REAL_PROVIDER_EVIDENCE: adjudicate authentication, discovery, exact-symbol confirmation, trades, liveness and close evidence
-B5 = EXACT_FINAL_TREE_EVIDENCE: rerun CI/RQM/NEG-CAP after final evidence/documentation tree
-B6 = SECURITY_DIFF_SCAN: execute official scan for exact final Sprint 1 tree, or apply only a separately explicit governance treatment
+B1 = EXTERNAL_LAB_CONFIGURATION: configure/protect `btg-readonly-lab` and provision Environment secrets outside chat/repository
+B2 = REAL_PROVIDER_SESSION: execute controlled WIN trades/realtime discovery/confirmation/subscription/capture
+B3 = REAL_PROVIDER_EVIDENCE: adjudicate authentication, discovery, confirmation, trade observation and close/restart evidence
+B4 = EXACT_FINAL_TREE_EVIDENCE: rerun CI/RQM/NEG-CAP after final evidence/documentation tree is fixed
+B5 = SECURITY_DIFF_SCAN: execute official scan for exact final Sprint 1 diff/tree, or apply only a separately explicit governance treatment
 ```
 
-None of these blockers authorizes broker/trading credentials, an order API, Paper/Risk engine, financial account access, ledger mutation or real money.
+None of these blockers authorizes a broker account, trading credential, order API, Paper engine, Risk engine or real-money path.

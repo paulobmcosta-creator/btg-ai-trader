@@ -9,17 +9,15 @@ This living checkpoint records whether the current Sprint 1 baseline may be decl
 ```text
 FOUNDATION = FORMALLY_CLOSED
 SPRINT_1 = OPEN
-INTEGRATED_IMPLEMENTATION_BASELINE = b763ad20b857c016fecd4ca004c6d0e191df1435
-ACTIVE_PROVIDER_TRANSITION = s1/23-zero-cost-cedro-provider
-ZERO_ADDITIONAL_COST = REQUIRED
-DD_60 = REDECIDED_CEDRO_MARKET_DATA_FREE_TRIAL
-ADR_0024 = ACCEPTED_ON_TRANSITION_BRANCH
-BTG_PROVIDER = NON_CANONICAL_REFERENCE_IMPLEMENTATION
-CEDRO_PROVIDER_ADAPTER = NOT_IMPLEMENTED
-READ_ONLY_BY_CONSTRUCTION_LAST_INTEGRATED_TREE = SATISFIED
-STRUCTURAL_ESCALATION_LAST_INTEGRATED_TREE = SATISFIED
+INTEGRATED_IMPLEMENTATION_BASELINE = 5a9fa177b609e56e06e7835b291beac821c8bbd6
+PROVIDER_PR_34 = MERGED
+CAPTURE_HARNESS_PR_35 = MERGED
+SECURE_LAB_RUNNER_PR_40 = MERGED
+READ_ONLY_BY_CONSTRUCTION_CURRENT_TREE = SATISFIED
+STRUCTURAL_ESCALATION_CURRENT_TREE = SATISFIED
 TRADING_CAPABILITY = ABSENT
 REAL_MONEY_PATH = ABSENT
+BTG_LAB_ENVIRONMENT = EXTERNAL_CONFIGURATION_NOT_VERIFIED
 REAL_PROVIDER_SESSION = NOT_EXECUTED
 SECURITY_DIFF_SCAN = NOT_EXECUTED
 SPRINT1_ACCEPTANCE = NO
@@ -32,62 +30,52 @@ SPRINT1_ACCEPTANCE = NO
 | Foundation integrity | PASS | Frozen Foundation artifacts remain unchanged |
 | Functional Observer core | PASS_CURRENT_SCOPE | Passive Observer core integrated |
 | 41 RQMs | CONDITIONAL | 39 direct/fixture; RQM-018 and RQM-036 await official Security Diff Scan |
-| NEG-CAP-01..10 | PASS_LAST_INTEGRATED_TREE | Must be rerun after Cedro implementation |
-| Instrument discovery/resolution | PASS_FIXTURE_SCOPE | Point-in-time semantics integrated; Cedro real confirmation pending |
-| DD-60 provider decision | PASS_DECISION_TRANSITION | Cedro Market Data free trial selected by ADR-0024 for zero-cost real qualification |
-| DD-43 credential policy | PASS_POLICY | Cedro Market Data credentials only; no Trading/broker credential |
-| BTG provider artifacts | HISTORICAL_REFERENCE | Prior adapter/harness remain auditable but are not canonical qualification evidence |
-| Cedro provider adapter | FAIL_OPEN | Not implemented yet |
-| Cedro real subscription | FAIL_OPEN | No Cedro trial/session executed |
-| DD-68 laboratory profile | PASS_DECISION | WIN; exact provider confirmation; realtime trades; no fallback/rollover/candles |
-| Real laboratory evidence | FAIL_OPEN | No real Cedro authentication/discovery/subscription/trade capture yet |
+| NEG-CAP-01..10 | PASS_CURRENT_TREE | Structural/runtime negative-capability evidence remains green |
+| Instrument discovery/resolution | PASS_FIXTURE_SCOPE | Point-in-time discovery integrated; controlled real evidence pending |
+| DD-60 provider decision | PASS_DECISION | BTG Solutions Data Services selected; ADR-0023 |
+| DD-43 credential policy | PASS_POLICY | External read-only secret only; no trading credential |
+| Provider adapter | PASS_IMPLEMENTATION | PR #34 integrated |
+| Capture harness | PASS_IMPLEMENTATION | PR #35 integrated with fail-closed discovery remediation |
+| Secure laboratory runner | PASS_IMPLEMENTATION | PR #40 integrated after exact-head CI/upstream PASS; no real session executed by merge |
+| Protected Environment configuration | FAIL_OPEN | `btg-readonly-lab` administrative configuration cannot be verified through the current connector |
+| AC-05 real subscription | FAIL_OPEN | No authenticated real provider session executed |
+| DD-68 laboratory profile | PASS_DECISION | WIN; exact point-in-time confirmation; realtime trades; no fallback/rollover/candles |
+| Real laboratory evidence | FAIL_OPEN | No real API-key authentication/discovery/subscription/raw trade capture yet |
 | Official Security Diff Scan | FAIL_OPEN | Not executed; other checks are not relabeled as official scan |
 
-## Why the contract is not weakened
-
-B3 public D-1/historical data and brapi no-token WIN/WDO futures endpoints are zero-cost, but are not realtime subscription feeds. They therefore remain research/replay sources and cannot satisfy AC-05/AC-07.
-
-Cedro was selected because its public documentation advertises a seven-day free Market Data trial with B3/BM&F streaming, realtime/delay data and executed trades, while stating that its Market Data API cannot send orders.
-
-## Laboratory policy after ADR-0024
+## Integrated laboratory policy
 
 ```text
-PROVIDER = Cedro Market Data free trial
-PROJECT_COST = R$ 0
 INSTRUMENT_FAMILY = WIN
 CONCRETE_CONTRACT = EXPLICIT_CANDIDATE_PLUS_PROVIDER_CONFIRMATION_POINT_IN_TIME
 STREAM_TYPE = realtime
 DATA_TYPE = trades
+DATA_SUBTYPE = derivatives
 AUTO_FALLBACK = FORBIDDEN
 AUTO_ROLLOVER = FORBIDDEN
+VENDOR_AUTO_RECONNECT = FORBIDDEN
 INITIAL_CANDLES = NO
-TRADING_API = FORBIDDEN
-BROKER_ACCOUNT = FORBIDDEN
+ENVIRONMENT = btg-readonly-lab
+RAW_PUBLIC_ARTIFACT = NO
 ```
 
-The trial must not be started until the adapter and offline CI are ready, because the publicly advertised trial window is seven days.
+Before any real subscription, provider discovery must confirm the exact WIN candidate. Ambiguous, malformed, mixed or error-bearing discovery evidence must fail closed.
 
-## Cedro security boundary
+The secure runner requires an explicit request branch/file, checks that the request pins the current remote Sprint 1 SHA, executes the exact clean Sprint 1 code revision, encrypts raw evidence before artifact upload, and exposes only a sanitized no-price/no-raw-payload summary.
 
-Only Cedro **Market Data** authentication/observation is allowed. `/SignIn` market-data credentials and its transient `JSESSIONID` may be used solely inside the runtime session.
+## Review treatment
 
-The following are structural gate failures if introduced:
-
-- API Trading;
-- `/services/negotiation/*`;
-- `brokerServiceLogin`;
-- trading `user-identifier`;
-- broker/financial account identifiers;
-- order send/edit/cancel;
-- custody, financial, guarantee or account-control APIs.
+For PRs #34, #35 and #40, the project owner explicitly authorized the same coordinating agent to perform adversarial review and proceed. These reviews are not claimed as independent. This does not waive immutable Foundation conditions, real-provider evidence, exact-final-tree checks or the Security Diff Scan requirement.
 
 ## Current adjudication
 
 ```text
 SPRINT1_INTERNAL_OBSERVER_CORE = COMPLETE_CURRENT_SCOPE
-SPRINT1_PROVIDER_DECISION = REDECIDED_ZERO_COST
+SPRINT1_PROVIDER_DECISION = COMPLETE
 SPRINT1_DD68_DECISION = COMPLETE
-SPRINT1_CEDRO_IMPLEMENTATION = OPEN
+SPRINT1_PROVIDER_IMPLEMENTATION = INTEGRATED
+SPRINT1_CAPTURE_HARNESS = INTEGRATED
+SPRINT1_SECURE_LAB_RUNNER = INTEGRATED
 SPRINT1_REAL_CAPTURE_GATE = OPEN
 SPRINT1_SECURITY_GATE = OPEN
 SPRINT1_ACCEPTANCE = NO
@@ -96,20 +84,19 @@ PROMOTION_TO_SPRINT_2 = NO
 
 ## Mandatory remaining sequence
 
-1. Integrate ADR-0024 and provider-transition cleanup after exact-head CI/review.
-2. Implement the narrow Cedro Market Data adapter against an injected fake client first; no trial credential yet.
-3. Add explicit NEG-CAP tests excluding Cedro Trading/negotiation/account surfaces.
-4. Obtain/verify the exact streaming protocol/documentation needed for realtime BM&F trades.
-5. Only when adapter/test/runner are green, request the Cedro seven-day free trial.
-6. Provision Cedro Market Data credentials through a dedicated protected GitHub Environment outside repository/chat.
-7. Execute one controlled `WIN` realtime-trades session; require provider confirmation of the exact candidate before subscription.
-8. Fail closed if the free trial supplies only delay/EOD, lacks BM&F trades, or cannot causally confirm the exact symbol.
-9. Reconcile real-provider evidence into RQM/XC without upgrading fixture-only claims beyond evidence.
-10. Re-run full CI, boundary and NEG-CAP on the exact final Sprint 1 tree.
-11. Execute the official Security Diff Scan on the exact final Sprint 1 tree, or only use a separately explicit governance treatment if authorized.
-12. Adjudicate all 11 exit criteria conjunctively.
-13. Promote to Sprint 2 only after formal Sprint 1 PASS.
+1. Configure/protect GitHub Environment `btg-readonly-lab` for the dedicated laboratory branch.
+2. Provision `BTG_LAB_DATASERVICES_API_KEY` and `BTG_LAB_EVIDENCE_PASSPHRASE` as Environment secrets outside repository/chat.
+3. Select one explicit concrete WIN candidate; no automatic ranking, nearest-expiry substitution, fallback or rollover.
+4. Create the dedicated laboratory request from the then-current Sprint 1 head and execute the secure runner.
+5. Require at least one confirmed exact-symbol `trade` event; ACK/control/non-trade messages do not satisfy success.
+6. Review the sanitized summary and protected evidence, including discovery/confirmation/subscription/close and one RunId.
+7. If restart behavior is tested, use a new explicit auditable session; never vendor auto-reconnect.
+8. Reconcile real-provider evidence into RQM/XC without upgrading fixture-only claims beyond evidence.
+9. Re-run full CI, boundary and NEG-CAP on the exact final Sprint 1 tree after final evidence/documentation changes.
+10. Execute the official Security Diff Scan on the exact final Sprint 1 diff/tree, or only use a separately explicit governance treatment if authorized.
+11. Adjudicate all 11 exit criteria conjunctively.
+12. Promote to Sprint 2 only after formal Sprint 1 PASS.
 
 ## Explicit prohibitions remain in force
 
-No open, implemented or passed gate authorizes Strategy, ML production wiring, Paper execution, Risk authorization, broker order APIs, trading credentials, financial account access, ledger mutation, economic commitment or real-money operation.
+No open, implemented or passed gate authorizes Strategy, ML production wiring, Paper execution, Risk authorization, broker order APIs, trading credentials, ledger mutation, economic commitment or real-money operation.
