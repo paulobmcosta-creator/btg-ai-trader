@@ -24,7 +24,7 @@
     "src/btg_ai_trader/observer/provenance.py": "11c6280c1069b84c87c65e113cc92cc46bb10b2b",
     "src/btg_ai_trader/observer/provider.py": "c359738a20e5870069bcf6b266ea43483b7f8c37",
     "src/btg_ai_trader/observer/raw_source.py": "b9a394743569e4630978a1e042cee7262efa7463",
-    "src/btg_ai_trader/observer/rico_mt5_bridge.py": "66e832804dfbec81dd83c40adc0d3de277f4aead",
+    "src/btg_ai_trader/observer/rico_mt5_bridge.py": "c28a53e1887dc800c066011e6d18f90e3fc2773d",
     "src/btg_ai_trader/observer/rico_mt5_discovery.py": "9ec930c4c3a2dc97f13150a1edf96a78e76fc44d",
     "src/btg_ai_trader/observer/storage.py": "8c495be4e223c33cd9db6a5d39d22b2dbcdbf5c6",
     "src/btg_ai_trader/observer/storage_records.py": "0a182f00e0470d88141d9613d50bc662901677f3",

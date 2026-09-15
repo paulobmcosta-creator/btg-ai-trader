@@ -1,4 +1,8 @@
-"""Passive Rico/MT5 append-only file bridge; no terminal, account or execution API."""
+"""Passive XP/MT5 append-only file bridge; no terminal, account or execution API.
+
+Legacy Rico-named symbols are retained temporarily as compatibility names. The active
+provider identity is XP/MT5 under ADR-0026.
+"""
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -12,7 +16,9 @@ from btg_ai_trader.observer.provider import (
 from btg_ai_trader.observer.raw_source import RawChannel, RawFrame
 from btg_ai_trader.observer.values import MissingReason, require_text
 
-RICO_MT5_PROVIDER = "rico-mt5"
+XP_MT5_PROVIDER = "xp-mt5"
+# Compatibility alias for legacy implementation names.
+RICO_MT5_PROVIDER = XP_MT5_PROVIDER
 
 
 class BridgeContinuityError(RuntimeError):
@@ -54,7 +60,7 @@ class RicoMt5BridgeReader:
             raise TypeError("settings must be RicoMt5BridgeSettings")
         self._settings = settings
         self._reference = ProviderInstrumentRef(
-            RICO_MT5_PROVIDER,
+            XP_MT5_PROVIDER,
             settings.capture_scope,
             settings.symbol,
         )
@@ -68,7 +74,7 @@ class RicoMt5BridgeReader:
     def describe_capabilities(self) -> ProviderCapabilities:
         """Declare offline bridge channels; runtime feed fidelity remains unknown."""
         return ProviderCapabilities(
-            provider=RICO_MT5_PROVIDER,
+            provider=XP_MT5_PROVIDER,
             capture_scope=self._settings.capture_scope,
             ticks=CapabilitySupport.SUPPORTED,
             candles=CapabilitySupport.SUPPORTED,
