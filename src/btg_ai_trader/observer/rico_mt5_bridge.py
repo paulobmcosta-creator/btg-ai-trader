@@ -17,7 +17,8 @@ from btg_ai_trader.observer.raw_source import RawChannel, RawFrame
 from btg_ai_trader.observer.values import MissingReason, require_text
 
 XP_MT5_PROVIDER = "xp-mt5"
-RICO_MT5_PROVIDER = XP_MT5_PROVIDER  # compatibility alias for legacy implementation names
+# Compatibility alias for legacy implementation names.
+RICO_MT5_PROVIDER = XP_MT5_PROVIDER
 
 
 class BridgeContinuityError(RuntimeError):
