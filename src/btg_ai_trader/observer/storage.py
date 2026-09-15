@@ -60,8 +60,15 @@ def _controlled_root(path: Path) -> Path:
     return root
 
 
+def _directory_descriptor_sync_supported() -> bool:
+    """Whether CPython exposes directories as fsync-capable descriptors on this platform."""
+    return os.name != "nt"
+
+
 def _sync_directory(root: Path) -> None:
-    """Request local metadata sync; success is not a universal power-loss guarantee."""
+    """Request local metadata sync where directory descriptors are supported."""
+    if not _directory_descriptor_sync_supported():
+        return
     descriptor = os.open(root, os.O_RDONLY)
     try:
         os.fsync(descriptor)
