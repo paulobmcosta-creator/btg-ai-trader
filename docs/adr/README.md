@@ -30,4 +30,5 @@ Estados sugeridos: `Proposta`, `Aceita`, `Rejeitada`, `Substituída`.
 - [0022 — Refinamento de Ledger, projeções financeiras e Exposure](0022-refinement-ledger-financial-projections-and-exposure.md)
 - [0023 — Provedor inicial de Market Data: BTG Solutions Data Services](0023-initial-market-data-provider-btg-solutions-data-services.md) — *substituído para o provider ativo do Sprint 1 pelo ADR 0025; preservado como histórico*
 - **0024 — número histórico reservado:** utilizado no caminho Cedro free-trial posteriormente revertido; não reutilizar.
-- [0025 — Rico + MetaTrader 5 como provider de qualificação zero-cost do Sprint 1](0025-rico-mt5-zero-cost-sprint1-qualification-provider.md)
+- [0025 — Rico + MetaTrader 5 como provider de qualificação zero-cost do Sprint 1](0025-rico-mt5-zero-cost-sprint1-qualification-provider.md) — *substituído para o provider ativo do Sprint 1 pelo ADR 0026; preservado como histórico*
+- [0026 — XP + MetaTrader 5 como provider de qualificação zero-cost do Sprint 1](0026-xp-mt5-zero-cost-sprint1-qualification-provider.md)

@@ -1,12 +1,13 @@
-// BTG AI Trader — passive Rico/MT5 market-data bridge for Sprint 1.
+// BTG AI Trader — passive broker-backed MT5 market-data bridge for Sprint 1.
 // Custom indicator only. Emits local market observations; no account or trading surface.
 #property strict
 #property indicator_chart_window
 #property indicator_plots 0
 
-input string TickBridgeFile = "btg_ai_trader\\rico_mt5_ticks.ndjson";
-input string CandleBridgeFile = "btg_ai_trader\\rico_mt5_candles.ndjson";
-input string DiscoveryBridgeFile = "btg_ai_trader\\rico_mt5_discovery.ndjson";
+input string ProviderId = "xp-mt5";
+input string TickBridgeFile = "btg_ai_trader\\xp_mt5_ticks.ndjson";
+input string CandleBridgeFile = "btg_ai_trader\\xp_mt5_candles.ndjson";
+input string DiscoveryBridgeFile = "btg_ai_trader\\xp_mt5_discovery.ndjson";
 input string DiscoveryPrefix = "WIN";
 
 int tick_bridge_handle = INVALID_HANDLE;
@@ -143,6 +144,9 @@ bool WriteDiscoverySnapshot()
 
 int OnInit()
 {
+   if(StringLen(ProviderId) == 0)
+      return INIT_PARAMETERS_INCORRECT;
+
    if(!WriteDiscoverySnapshot())
       return INIT_FAILED;
 
@@ -198,10 +202,11 @@ int OnCalculate(
    {
       tick_bridge_sequence++;
       string tick_line = StringFormat(
-         "{\"schema\":1,\"provider\":\"rico-mt5\",\"symbol\":\"%s\","
+         "{\"schema\":1,\"provider\":\"%s\",\"symbol\":\"%s\","
          "\"time_msc\":%I64d,\"bid\":%s,\"ask\":%s,\"last\":%s,"
          "\"volume\":%I64u,\"volume_real\":%s,\"flags\":%u,"
          "\"bridge_sequence\":%I64d}",
+         EscapeJson(ProviderId),
          EscapeJson(_Symbol),
          tick.time_msc,
          DoubleToString(tick.bid, _Digits),
@@ -229,12 +234,13 @@ int OnCalculate(
    {
       candle_bridge_sequence++;
       string candle_line = StringFormat(
-         "{\"schema\":1,\"provider\":\"rico-mt5\",\"symbol\":\"%s\","
+         "{\"schema\":1,\"provider\":\"%s\",\"symbol\":\"%s\","
          "\"interval_start\":%I64d,\"interval_end\":%I64d,"
          "\"timeframe_seconds\":%d,\"finality\":\"FINAL\","
          "\"open\":%s,\"high\":%s,\"low\":%s,\"close\":%s,"
          "\"tick_volume\":%I64d,\"volume\":%I64d,\"spread\":%d,"
          "\"bridge_sequence\":%I64d}",
+         EscapeJson(ProviderId),
          EscapeJson(_Symbol),
          (long)time[1],
          (long)time[0],

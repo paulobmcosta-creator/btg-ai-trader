@@ -1,4 +1,4 @@
-"""Offline tests for the Rico/MT5 controlled local evidence harness."""
+"""Offline tests for the legacy-named MT5 controlled local evidence harness."""
 
 import datetime
 from collections.abc import Callable
@@ -19,15 +19,15 @@ DISCOVERY = (
     b'"prefix_errors":0,"enumeration_errors":0}\n'
 )
 TICKS = (
-    b'{"schema":1,"provider":"rico-mt5","symbol":"WINV26","time_msc":1,'
+    b'{"schema":1,"provider":"xp-mt5","symbol":"WINV26","time_msc":1,'
     b'"bid":1,"ask":2,"last":1,"volume":1,"volume_real":1,"flags":1,'
     b'"bridge_sequence":1}\n'
-    b'{"schema":1,"provider":"rico-mt5","symbol":"WINV26","time_msc":2,'
+    b'{"schema":1,"provider":"xp-mt5","symbol":"WINV26","time_msc":2,'
     b'"bid":1,"ask":2,"last":1,"volume":1,"volume_real":1,"flags":1,'
     b'"bridge_sequence":2}\n'
 )
 CANDLE = (
-    b'{"schema":1,"provider":"rico-mt5","symbol":"WINV26",'
+    b'{"schema":1,"provider":"xp-mt5","symbol":"WINV26",'
     b'"interval_start":1,"interval_end":61,"timeframe_seconds":60,'
     b'"finality":"FINAL","open":1,"high":2,"low":1,"close":2,'
     b'"tick_volume":2,"volume":2,"spread":1,"bridge_sequence":1}\n'
@@ -88,13 +88,13 @@ def test_controlled_capture_preserves_raw_prefixes_health_and_latency(tmp_path: 
     clock = FakeClock(emit_transport)
     session_root = capture.run_first_lab(
         instrument="WINV26",
-        capture_scope="rico-first-lab",
+        capture_scope="xp-first-lab",
         code_revision="a" * 40,
         discovery_file=discovery,
         tick_file=ticks,
         candle_file=candles,
         output_root=output,
-        clock_scope="rico-local-monotonic",
+        clock_scope="xp-local-monotonic",
         discovery_timeout_seconds=5.0,
         capture_seconds=60.0,
         poll_interval_ms=100,
@@ -133,13 +133,13 @@ def test_symbol_mismatch_fails_closed_but_preserves_consumed_raw_prefix(tmp_path
     with pytest.raises(RuntimeError, match="provider/symbol"):
         capture.run_first_lab(
             instrument="WINV26",
-            capture_scope="rico-first-lab",
+            capture_scope="xp-first-lab",
             code_revision="b" * 40,
             discovery_file=discovery,
             tick_file=ticks,
             candle_file=candles,
             output_root=output,
-            clock_scope="rico-local-monotonic",
+            clock_scope="xp-local-monotonic",
             discovery_timeout_seconds=5.0,
             capture_seconds=60.0,
             poll_interval_ms=100,
@@ -164,13 +164,13 @@ def test_nonfresh_transport_is_rejected_before_session_creation(tmp_path: Path) 
     with pytest.raises(ValueError, match="absent or empty"):
         capture.run_first_lab(
             instrument="WINV26",
-            capture_scope="rico-first-lab",
+            capture_scope="xp-first-lab",
             code_revision="c" * 40,
             discovery_file=discovery,
             tick_file=ticks,
             candle_file=candles,
             output_root=output,
-            clock_scope="rico-local-monotonic",
+            clock_scope="xp-local-monotonic",
             discovery_timeout_seconds=5.0,
             capture_seconds=60.0,
             poll_interval_ms=100,
@@ -193,13 +193,13 @@ def test_capture_requires_complete_exact_discovery_match(tmp_path: Path) -> None
     with pytest.raises(RuntimeError, match="absent from discovery"):
         capture.run_first_lab(
             instrument="WINV26",
-            capture_scope="rico-first-lab",
+            capture_scope="xp-first-lab",
             code_revision="d" * 40,
             discovery_file=discovery,
             tick_file=ticks,
             candle_file=candles,
             output_root=output,
-            clock_scope="rico-local-monotonic",
+            clock_scope="xp-local-monotonic",
             discovery_timeout_seconds=5.0,
             capture_seconds=60.0,
             poll_interval_ms=100,
