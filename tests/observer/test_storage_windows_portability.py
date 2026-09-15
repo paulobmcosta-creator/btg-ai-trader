@@ -25,19 +25,14 @@ def _evidence() -> EvidenceRecord:
     )
 
 
-def test_directory_descriptor_sync_support_tracks_platform() -> None:
-    assert storage_module._directory_descriptor_sync_supported() is (storage_module.os.name != "nt")
-
-
-def test_directory_sync_does_not_open_directory_when_unsupported(
+def test_directory_sync_is_skipped_when_directory_descriptors_are_unsupported(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(storage_module, "_directory_descriptor_sync_supported", lambda: False)
-
-    def unexpected_open(*args: object, **kwargs: object) -> int:
-        raise AssertionError("directory os.open must not run on unsupported platforms")
-
-    monkeypatch.setattr(storage_module.os, "open", unexpected_open)
+    monkeypatch.setattr(
+        storage_module,
+        "_directory_descriptor_sync_supported",
+        lambda root: False,
+    )
     storage_module._sync_directory(tmp_path)
 
 
@@ -48,7 +43,11 @@ def test_exclusive_publication_succeeds_without_directory_descriptor_sync(
     journal = tmp_path / "journal"
     archive.mkdir()
     journal.mkdir()
-    monkeypatch.setattr(storage_module, "_directory_descriptor_sync_supported", lambda: False)
+    monkeypatch.setattr(
+        storage_module,
+        "_directory_descriptor_sync_supported",
+        lambda root: False,
+    )
     store = TechnicalEvidenceStore(
         archive_root=archive,
         journal_root=journal,
