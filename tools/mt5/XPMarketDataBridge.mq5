@@ -105,7 +105,7 @@ string ValueFor(const string field, const string key)
 
 bool ReadControl(string &scope, string &instrument)
 {
-   if(!FileIsExist(CONTROL_FILE, true))
+   if(!FileIsExist(CONTROL_FILE, FILE_COMMON))
       return false;
 
    int handle = FileOpen(
@@ -263,7 +263,7 @@ bool StartSession(const string scope, const string instrument)
    string tick_path = root + "ticks.ndjson";
    string candle_path = root + "candles.ndjson";
    string discovery_path = root + "discovery.ndjson";
-   if(FileIsExist(tick_path, true) || FileIsExist(candle_path, true) || FileIsExist(discovery_path, true))
+   if(FileIsExist(tick_path, FILE_COMMON) || FileIsExist(candle_path, FILE_COMMON) || FileIsExist(discovery_path, FILE_COMMON))
       return false;
 
    tick_handle = OpenAppend(tick_path);
