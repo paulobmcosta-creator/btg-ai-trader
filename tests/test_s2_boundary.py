@@ -47,6 +47,24 @@ def test_non_python_file_with_secret_fails(
     assert any(f.rule == expected_rule for f in findings)
 
 
+def test_non_python_named_credential_literal_fails(tmp_path: Path) -> None:
+    s2_root = tmp_path / "replay"
+    s2_root.mkdir(parents=True)
+    (s2_root / "config.txt").write_text("api_key = literal-value\n", encoding="utf-8")
+
+    findings = verify_s2_boundary((s2_root,))
+    assert any(f.rule == "possible-credential-literal" for f in findings)
+
+
+def test_python_named_credential_literal_fails(tmp_path: Path) -> None:
+    s2_root = tmp_path / "replay"
+    s2_root.mkdir(parents=True)
+    (s2_root / "config.py").write_text('password = "literal-value"\n', encoding="utf-8")
+
+    findings = verify_s2_boundary((s2_root,))
+    assert any(f.rule == "possible-credential-literal" for f in findings)
+
+
 def test_symlink_under_s2_root_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     s2_root = tmp_path / "replay"
     s2_root.mkdir(parents=True)
