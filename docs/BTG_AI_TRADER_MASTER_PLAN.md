@@ -1,137 +1,86 @@
 # BTG AI Trader — Plano Mestre Vivo
 
-**Documento de referência principal do projeto**
-**Status:** ativo e evolutivo
-**Última consolidação:** 2026-09-13
-**Repositório local:** `C:\Projetos\btg-ai-trader`
-**Projeto ChatGPT:** `BTG AI Trader`
+**Documento de referência transversal do projeto**  
+**Status:** ativo e evolutivo  
+**Última consolidação:** 2026-09-16  
+**Repositório:** `paulobmcosta-creator/btg-ai-trader`  
+**Visibilidade:** pública, source-visible, licença proprietária  
 
 ---
 
-## 1. Finalidade deste documento
+## 1. Finalidade e hierarquia
 
-Este arquivo é a referência transversal do projeto **BTG AI Trader**. Ele existe para evitar perda de contexto entre Chat, Codex, Work, branches, sprints, revisões e futuras mudanças de arquitetura.
+Este arquivo preserva a visão transversal do projeto BTG AI Trader e deve refletir o estado vivo do programa sem reescrever silenciosamente snapshots históricos.
 
-Ele deve:
+Hierarquia de autoridade:
 
-1. registrar o objetivo e os limites do projeto;
-2. preservar decisões arquiteturais de alto nível;
-3. registrar o estado atual do desenvolvimento;
-4. definir a sequência de sprints e gates;
-5. orientar o uso de Chat, Codex e Work;
-6. impedir que decisões críticas fiquem apenas no histórico de conversas;
-7. ser atualizado quando uma decisão relevante for alterada;
-8. apontar para ADRs, protocolos e documentos especializados quando o detalhe ultrapassar o escopo deste plano mestre.
+```text
+1. Código e testes do repositório
+2. ADRs, protocolos e contratos versionados
+3. AGENTS.md
+4. Este Plano Mestre
+5. Conversas do ChatGPT
+```
 
-Este documento **não substitui** `AGENTS.md`, ADRs, protocolos, testes, documentação de arquitetura nem Model Cards. Ele funciona como mapa geral e fonte de continuidade.
+Os artefatos congelados da Fundação continuam históricos e não são reescritos para acomodar decisões posteriores.
 
 ---
 
-# 2. Visão do produto
+## 2. Visão do produto
 
-Desenvolver um sistema privado de **trading quantitativo intradiário**, inicialmente voltado a operações de curtíssimo prazo em instrumentos líquidos da B3 e conectado futuramente à conta do usuário no BTG por infraestrutura oficialmente suportada, com **MetaTrader 5 como candidato inicial de ponte de mercado/execução**.
+Desenvolver um sistema privado de trading quantitativo intradiário, inicialmente voltado a instrumentos líquidos da B3, com evolução estritamente governada por gates de dados, replay, backtesting, validação quantitativa, risco, paper trading, recovery e segurança antes de qualquer capacidade financeira real.
 
-O sistema deverá combinar:
+O sistema deverá evoluir para combinar:
 
 - dados de mercado em tempo real;
 - engenharia de atributos;
-- identificação de regime de mercado;
+- identificação de regime;
 - modelos estatísticos e de machine learning;
 - avaliação probabilística de cenários;
 - geração de sinais;
 - dimensionamento de posição;
 - gestão independente de risco;
 - execução auditável;
+- replay/backtesting;
 - paper trading;
-- backtesting/replay;
 - monitoramento;
-- reconciliação após falhas;
-- operação em nuvem no estágio apropriado.
+- recovery/reconciliation;
+- infraestrutura apropriada ao estágio.
 
-O foco inicial é **trading intradiário em horizonte de minutos**, e não alocação de carteira de médio/longo prazo.
-
----
-
-# 3. Princípios não negociáveis
-
-## 3.1. Segurança e preservação de capital
-
-1. Preservação de capital tem precedência sobre maximização de retorno.
-2. O sistema deve admitir `NO_TRADE` como resultado plenamente válido.
-3. O **Risk Engine** deverá possuir poder absoluto de veto.
-4. Nenhum modelo, Signal Engine ou componente de ML poderá enviar ordens diretamente.
-5. Nenhum sistema poderá operar dinheiro real antes de gates formais de validação.
-6. Deve existir fail-safe, watchdog e kill switch.
-7. Em caso de incerteza operacional, a preferência é bloquear novas operações.
-
-## 3.2. Integridade científica e quantitativa
-
-1. Nenhum modelo pode ser promovido apenas por desempenho in-sample.
-2. É obrigatória prevenção de:
-   - look-ahead bias;
-   - data leakage;
-   - survivorship bias;
-   - overfitting;
-   - seleção retrospectiva oportunista.
-3. Validação temporal fora da amostra é obrigatória.
-4. Backtests devem incorporar, quando aplicável:
-   - spread;
-   - slippage;
-   - taxas;
-   - emolumentos;
-   - liquidez;
-   - latência;
-   - limitações operacionais.
-5. Accuracy não será métrica central isolada.
-6. Métricas econômicas e de risco terão precedência sobre taxa bruta de acerto.
-
-## 3.3. Engenharia e auditabilidade
-
-1. Toda decisão relevante deve poder ser reconstruída.
-2. Sinais, decisões, ordens, falhas e mudanças de modelo deverão ser auditáveis.
-3. Mudanças arquiteturais importantes exigem ADR.
-4. Componentes financeiros críticos devem possuir testes.
-5. Credenciais e segredos nunca devem ser versionados.
-6. Pesquisa, treinamento, backtesting, paper e produção devem permanecer logicamente separados.
+O foco inicial permanece intradiário, com horizonte de segundos a minutos. O projeto não é HFT de microssegundos e não autoriza dinheiro real nesta fase.
 
 ---
 
-# 4. Escopo inicial
+## 3. Princípios não negociáveis
 
-## 4.1. Incluído
+### 3.1. Preservação de capital e autoridade
 
-- B3.
-- Trading intradiário.
-- Horizonte prioritário de segundos a minutos, com ênfase inicial em candles/ticks de curta duração.
-- Instrumentos líquidos.
-- Primeiro laboratório provável: família WIN.
-- Evolução posterior possível para WDO, ações e ETFs líquidos.
-- Python como linguagem principal de pesquisa e backend.
-- MetaTrader 5 como candidato inicial para integração com BTG.
-- Infraestrutura local para desenvolvimento.
-- Windows VM em nuvem para o futuro Trading Node.
-- Modelos estatísticos e ML supervisionado como primeira linha.
-- Paper trading antes de qualquer produção.
-- Dashboard de monitoramento em etapa futura.
+1. Preservação de capital precede maximização de retorno.
+2. `NO_TRADE` é resultado plenamente válido.
+3. O futuro Risk Engine deve possuir poder absoluto de veto.
+4. Nenhum modelo ou Signal Engine poderá enviar ordens diretamente.
+5. Nenhuma capacidade financeira real pode existir antes dos gates formais correspondentes.
+6. Incerteza operacional implica comportamento fail-closed.
 
-## 4.2. Fora do escopo inicial
+### 3.2. Integridade quantitativa
 
-- administração profissional de patrimônio de terceiros;
-- venda do sistema como serviço financeiro;
-- HFT de microssegundos;
-- opções como primeiro mercado;
-- alavancagem real na fase inicial;
-- venda descoberta real na fase inicial;
-- Reinforcement Learning como primeiro modelo produtivo;
-- execução real antes dos gates;
-- automação por cliques na interface do BTG Trader;
-- dependência de um computador pessoal ligado durante produção.
+- prevenir look-ahead bias, leakage, survivorship bias e overfitting;
+- exigir separação temporal e validação fora da amostra;
+- incorporar custos, spread, slippage, liquidez e latência quando economicamente aplicáveis;
+- evitar promoção de modelos por accuracy isolada;
+- priorizar métricas econômicas e de risco.
+
+### 3.3. Engenharia e auditabilidade
+
+- toda decisão relevante deve ser reconstruível;
+- ADRs são obrigatórios para mudanças arquiteturais materiais;
+- credenciais e segredos nunca são versionados;
+- pesquisa, replay, backtest, paper e produção permanecem separados por autoridade e composição;
+- mudanças de estágio exigem evidência e gate explícitos.
 
 ---
 
-# 5. Arquitetura-alvo de alto nível
-
-A cadeia abaixo sintetiza a baseline lógica de 0C refinada pelos contratos congelados do Sprint 0D. Ela não constitui implementação nem autorização de operação real.
+## 4. Arquitetura normativa de alto nível
 
 ```text
 MARKET / DATA SOURCE
@@ -161,7 +110,7 @@ StrategyDecision
 NO_TRADE     PROPOSE_TRADE
                   |
                   v
-        InstrumentResolution?
+        InstrumentResolution
                   |
                   v
              TradeIntent
@@ -193,16 +142,16 @@ NO_TRADE     PROPOSE_TRADE
                    EXTERNAL WORLD
 ```
 
-## 5.1. Invariantes centrais
+Invariantes centrais:
 
-- `NO_TRADE` é resultado explícito de `StrategyDecision` e é distinto de `RiskDecision.REJECT`, `SAFE_HALT` e falha operacional.
-- Todo `TradeIntent` apresentado ao Risk referencia um `TradableInstrument` concreto; `AnalyticalSeries` não chega a Risk/Execution como instrumento negociável.
-- `RiskDecision` julga (`REJECT | PERMIT`); `RiskAuthorization` concede authority normativa limitada.
-- Nenhum novo economic commitment pode contornar `RiskAuthorization` válida e `AuthorizationAllocation` suficiente.
-- Somente Execution pode solicitar efeito externo e somente após satisfazer as authorities e os persistence gates aplicáveis.
-- Nenhum modelo, Signal Engine ou Strategy possui authority para enviar ordem.
+- `NO_TRADE` é distinto de `RiskDecision.REJECT`, `SAFE_HALT` e falha operacional;
+- todo `TradeIntent` apresentado a Risk referencia instrumento concreto;
+- `RiskDecision` julga, `RiskAuthorization` concede authority limitada;
+- novo economic commitment exige authorization/alocação suficientes;
+- somente Execution pode solicitar side effect externo;
+- modelo, Signal Engine e Strategy nunca possuem authority de ordem.
 
-É arquiteturalmente proibido:
+Arquiteturalmente proibido:
 
 ```text
 ML Model -> Broker
@@ -213,254 +162,289 @@ RiskDecision -> external side effect
 
 ---
 
-# 6. Baseline contratual consolidada até o Sprint 0D
-
-## 6.1. StrategyDecision, TradeIntent e Risk
-
-A estratégia materializa `StrategyDecision` com resultado semanticamente equivalente a `NO_TRADE` ou `PROPOSE_TRADE`. A ausência acidental de `TradeIntent` não é usada como substituto de `NO_TRADE`.
-
-Quando a proposta ainda referencia subject não executável, `InstrumentResolutionDecision` resolve explicitamente para `TradableInstrument`. Todo `TradeIntent` apresentado ao Risk referencia instrumento concreto e contém `EconomicObjective` com semântica e unidade explícitas.
-
-Exemplo conceitual:
+## 5. Fundação — estado canônico
 
 ```text
-tradable_instrument: WINQ26
-economic_objective:
-    basis: EXPOSURE_DELTA
-    direction: LONG
-    magnitude: 1
-    unit: CONTRACT
-expected_horizon: ...
-expected_return: ...
-expected_downside: ...
+SPRINT 0A — Bootstrap                         CLOSED / PASS
+SPRINT 0B — Ambiente                          CLOSED / PASS
+SPRINT 0C — Arquitetura lógica                CLOSED / PASS
+SPRINT 0D — Contratos e modelo de dados       CLOSED / PASS
+SPRINT 0E — Protocolos quantitativos          CLOSED / PASS
+SPRINT 0F — Foundation Cross-Gate             CLOSED / PASS
+0F-A                                           CLOSED
+0F-B                                           CLOSED
+0F-C — 41 RQMs                                PASS / CLOSED
+0F-D — 20 NCs / 10 NEG-CAP                    PASS / CLOSED
+0F-E — 118 cláusulas Sprint 1                 PASS / CLOSED
+0F-F — Foundation Final Gate                  PASS / CLOSED
+PRE_SPRINT1_ACTIONS                            CLOSED
 ```
 
-Os nomes físicos, tipos Python e representação numérica permanecem deliberadamente não escolhidos.
-
-`RiskDecision` possui semanticamente `REJECT | PERMIT`. `PERMIT` que possa habilitar efeito econômico downstream exige `RiskAuthorization`; antes de `OrderIntent`, uma `AuthorizationAllocation` reserva capacidade. O planejamento segue `OrderIntent → OrderPlan → ExecutionOrder`.
-
-## 6.2. Commitment e execução
-
-Criar `ExecutionAttempt` não constitui commitment por si só. Commitment ocorre na primeira fronteira após a qual o sistema já não consegue garantir ausência de side effect externo decorrente da tentativa. Outcome externo `UNKNOWN` permanece committed e exige reconciliation suficiente; timeout não autoriza blind retry.
-
-Expiração de TradeIntent/authorization/allocation bloqueia novos commitments, mas não apaga obrigações já externalizadas.
-
-## 6.3. Execution facts e reconhecimento financeiro
-
-Mensagens externas podem normalizar em `OrderLifecycleObservation` e `FillObservation`. `FillObservation` não possui efeito financeiro direto.
-
-A cadeia financeira é:
-
-```text
-FillObservation
-→ identity / dedup / matching
-→ canonical Fill
-→ EconomicRecognitionIdentity
-→ LedgerTransaction
-→ 1..N LedgerPostings
-→ Position / Cash / Valuation / P&L / Exposure projections
-```
-
-O mesmo fato econômico não pode produzir reconhecimento duplicado em restart ou reprocessing. Observações externas de Position/Cash não sobrescrevem as projeções internas e não geram automaticamente Fill ou Ledger adjustment.
-
-## 6.4. Perfis operacionais
-
-O núcleo é reutilizável por composição entre:
-
-```text
-REPLAY
-BACKTEST
-PAPER
-LIVE
-```
-
-Os profiles variam providers, clock, execution/persistence/accounting counterparts, sem criar branches de domínio por modo. O Signal Engine não depende de saber se está em `BACKTEST` ou `LIVE`.
-
-## 6.5. Semântica temporal e conhecimento
-
-Quando aplicável, distinguem-se:
-
-- `event_time`: tempo sustentado pela fonte externa, com basis/resolution quando disponível;
-- `ingestion_time`: chegada efetiva ao sistema;
-- effective/economic time e knowledge/recognition cutoffs conforme o domínio;
-- tempos de processamento registrados por `ProcessingReceipt`/telemetria por componente, não como `processing_time` universal do evento.
-
-Direção vigente:
-
-- tempo interno absoluto em UTC quando aplicável;
-- conversão explícita para `America/Sao_Paulo` onde calendário/regras de mercado exigirem;
-- evitar `naive datetime`;
-- conhecimento posterior ao cutoff não pode reescrever decisão histórica.
-
-## 6.6. Instrumentos
-
-Separar:
-
-```text
-InstrumentFamily: WIN
-TradableInstrument: WINQ26
-```
-
-Rollover e selection são explícitos, versionados e auditáveis. Analytical series permanecem não executáveis.
-
-## 6.7. Recovery, reconciliation e readiness
-
-Recovery e reconciliation são processos distintos e scope-specific. Snapshot + journal só podem sustentar reconstrução quando continuity é demonstrável. Reconciliation afirma consistency apenas em relação a `ReconciliationObservationBoundary` explícito. Matching/lineage precede correction.
-
-Recovery/reconciliation suficientes apenas removem seus blockers; não produzem `READY` automaticamente. `OperationalReadinessAssessment` avalia capabilities específicas.
-
-## 6.8. Runtime e segurança
-
-São semanticamente distintos:
-
-```text
-RuntimePhase
-≠ SafetyPosture
-≠ OperationalReadinessAssessment
-```
-
-`SAFE_HALT` é fail-closed para novos commitments, mas não implica auto-flatten. Liveness não equivale a readiness. Saída de postura latched exige prerequisites e authority explícitos.
-
-## 6.9. Runs e provenance
-
-`RunId` identifica uma execução computacional concreta. Restart cria novo `RunId`; continuidade é registrada por `RunRelation` tipada, como `RESUMES_FROM`. Run não é OperationalSession nem Experiment.
-
-Fatos externos não exigem `run_id` intrínseco. `CaptureContext` registra o contexto de captura e pode referenciar o Run capturador; `ProcessingReceipt` registra processamento de um artifact em um Run/componente sem mutá-lo; `ArtifactLineageRecord` representa derivação separadamente.
-
-Run boundary não é economic obligation boundary: obrigações committed antes de crash sobrevivem ao Run e precisam ser reconstruídas/controladas/reconciliadas no Run posterior.
-
-## 6.10. Persistence
-
-Persistência lógica separa `EvidenceArchive`, `AuditJournal` e snapshots. AuditJournal não é Ledger; snapshot é projeção derivada e nunca substitui/corrige journal.
-
-Para novo side effect capaz de criar/ampliar economic commitment, os critical records exigidos pela policy devem satisfazer os `DurabilityRequirement`s antes do dispatch externo. Esse persist-before-act não pressupõe transação ACID distribuída com broker/venue.
+A Fundação não autoriza trading. Ela estabelece autoridade, contratos, protocolos, negative capabilities e os gates de evolução.
 
 ---
 
-# 7. Machine Learning — orientação inicial
+## 6. Sprint 1 — Market Observer
 
-## 7.1. Não iniciar pelo modelo mais complexo
+### 6.1. Objetivo
 
-Sequência preferencial:
+Implementar observação de mercado real em modo estritamente passivo:
+
+```text
+READ_ONLY_BY_CONSTRUCTION
+STRUCTURAL_ESCALATION
+```
+
+### 6.2. Provider vigente
+
+Histórico:
+
+```text
+ADR-0023  BTG Data Services   -> referência histórica
+Cedro                         -> rejeitado como provider canônico de longo prazo
+ADR-0025  Rico + MT5          -> caminho histórico superseded
+ADR-0026  XP + MT5            -> provider vigente do Sprint 1
+```
+
+### 6.3. Arquitetura efetivamente exercitada
+
+```text
+XP / MT5 server
+-> MetaTrader 5 terminal
+   -> Investor / read-only
+   -> custom MQL5 indicator
+      -> append-only FILE_COMMON
+         -> trusted Python readers
+            -> evidence harness
+               -> provenance / health / latency / technical evidence
+```
+
+O Python confiável não importa `MetaTrader5`, não recebe account/order API e não possui authority financeira.
+
+### 6.4. Sessão qualificadora real
+
+Em 2026-09-16, a sessão `s1-xp-capture-a12` completou com:
+
+```text
+PROVIDER = xp-mt5
+INSTRUMENT = WINV26
+TIMEFRAME = PERIOD_M1
+CODE_REVISION = e622658922ff38e49e1112a48d91eecb2d43a522
+WORKTREE_AT_CAPTURE = CLEAN
+DISCOVERY_RECORDS = 18
+TICK_RECORDS = 8005
+CANDLE_RECORDS = 2
+BRIDGE_FINAL_STATE = IDLE
+```
+
+O provider demonstrou o escopo read-only necessário ao Sprint 1. Payloads brutos permanecem fora do Git; fingerprints e metadados sanitizados estão versionados.
+
+### 6.5. Engenharia do HEAD integrado
+
+Após o PR #59, a branch `sprint/1-market-observer` alcançou:
+
+```text
+HEAD = 6457ae1dfec6e91034741e57c6343397f368cbc2
+GITHUB_ACTIONS_RUN = 35126543429
+```
+
+No HEAD exato passaram:
+
+```text
+tests
+lint
+types
+compile
+dependencies
+foundation
+boundary
+diff
+```
+
+### 6.6. Segurança final
+
+O Official Codex Security Diff Scan não foi executado. Por decisão humana explícita em 2026-09-16, o instrumento final de assurance do Sprint 1 é o pacote GitHub-native documentado em:
+
+`docs/program/S1_GITHUB_SECURITY_ALTERNATIVE_GATE_2026-09-16.md`.
+
+A substituição não reduz os requisitos de 0F-E. Permanecem obrigatórios NEG-CAP, inspeção estática, configuração/segredos, integridade da Fundação e revisão formal.
+
+```text
+OFFICIAL_CODEX_SECURITY_DIFF_SCAN = NOT_EXECUTED
+GITHUB_NATIVE_SECURITY_GATE = PASS
+```
+
+### 6.7. Estado de fechamento
+
+Durante a reconciliação final:
+
+```text
+RQMS = 41/41 SATISFIED_OR_CURRENT_SCOPE
+NEG_CAP_01_TO_10 = PASS
+REAL_PROVIDER_EVIDENCE = PASS
+READ_ONLY_BY_CONSTRUCTION = PASS
+STRUCTURAL_ESCALATION = PASS
+FINAL_RECONCILIATION_CI = PENDING
+SPRINT1_ACCEPTANCE = PENDING_FINAL_RECONCILIATION_CI
+```
+
+O veredito formal será emitido somente após o HEAD documental final também passar os checks exatos.
+
+---
+
+## 7. Negative capabilities vigentes ao final do Sprint 1
+
+```text
+TRUSTED_PYTHON_IMPORTS_METATRADER5 = NO
+PYTHON_ACCOUNT_API = ABSENT
+PYTHON_ORDER_API = ABSENT
+ORDER_SUBMISSION = IMPOSSIBLE
+ORDER_MODIFICATION = IMPOSSIBLE
+ORDER_CANCELLATION = IMPOSSIBLE
+FINANCIAL_LEDGER_MUTATION = ABSENT
+PAPER_PATH = ABSENT
+LIVE_TRADING_PATH = ABSENT
+REAL_MONEY_AUTHORITY = ABSENT
+ECONOMIC_COMMITMENT = IMPOSSIBLE
+```
+
+A promoção ao Sprint 2 não altera essas proibições.
+
+---
+
+## 8. Roadmap vigente
+
+### Sprint 1 — Market Observer
+
+Observação passiva, discovery, ticks/candles, provenance, health, latência, admission/quarantine, persistência técnica e negative-capability assurance.
+
+### Sprint 2 — Data Platform & Causal Market Replay
+
+Escopo autorizado após aceitação formal do Sprint 1:
+
+- normalização e plataforma de dados;
+- replay formal de dados históricos de mercado;
+- ordenação causal;
+- controle explícito de knowledge cutoffs;
+- reprodutibilidade;
+- velocidade virtual controlada;
+- preservação de provenance;
+- qualidade e consistência de dados.
+
+Explicitamente fora do Sprint 2:
+
+- execução de ordens;
+- Strategy operacional;
+- Risk operacional;
+- Paper;
+- Live;
+- P&L econômico;
+- custos, slippage e queue-fill como simulador econômico;
+- modelos preditivos operacionais.
+
+### Sprint 3 — Deterministic Economic Backtesting
+
+- replay econômico determinístico;
+- custos;
+- spread;
+- slippage;
+- latência econômica;
+- métricas;
+- testes de leakage.
+
+### Sprint 4 — Statistical Baselines
+
+- benchmarks;
+- regressão/logística e modelos simples;
+- calibração;
+- out-of-sample.
+
+### Sprint 5 — ML Engine
+
+- feature pipeline;
+- model registry;
+- treino/validação;
+- comparação de modelos.
+
+### Sprint 6 — Scenario Engine
+
+- regimes;
+- cenários;
+- stress;
+- distribuição de resultados.
+
+### Sprint 7 — Risk Engine
+
+- limites;
+- sizing;
+- circuit breakers;
+- veto;
+- drawdown;
+- daily loss;
+- fail-safe.
+
+### Sprint 8 — Paper Trader
+
+Mercado real, decisões reais e dinheiro fictício, com registro completo e zero dinheiro real.
+
+### Sprint 9 — Recovery / Cloud Trading Node preparation
+
+Recovery, reconciliation, watchdog, observabilidade e segurança operacional, sem ativação financeira automática.
+
+### Sprint 10 — Dashboard
+
+Status, posições simuladas/permitidas pelo estágio, risco, pause, kill switch e alertas.
+
+### Sprint 11 — Auditoria pré-produção
+
+Segurança, estatística, performance, recovery, risco e compliance operacional.
+
+### Sprint 12 — Produção mínima controlada
+
+Somente se todos os gates posteriores forem cumpridos e houver nova autorização humana explícita.
+
+---
+
+## 9. Machine Learning — orientação preservada
+
+Não iniciar pelo modelo mais complexo. Sequência preferencial:
 
 1. baseline aleatório;
 2. regressão logística;
 3. Random Forest;
 4. Gradient Boosting;
 5. XGBoost/LightGBM;
-6. modelos temporais mais complexos apenas se houver ganho robusto;
-7. RL somente como linha experimental futura.
+6. modelos temporais complexos somente com ganho robusto;
+7. RL apenas como pesquisa futura.
 
-## 7.2. Possíveis famílias de modelos
-
-- direção;
-- magnitude do retorno;
-- adverse excursion;
-- regime;
-- meta-model para avaliar confiabilidade dos sinais;
-- volatilidade;
-- cenário.
-
-## 7.3. Meta-labeling
-
-Um sinal primário poderá ser filtrado por um segundo modelo:
-
-```text
-Signal Model -> LONG
-Meta Model   -> confiança insuficiente
-Resultado    -> NO_TRADE
-```
+Meta-labeling permanece linha futura válida, sem wiring operacional antecipado.
 
 ---
 
-# 8. Features candidatas futuras
+## 10. Avaliação e risco
 
-Nenhuma destas features está aprovada como obrigatória; são linhas de investigação.
+Métricas futuras candidatas:
 
-## 8.1. Preço
-
-- retorno 30s/1m/5m/15m;
-- momentum;
-- aceleração;
-- distância da VWAP;
-- breakout;
-- máxima/mínima intraday;
-- gaps.
-
-## 8.2. Volume
-
-- volume absoluto;
-- volume relativo ao horário;
-- delta;
-- volume acumulado;
-- volume por faixa de preço.
-
-## 8.3. Volatilidade
-
-- realized volatility;
-- ATR intraday;
-- range;
-- compressão/expansão.
-
-## 8.4. Microestrutura
-
-- bid;
-- ask;
-- spread;
-- profundidade;
-- imbalance;
-- agressões compradoras/vendedoras;
-- mudanças no book.
-
-Exemplo conceitual de Order Book Imbalance:
-
-```text
-OBI = (Q_bid - Q_ask) / (Q_bid + Q_ask)
-```
-
----
-
-# 9. Avaliação de cenários e risco
-
-O projeto deverá evoluir para avaliação probabilística, não apenas decisão binária.
-
-Métricas candidatas:
-
-- expected return;
-- expected downside;
-- Value at Risk;
-- Expected Shortfall;
+- expected return/downside;
+- VaR / Expected Shortfall;
 - drawdown;
-- Sharpe;
-- Sortino;
-- Calmar;
+- Sharpe / Sortino / Calmar;
 - profit factor;
 - expectancy;
-- probabilidade de perda;
-- probabilidade de ruína;
-- slippage efetivo;
-- latência efetiva.
+- probabilidade de perda/ruína;
+- slippage e latência efetivos.
 
-Objetivo conceitual:
-
-```text
-maximizar retorno ajustado ao risco
-```
-
-e não maximizar simplesmente retorno bruto.
+Objetivo conceitual: maximizar retorno ajustado ao risco, nunca retorno bruto isolado.
 
 ---
 
-# 10. Infraestrutura
+## 11. Infraestrutura e superfície operacional
 
-## 10.1. Desenvolvimento
-
-Superfície operacional deste mandato: GitHub remoto `paulobmcosta-creator/btg-ai-trader`. Checkout físico do usuário fora do escopo. Edição e verificação ocorrem via GitHub e CI/cloud, sem dependência de Git local.
-
-Estrutura versionada remota:
+A superfície operacional atual é o GitHub remoto. Checkout físico do usuário não é fonte canônica do estado do programa.
 
 ```text
 btg-ai-trader/
+├── .github/
 ├── .gitignore
 ├── .python-version
 ├── AGENTS.md
@@ -473,574 +457,95 @@ btg-ai-trader/
 └── tests/
 ```
 
-## 10.2. Produção futura
-
-Direção preliminar:
-
-```text
-CLOUD
- |
- +-- Trading Node Windows
- |    +-- MetaTrader 5 / BTG
- |    +-- Execution Engine
- |    +-- Risk Engine
- |    +-- Watchdog
- |
- +-- AI / Research Node
- |    +-- treinamento
- |    +-- backtesting
- |    +-- otimização
- |    +-- Model Registry
- |
- +-- Database
- |
- +-- Dashboard / Telemetria
-```
-
-Treinamento pesado não deverá competir por recursos com a camada crítica de execução.
+Direção futura de produção continua separando Trading Node, Research/AI Node, storage e observabilidade; treinamento pesado nunca deve competir com componentes críticos.
 
 ---
 
-# 11. Estratégia de uso do ChatGPT, Codex e Work
+## 12. Git/GitHub
 
-## 11.1. Chat
+### 12.1. Estado atual
 
-Usar para:
+- repositório público;
+- licença proprietária source-visible;
+- `main` preserva deliberadamente a baseline histórica/public-readiness e não representa automaticamente o HEAD operacional de sprint;
+- branch canônica corrente do Sprint 1: `sprint/1-market-observer`;
+- branch de reconciliação final: `s1/30-final-acceptance-github-security`;
+- código e gates de sprint são promovidos apenas após checks explícitos.
 
-- arquitetura;
-- discussão conceitual;
-- diagnóstico;
-- metodologia quantitativa;
-- análise de risco;
-- avaliação de resultados;
-- decisões;
-- revisão crítica.
+### 12.2. Segurança do repositório
 
-Política:
+O projeto possui workflows de CI, integridade da Fundação, boundary/negative-capability checks e controles de inspeção de histórico/segredos. A proteção administrativa de branches/rulesets deve ser aplicada quando a superfície GitHub permitir configuração por administrador; até lá, a ausência de ruleset não reduz os gates documentais e de CI.
 
-```text
-Instant -> rotina
-Medium  -> engenharia e análise normal
-High    -> arquitetura, risco, metodologia e decisões críticas
-```
+### 12.3. Política
 
-## 11.2. Codex
-
-Usar para:
-
-- implementar;
-- editar;
-- testar;
-- refatorar;
-- executar comandos;
-- criar arquivos;
-- manter Git.
-
-Política econômica:
-
-```text
-Luna  -> tarefas determinísticas, mecânicas e bem especificadas
-Terra -> implementação cotidiana e mudanças multiarquivo
-Sol   -> bugs difíceis, código crítico, arquitetura ambígua ou auditoria técnica
-```
-
-## 11.3. Work
-
-Usar excepcionalmente.
-
-Adequado para:
-
-- integração transversal de muitos artefatos;
-- auditoria de grandes marcos;
-- consolidação de arquitetura/documentação;
-- tarefas realmente multi-etapa e agentivas.
-
-Princípio:
-
-```text
-Chat  -> abundante
-Codex -> cirúrgico
-Work  -> excepcional
-```
-
----
-
-# 12. Fonte de verdade
-
-A hierarquia deverá ser:
-
-```text
-1. Código e testes do repositório
-2. ADRs e protocolos versionados
-3. AGENTS.md
-4. Este Plano Mestre
-5. Conversas do ChatGPT
-```
-
-Conversas são espaços de raciocínio, não devem ser a única fonte de decisões permanentes.
-
----
-
-# 13. Git e GitHub
-
-## 13.1. Estado atual
-
-- Repositório GitHub privado: `paulobmcosta-creator/btg-ai-trader`.
-- Baseline remota de entrada: `sprint/1-market-observer` em `dabce69d92054b77cad72809669d4340c211c328`, merge do PR #5.
-- Issue #1: `closed/completed`; autorização S1-A deriva do mandato humano subsequente.
-- `main` permanece em `87634d529c32f4f7a564a318323aad2fcd8596d1` na inspeção de entrada; não há promoção global implícita.
-- Commit histórico da sincronização 0D: `c7e3b24`. Verificações locais antigas são evidência histórica, não validação corrente desta execução.
-- O estado corrente e os commits posteriores constam de [PROGRAM_EXECUTION](program/PROGRAM_EXECUTION.md).
-
-## 13.2. Política futura
-
-- GitHub privado;
-- branches por feature/experimento quando necessário;
 - nenhuma credencial versionada;
-- commits pequenos e semanticamente coerentes;
-- evitar misturar arquitetura, dependências e implementação não relacionada no mesmo commit.
+- commits semanticamente coerentes;
+- PRs para mudanças materiais;
+- branches experimentais isoladas;
+- histórico não reescrito para apagar decisões;
+- promoção entre sprints por gate explícito.
 
 ---
 
-# 14. Estado atual do Sprint 0
+## 13. Política Chat / Codex / Work
 
 ```text
-SPRINT 0 — FUNDAÇÃO
-
-0A — Bootstrap estrutural              ✅ CONCLUÍDO/APROVADO
-0B — Ambiente de desenvolvimento       ✅ CONCLUÍDO/APROVADO
-Baseline Git                           ✅ CONFIGURADA/VALIDADA
-0C — Arquitetura lógica                ✅ CONCLUÍDO/APROVADO
-Baseline arquitetural                 ✅ ADR-0002 a ADR-0014 + refinamentos 0015–0022
-0D-A a 0D-E                           ✅ FECHADOS/CONGELADOS
-0D-F — Cross-contract Gate            ✅ APROVADO
-Sincronização normativa 0D            ✅ CONCLUÍDA — ADRs 0015–0022
-F1 final de consistência documental   ✅ APROVADO
-Commit de sincronização 0D            ✅ `c7e3b24`
-Sprint 0D                             ✅ FORMALMENTE FECHADO/APROVADO
-0E-A a 0E-G                           ✅ FECHADOS/CONGELADOS
-0E-H — Cross-Protocol Gate            ✅ APROVADO (PASS)
-Sincronização documental 0E           ✅ CONCLUÍDA
-Gate final de consistência documental ✅ APROVADO (PASS)
-Sprint 0E                             ✅ FORMALMENTE FECHADO/APROVADO
-Sprint 0F — Foundation Cross-Gate     ✅ FORMALMENTE FECHADO/APROVADO
-0F-A (Consistência Normativa)         ✅ CLOSED
-0F-B (Triagem de 124 DDs)             ✅ CLOSED
-0F-C (Rastreabilidade - 41 RQMs)      ✅ PASS / CLOSED
-0F-D (Segurança - 20 NCs)             ✅ PASS / CLOSED
-0F-E (Contrato de Entrada - 118 Cl.)  ✅ PASS / CLOSED
-0F-F (Foundation Final Gate)          ✅ FOUNDATION_PASS_WITH_PRE_SPRINT1_ACTIONS
-Ações pré-Sprint 1 (A-F01..B-F01)     ✅ MATERIALIZADAS / FECHADAS
-----------------------------------------------------------------------
-Sprint 1 — Market Observer: LIFECYCLE OPEN / PRE_CODE_RECONCILIATION = COMPLETE / S1_A_AUTHORIZED = YES
-----------------------------------------------------------------------
+Chat  -> arquitetura, decisão, revisão e coordenação
+Codex -> implementação/testes/refatoração quando disponível
+Work  -> tarefas transversais excepcionais
 ```
 
----
-
-# 15. Resultado da etapa 0A
-
-Criados:
-
-```text
-.gitignore
-AGENTS.md
-README.md
-pyproject.toml
-config/
-docs/
-scripts/
-src/
-tests/
-```
-
-Decisões registradas:
-
-- Risk Engine independente;
-- `NO_TRADE` válido;
-- pesquisa e execução separadas;
-- prevenção de leakage;
-- validação fora da amostra;
-- paper trading obrigatório;
-- ADRs para decisões relevantes;
-- nenhuma integração financeira nesta fase.
+O GitHub remoto é a fonte do estado implementado e deve ser preferido a contexto apenas conversacional.
 
 ---
 
-# 16. Resultado da etapa 0B
+## 14. Política de atualização
 
-## Dependências de desenvolvimento
+Atualizar este Plano Mestre quando houver:
 
-```text
-pytest==8.3.5
-pytest-cov==6.0.0
-ruff==0.11.0
-mypy==1.15.0
-hatchling==1.27.0
-```
+- fechamento/abertura de sprint;
+- mudança de provider;
+- nova decisão arquitetural material;
+- alteração de gate;
+- mudança de infraestrutura;
+- nova classe de ativo;
+- descoberta que invalide premissa vigente.
 
-Nenhuma dependência financeira ou de trading adicionada.
+Nunca:
 
-## Verificações aprovadas
-
-```text
-pip check       ✅
-pytest          ✅
-coverage        ✅ 100% do pacote estrutural atual
-Ruff            ✅
-mypy            ✅
-compileall      ✅
-git diff check  ✅
-segredos        ✅ nenhum padrão identificado
-BTG/MT5         ✅ inexistentes
-ordens          ✅ inexistentes
-```
-
-Observação: a cobertura de 100% ainda não é uma métrica substantiva, pois o pacote possui apenas estrutura mínima.
-
-## Pendências
-
-- validar Python 3.12 contra MetaTrader 5 e futuras dependências críticas antes de congelá-lo definitivamente;
-- validar instalação em um Python 3.12 Windows padrão completamente isolado;
-- formalizar a decisão em ADR no momento apropriado.
+- reescrever silenciosamente ADR histórico;
+- alterar snapshots congelados para harmonizar o presente;
+- promover hipótese a regra sem evidência;
+- conceder authority financeira por implicação.
 
 ---
 
-# 17. Sprint 0C — Arquitetura lógica
+## 15. Changelog consolidado
 
-A baseline lógica foi fechada e materializada nos ADRs 0002–0014. Ela adota monólito modular orientado a eventos; envelope versionado com causalidade e ordenação contextual; UTC, relógio monotônico e fidelidade histórica declarada; identidade de instrumentos separada de referências de provider; rollover explícito; contratos de MarketDataProvider baseados em capacidades; intents e fronteiras independentes entre Signal, Risk e Execution; perfis de composição para Replay/Backtest/Paper/Live; determinismo de Backtest; persistência em archive, journal e snapshots; recovery/reconciliation fail-closed; estados de fail-safe; tratamento auditável de eventos inválidos; observabilidade, provenance e `run_id`; e ownership explícito de Ledger, Position/Portfolio e exposição.
+### 2026-08-17 a 2026-08-25 — Fundação
 
-As 26 decisões permanecem identificáveis individualmente: 0C-01 arquitetura modular; 0C-02 envelope e causalidade; 0C-03 semântica temporal; 0C-04 ordenação contextual e fidelidade; 0C-05 desordem limitada; 0C-06 identidades de instrumento; 0C-07 rollover; 0C-08 resolução de instrumento antes de Risk; 0C-09 Signal informacional; 0C-10 TradeIntent imutável; 0C-11 RiskDecision; 0C-12 Order Planning; 0C-13 expiração de autorização; 0C-14 provider por capacidades; 0C-15 at-least-once/idempotência; 0C-16 backpressure; 0C-17 perfis de composição; 0C-18 determinismo; 0C-19 três planos de persistência; 0C-20 recovery antes de READY; 0C-21 reconciliação para resultado desconhecido; 0C-22 fail-safe explícito; 0C-23 eventos inválidos; 0C-24 erros críticos; 0C-25 ownership de posição/exposição; e 0C-26 provenance e `run_id`.
+Bootstrap, ambiente, arquitetura, contratos, protocolos quantitativos e Foundation Gate concluídos. Ações pré-Sprint 1 materializadas e Sprint 1 autorizado sob 0F-E.
 
-Na conclusão histórica do 0C ainda não haviam sido escolhidos schema, interfaces Python, armazenamento físico, tecnologia de mensageria, calendário concreto, tolerâncias, mecanismo de reserva ou integração externa. O Sprint 0C permanece formalmente concluído e aprovado. Posteriormente, o Sprint 0D refinou semanticamente a baseline por meio dos ADRs 0015–0022, sem escolher tecnologia física, e foi formalmente fechado em 2026-08-19 após aprovação do F1 final de consistência normativa/documental.
+### 2026-09-13 — execução remota do Sprint 1
 
----
+Mandato remoto consolidou GitHub como superfície operacional. Observer, provenance, health, storage, admission/quarantine, dedup/backpressure, temporal lineage, testes de propriedades/mutação e negative-capability gates foram integrados.
 
-# 18. Roadmap macro
+### 2026-09-14 — provider exploration e public-readiness
 
-## Sprint 0 — Fundação
+BTG Data Services, Cedro e Rico/MT5 foram avaliados historicamente. O repositório foi preparado para visibilidade pública com licença proprietária, SECURITY/NOTICE e scanner de histórico alcançável.
 
-- estrutura;
-- ambiente;
-- arquitetura;
-- contratos;
-- protocolos;
-- gates.
+### 2026-09-15 — XP/MT5
 
-## Sprint 1 — Market Observer
+ADR-0026 tornou XP/MT5 o provider vigente. Bridge/read-only path, discovery, portability Windows e captura automatizada foram reconciliados.
 
-Somente leitura.
+### 2026-09-16 — runtime evidence e fechamento
 
-Objetivo:
-
-- conectar futuramente a uma fonte de mercado;
-- descobrir símbolos;
-- receber ticks;
-- receber candles;
-- registrar dados;
-- medir heartbeat e latência;
-- nenhuma ordem.
-
-## Sprint 2 — Market Data Platform
-
-- normalização;
-- armazenamento;
-- qualidade;
-- proveniência;
-- replay.
-
-## Sprint 3 — Backtesting Engine
-
-- replay determinístico;
-- custos;
-- spread;
-- slippage;
-- métricas;
-- testes de leakage.
-
-## Sprint 4 — Statistical Baselines
-
-- estratégias e modelos simples;
-- benchmarks;
-- calibração;
-- out-of-sample.
-
-## Sprint 5 — ML Engine
-
-- feature pipeline;
-- model registry;
-- treino/validação;
-- comparação de modelos.
-
-## Sprint 6 — Scenario Engine
-
-- regimes;
-- cenários;
-- stress;
-- distribuição de resultados.
-
-## Sprint 7 — Risk Engine
-
-- limites;
-- sizing;
-- circuit breakers;
-- veto;
-- drawdown;
-- daily loss;
-- fail-safe.
-
-## Sprint 8 — Paper Trader
-
-- mercado real;
-- decisões reais;
-- dinheiro fictício;
-- registro completo.
-
-## Sprint 9 — Cloud Trading Node
-
-- Windows VM;
-- watchdog;
-- reconciliação;
-- observabilidade;
-- segurança operacional.
-
-## Sprint 10 — Dashboard
-
-- status;
-- posições;
-- P&L;
-- risco;
-- pause;
-- kill switch;
-- alertas.
-
-## Sprint 11 — Auditoria pré-produção
-
-- segurança;
-- estatística;
-- performance;
-- recovery;
-- risco;
-- compliance operacional.
-
-## Sprint 12 — Produção mínima controlada
-
-Somente se todos os gates forem cumpridos.
+A sessão `s1-xp-capture-a12` completou com evidência real de discovery, ticks e candle finalizado. PR #59 foi integrado. O exact integrated head `6457ae1...` passou GitHub Actions run `35126543429`. A coordenação humana aceitou o pacote GitHub-native de segurança como substituto do Official Codex Security Diff Scan, preservando este último como `NOT_EXECUTED`.
 
 ---
 
-# 19. Gates de evolução
+## 16. Próxima ação oficial
 
-## Gate A — Dados
+Finalizar a reconciliação documental do Sprint 1 em branch dedicada, exigir CI/Foundation/boundary/NEG-CAP verde no HEAD exato, emitir `SPRINT1_ACCEPTANCE = YES`, e então abrir formalmente o Sprint 2 — Data Platform & Causal Market Replay.
 
-- timestamps válidos;
-- ausência de gaps inexplicados;
-- reconexão validada;
-- proveniência registrada;
-- qualidade mensurada.
-
-## Gate B — Backtester
-
-- determinismo;
-- ausência de leakage;
-- custos modelados;
-- replay reproduzível;
-- testes automatizados.
-
-## Gate C — Modelo
-
-- validação fora da amostra;
-- walk-forward;
-- benchmark;
-- calibração;
-- estabilidade;
-- custos líquidos.
-
-## Gate D — Paper
-
-- número mínimo de pregões e oportunidades de decisão;
-- comportamento e distribuição estatística compatíveis com o backtest;
-- discrepância de execução observável no perfil Paper com proveniência declarada (refinando "slippage observado");
-- estabilidade operacional e ausência de erros críticos;
-- decisões prospectivas não financiadas (non-funded) sem equivalência automática a Live.
-
-## Gate E — Risk Engine
-
-- avaliação da suficiência pré-produção completa do Risk Engine (a authority e a fronteira independente de Risk existem na baseline desde 0C/0D, a capability necessária ao Paper deve ser implementada antes do Sprint 8, e o Gate E audita a suficiência final pré-produção);
-- veto testado e poder de veto independente;
-- circuit breakers e limites de perda diária (daily loss);
-- position limits e limites de exposição da carteira;
-- kill switch e fail-safe integrados.
-
-## Gate F — Recovery
-
-- restart;
-- reconciliação;
-- ordens pendentes;
-- estado divergente;
-- falha de rede;
-- falha de dados.
-
-## Gate G — Produção
-
-Somente após revisão formal e aprovação explícita.
-
----
-
-# 20. Políticas proibitivas até novo gate
-
-Até autorização expressa:
-
-```text
-PROIBIDO:
-- order_send() produtivo
-- dinheiro real
-- habilitar negociação automática
-- armazenar chave ou senha no Git
-- conectar modelo diretamente ao broker
-- implementar lógica que contorne o Risk Engine
-- ativar alavancagem real
-- promover modelo sem validação
-```
-
----
-
-# 21. Política de atualização deste Plano Mestre
-
-Este arquivo é **vivo**.
-
-Atualizar quando ocorrer:
-
-- mudança de escopo;
-- nova decisão arquitetural relevante;
-- aprovação ou rejeição de tecnologia;
-- encerramento de sprint;
-- mudança de gate;
-- alteração da infraestrutura-alvo;
-- descoberta que invalide premissa anterior;
-- entrada de nova classe de ativo;
-- mudança significativa na estratégia de uso de Chat/Codex/Work.
-
-## 21.1. Como atualizar
-
-Preferência:
-
-1. registrar decisão específica em ADR/protocolo;
-2. atualizar este Plano Mestre com a síntese;
-3. atualizar status/roadmap;
-4. registrar no changelog do repositório;
-5. fazer commit.
-
-## 21.2. Nunca fazer
-
-- apagar silenciosamente uma decisão anterior relevante;
-- reescrever histórico para parecer que a decisão atual sempre existiu;
-- alterar gate sem justificativa;
-- promover hipótese experimental a regra permanente sem evidência.
-
----
-
-# 22. Registro de mudanças do Plano Mestre
-
-## 2026-08-17 — versão inicial consolidada
-
-Consolidação do planejamento realizado até o fim das etapas 0A e 0B.
-
-Inclui:
-
-- visão do produto;
-- arquitetura preliminar;
-- política de risco;
-- estratégia quantitativa;
-- infraestrutura;
-- estratégia Chat/Codex/Work;
-- estado do desenvolvimento;
-- roadmap;
-- gates;
-- próximos passos.
-
-## 2026-08-18 — baseline documental do Sprint 0C
-
-Criados ADRs 0002–0014 para materializar as decisões 0C-01 a 0C-26. A arquitetura lógica está documentada e aguarda gate final de consistência e aprovação humana antes de abrir 0D. Nenhum código funcional, dependência, integração de mercado/corretora ou capacidade de negociação foi adicionada.
-
-## 2026-08-18 — fechamento formal do Sprint 0C
-
-Após revisão da baseline documental e aprovação humana, o Sprint 0C — Arquitetura Lógica foi marcado como concluído e aprovado. Os ADRs 0002–0014 constituem a baseline arquitetural vigente. A próxima etapa oficial é o Sprint 0D — Contratos e Modelo de Dados; nenhuma implementação de 0D foi iniciada.
-
-## 2026-08-19 — sincronização normativa/documental do Sprint 0D
-
-Os blocos 0D-A a 0D-E foram fechados e congelados, e o 0D-F — Cross-contract Gate foi tecnicamente aprovado sem blocker arquitetural. A auditoria textual integral dos ADRs 0002–0014 identificou deltas normativos específicos, documentados de forma append-only nos ADRs 0015–0022, preservando as decisões históricas de 0C.
-
-A sincronização atualiza também AGENTS.md, o índice de ADRs, a visão de arquitetura, este Plano Mestre e o documento do Sprint 0. Nenhum código funcional, integração financeira, capacidade de negociação ou tecnologia física foi introduzido. O Sprint 0D permanece ainda não formalmente fechado: falta rerodar exclusivamente o gate F1 de consistência entre ADRs e documentação. O Sprint 0E não foi iniciado.
-
-## 2026-08-19 — fechamento formal do Sprint 0D
-
-O F1 final de consistência normativa/documental foi executado sobre a baseline sincronizada e aprovado sem `CURRENT_NORM_CONFLICT`. Foram confirmadas as relações de refinement 0003→0015, 0007→0016, 0008→0017, 0009→0018, 0010→0019, 0011→0020, 0013→0021 e 0014→0022; ADRs 0001–0022 permanecem contínuos e indexados; documentos vivos estão coerentes com a norma vigente; nenhuma decisão física nova ou capacidade financeira foi introduzida.
-
-Com isso, o Sprint 0D — Contratos e Modelo de Dados é formalmente marcado como concluído e aprovado. A sincronização normativa foi consolidada no commit local `c7e3b24` (`docs: finalize Sprint 0D normative synchronization`). Na árvore canônica local, `pytest`, Ruff, mypy, `compileall`, `pip check` e `git diff --cached --check` passaram; após o commit, `git status` confirmou `working tree clean`. O Sprint 0E permanece não iniciado.
-
-## 2026-08-20 — sincronização normativa/documental do Sprint 0E
-
-Os sub-blocos 0E-A a 0E-G foram tecnicamente fechados e o 0E-H — Cross-Protocol Gate foi aprovado (PASS). A especificação metodológica foi materializada em `docs/protocols/quantitative/` (0E-A a 0E-H) e documentada em `docs/sprints/SPRINT_0E.md`.
-
-Foram formalizados 269 Hard Quantitative Invariants (HQIs) e consolidados sob 15 Invariantes Canônicos Transversais (QPI-01 a QPI-15) com rastreabilidade completa em `TRACEABILITY.md`. Foram resolvidos formalmente os achados documentais H-DOC-01 a H-DOC-06:
-- H-DOC-01: Relação Paper × Risk esclarecida (a authority de Risk existe desde 0C/0D, a capability necessária ao Paper é implementada antes do Sprint 8 e o Gate E avalia a suficiência pré-produção completa do Risk Engine);
-- H-DOC-02: "Slippage observado" em Paper refinado como discrepância observável qualificada pela proveniência da observação;
-- H-DOC-03: Promoção quantitativa formalizada como progressão evidenciária, nunca autoridade de trading;
-- H-DOC-04: Predicados de aplicabilidade (ApplicabilityPredicate) formalizados como não transformadores de HQI em policy;
-- H-DOC-05: Canonicalização transversal dos 269 HQIs sob QPI-01 a QPI-15 em TRACEABILITY.md;
-- H-DOC-06: Conceitos semânticos delimitados como metodológicos, sem constituir schemas físicos de runtime prematuros.
-
-Nenhum código funcional, dependência, ativo, timeframe, modelo ou tecnologia física foi introduzido. O Sprint 0E permanece ainda não formalmente fechado, com o gate final de consistência documental pendente. O Sprint 0F permanece não iniciado.
-
-## 2026-08-22 — fechamento formal do Sprint 0E
-
-O gate final de consistência documental (`FINAL_0E_DOC_GATE`) foi executado e aprovado com sucesso (`PASS`) após a canonicalização estrita dos 269 HQIs e 15 QPIs contra o dossiê canônico. Foi removida a coluna individual de aplicabilidade em `TRACEABILITY.md`, preservando a regra transversal de que aplicabilidade não converte Hard Invariant em policy. A aprovação humana formal para o encerramento do Sprint 0E foi concedida em 2026-08-22.
-
-Com isso, o Sprint 0E — Protocolos Quantitativos está formalmente concluído e aprovado. A baseline normativa é composta pelos ADRs 0001–0022 e pelos protocolos quantitativos 0E-A a 0E-H.
-
-## 2026-08-25 — encerramento formal da Fundação (Sprint 0F) e fechamento das ações pré-Sprint 1
-
-O Sprint 0F — Foundation Cross-Gate consolidou e auditou transversalmente toda a Fundação (0A a 0E) por meio dos blocos 0F-A (consistência normativa), 0F-B (triagem de 124 decisões deferidas), 0F-C (matriz canônica de rastreabilidade com 41 RQMs), 0F-D (gate de segurança negativa com 20 NCs) e 0F-E (Contrato de Entrada do Sprint 1 com 118 cláusulas). O Foundation Final Gate (0F-F) foi formalmente aprovado com o veredito `FOUNDATION_PASS_WITH_PRE_SPRINT1_ACTIONS` e zero Hard Blockers. As quatro ações documentais pré-Sprint 1 (A-F01, A-F02, A-F03 e B-F01) foram materializadas e fechadas. A fase de Fundação (Sprint 0) está formalmente concluída e aprovada. Ainda em 2026-08-25, a coordenação humana autorizou a abertura do lifecycle do Sprint 1 — Market Observer exclusivamente para o gate documental pré-código; essa autorização não alcança o primeiro código funcional.
-
-
-## 2026-09-13 — reconciliação do status de abertura do Sprint 1
-
-A Issue #1 registrou que a coordenação humana autorizou, em 2026-08-25, a abertura do lifecycle do Sprint 1 — Market Observer para um gate exclusivamente documental de reconciliação pré-código. Esta atualização elimina o drift entre documentos vivos que ainda descreviam o Sprint 1 como não iniciado e o estado vigente `SPRINT_1_STATUS = OPEN`, preservando simultaneamente `S1_A_AUTHORIZED = NO` e `FIRST_FUNCTIONAL_CODE = NOT_YET_AUTHORIZED` até revisão humana e merge do PR do gate. Nenhum código funcional, dependência, configuração funcional ou capability de trading é autorizado por esta reconciliação.
-
----
-
-## 2026-09-13 — mandato autônomo pós-merge
-
-O PR #5 foi integrado em `dabce69d92054b77cad72809669d4340c211c328` e a Issue #1 foi fechada como concluída. O mandato humano de execução autônoma de 2026-09-13 autoriza a primeira implementação funcional do Sprint 1 (`PRE_CODE_RECONCILIATION = COMPLETE`; `S1_A_AUTHORIZED = YES`; `FIRST_FUNCTIONAL_CODE = AUTHORIZED`), sob o contrato 0F-E integral e os gates de promoção. Desenvolvimento paralelo e especulativo remoto autorizado, com promoção controlada por gates. Os registros cronológicos anteriores descrevem a autorização limitada vigente à época e permanecem históricos.
-
----
-
-# 23. Próxima ação oficial
-
-**Sprint 1 — Market Observer (`LIFECYCLE = OPEN`; `CURRENT_GATE = S1_A_IMPLEMENTATION`; `S1_A_AUTHORIZED = YES`).**
-
-O PR #5 foi integrado em `dabce69d92054b77cad72809669d4340c211c328` e a Issue #1 foi fechada como concluída. O mandato humano de execução autônoma de 2026-09-13 autoriza a primeira implementação funcional do Sprint 1 (`PRE_CODE_RECONCILIATION = COMPLETE`; `S1_A_AUTHORIZED = YES`; `FIRST_FUNCTIONAL_CODE = AUTHORIZED`), sob o contrato 0F-E integral e os gates de promoção.
-
-1. Implementar o Observer provider-agnostic conforme ADRs 0001–0022, protocolos quantitativos e as 118 cláusulas do 0F-E.
-2. Registrar decisões antes da primeira dependência material, preservando os snapshots aprovados e a autoridade QPI de TRACEABILITY.md; Issue #6 permanece a errata histórica de 0F-F.
-3. Executar diretamente no GitHub e CI/cloud; o checkout físico do usuário está fora do mandato.
-4. Desenvolver workstreams independentes em paralelo e sprints futuros em branches SPECULATIVE isoladas. O número do sprint ordena promoção; dependências materiais ordenam desenvolvimento.
-5. Integrar em sprint/staging apenas após todos os checks aplicáveis, revisão e gates. Nenhuma promoção global automática para main nem introdução de capacidade financeira real.
-6. Manter [PROGRAM_EXECUTION](program/PROGRAM_EXECUTION.md) como checkpoint operacional do DAG, progresso, evidência e bloqueios.
-
----
-
-# 24. Regra de continuidade
-
-Em qualquer novo Chat, Work ou tarefa Codex relacionada ao projeto, este documento pode ser usado como ponto de partida.
-
-Prompt mínimo sugerido:
-
-```text
-Leia primeiro AGENTS.md e docs/BTG_AI_TRADER_MASTER_PLAN.md.
-Considere esses documentos como contexto normativo e de continuidade.
-Não contradiga decisões já aprovadas sem explicitar a divergência e propor atualização formal por ADR.
-```
-
-Este arquivo deve permanecer no repositório e evoluir junto com o projeto.
+Nenhuma dessas ações autoriza Paper, Risk, Strategy, ML operacional, ordens, execução financeira ou dinheiro real.
