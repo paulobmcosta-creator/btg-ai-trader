@@ -53,6 +53,14 @@ FORBIDDEN_ECONOMIC_NAMES = {
     "EconomicBacktest",
 }
 
+WALL_CLOCK_CALLS = {
+    "time.sleep",
+    "asyncio.sleep",
+    "datetime.now",
+    "datetime.utcnow",
+    "time.time",
+}
+
 SECRET_PATTERNS = {
     "private-key": re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
     "aws-key": re.compile(r"\bAKIA[A-Z0-9]{16}\b"),
@@ -89,7 +97,10 @@ def _import_name(node: ast.Import | ast.ImportFrom) -> str:
 
 
 def _is_forbidden_import(name: str) -> bool:
-    return any(name == prefix or name.startswith(prefix + ".") for prefix in FORBIDDEN_IMPORT_PREFIXES)
+    return any(
+        name == prefix or name.startswith(prefix + ".")
+        for prefix in FORBIDDEN_IMPORT_PREFIXES
+    )
 
 
 def _call_name(node: ast.Call) -> str | None:
@@ -127,10 +138,12 @@ def check_source(path: Path) -> list[Finding]:
             findings.append(Finding(str(path), node.lineno, f"forbidden-attribute:{node.attr}"))
         if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
             if node.name in prohibited_names:
-                findings.append(Finding(str(path), node.lineno, f"forbidden-definition:{node.name}"))
+                findings.append(
+                    Finding(str(path), node.lineno, f"forbidden-definition:{node.name}")
+                )
         if isinstance(node, ast.Call):
             called = _call_name(node)
-            if called in {"time.sleep", "asyncio.sleep", "datetime.now", "datetime.utcnow", "time.time"}:
+            if called in WALL_CLOCK_CALLS:
                 findings.append(Finding(str(path), node.lineno, f"wall-clock-call:{called}"))
             if called is not None and called.split(".")[-1] in FORBIDDEN_NAMES:
                 findings.append(Finding(str(path), node.lineno, f"forbidden-call:{called}"))
