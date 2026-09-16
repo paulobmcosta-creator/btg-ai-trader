@@ -1,8 +1,8 @@
 # Sprint 1 — GitHub-Native Security Alternative Gate
 
-**Date:** 2026-09-16  
-**Scope:** Sprint 1 — Market Observer  
-**Authority:** explicit human coordination decision  
+**Date:** 2026-09-16
+**Scope:** Sprint 1 — Market Observer
+**Authority:** explicit human coordination decision
 **Frozen Foundation artifacts changed:** NO
 
 ## 1. Purpose
