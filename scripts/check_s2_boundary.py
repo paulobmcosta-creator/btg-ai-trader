@@ -120,8 +120,8 @@ def scan_secrets(source: str, path_str: str) -> list[Finding]:
     findings: list[Finding] = []
     for rule, pattern in SECRET_PATTERNS.items():
         for match in pattern.finditer(source):
-            line = source.count("\n", 0, match.start()) + 1
-            findings.append(Finding(path_str, line, f"possible-secret:{rule}"))
+            line_number = source.count("\n", 0, match.start()) + 1
+            findings.append(Finding(path_str, line_number, f"possible-secret:{rule}"))
 
     if not path_str.endswith(".py"):
         for number, line in enumerate(source.splitlines(), 1):
