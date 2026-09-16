@@ -6,7 +6,6 @@
 AUTHORITATIVE_STATE = GITHUB_REMOTE
 REPOSITORY = paulobmcosta-creator/btg-ai-trader
 SPRINT_BRANCH = sprint/1-market-observer
-RECONCILIATION_BASELINE = bd9c9ce96cf0b0e44d609f16fc4d613efd1d3647
 FOUNDATION_0A_TO_0F = FORMALLY_CLOSED
 SPRINT_1_LIFECYCLE = OPEN
 S1_A_AUTHORIZED = YES
@@ -18,8 +17,10 @@ PROVIDER_SELECTION_STATUS = ACCEPTED_FOR_QUALIFICATION
 ZERO_ADDITIONAL_RECURRING_COST = HARD_CONSTRAINT
 REALTIME_REQUIREMENT = PRESERVED
 PRELIMINARY_XP_SESSION = EXECUTED_NONQUALIFYING
-REAL_QUALIFYING_PROVIDER_SESSION = NOT_EXECUTED
-SPRINT1_PROVIDER_QUALIFIED = NO
+REAL_QUALIFYING_PROVIDER_SESSION = PASS_RUNTIME
+RUNTIME_EVIDENCE_CODE_REVISION = e622658922ff38e49e1112a48d91eecb2d43a522
+RUNTIME_EVIDENCE_SCOPE = s1-xp-capture-a12
+SPRINT1_PROVIDER_QUALIFIED = NO_PENDING_FINAL_TREE_GATES
 SPRINT1_ACCEPTANCE = NOT_GRANTED
 PROMOTION_TO_SPRINT_2 = NO
 SECURITY_DIFF_SCAN = NOT_EXECUTED
@@ -28,7 +29,7 @@ MT5_OFFLINE_TICK_BRIDGE = INTEGRATED
 MT5_OFFLINE_FINAL_CANDLE_BRIDGE = INTEGRATED
 MT5_OFFLINE_SYMBOL_DISCOVERY = INTEGRATED
 XP_MT5_RUNTIME_RUNBOOK = INTEGRATED
-MT5_RUNTIME_EVIDENCE_HARNESS = INTEGRATED_OFFLINE_TESTED
+MT5_RUNTIME_EVIDENCE_HARNESS = INTEGRATED_AND_REALTIME_EXERCISED
 
 REAL_MONEY = NO
 LIVE_TRADING = NO
@@ -51,17 +52,17 @@ ADR-0023 selected BTG Solutions Data Services historically. A Cedro free-trial p
 
 ADR-0025 then selected Rico-supplied MetaTrader 5. The MT5 boundary developed under that decision remains technically useful, but the concrete Rico provisioning path did not reach a qualifying runtime session.
 
-ADR-0026 now selects **XP-supplied MetaTrader 5** as the active provider for qualification. ADR-0025 remains immutable historical evidence; the provider change does not rewrite the Observer contract.
+ADR-0026 selects **XP-supplied MetaTrader 5** as the active provider for qualification. ADR-0025 remains immutable historical evidence; the provider change does not rewrite the Observer contract.
 
 ```text
 BTG_DATA_SERVICES = HISTORICAL_REFERENCE_IMPLEMENTATION
 CEDRO_FREE_TRIAL = REJECTED_AS_CANONICAL_LONG_TERM_PROVIDER
 RICO_MT5 = HISTORICAL_SUPERSEDED_PROVIDER_PATH
 XP_MT5 = ACCEPTED_FOR_QUALIFICATION
-XP_MT5_RUNTIME_QUALIFICATION = OPEN
+XP_MT5_RUNTIME_QUALIFICATION = RUNTIME_EVIDENCE_PASS_FINAL_TREE_GATES_PENDING
 ```
 
-Runtime qualification is tracked in Issue #54.
+Runtime qualification is tracked in Issue #54. The sanitized successful-session record is `docs/program/workstreams/S1-XP-MT5-RUNTIME-EVIDENCE-2026-09-16.md`.
 
 ## XP/MT5 read-only boundary
 
@@ -84,26 +85,40 @@ The bridge is one-way. Trusted Python does not import the dual-use `MetaTrader5`
 
 The implementation still contains legacy Rico-named files/classes (`rico_mt5_bridge.py`, `RicoMt5BridgeReader`, `RicoMarketDataBridge.mq5`, `scripts/rico_mt5_first_lab_capture.py`). These are compatibility names only. Provider provenance is `xp-mt5` under ADR-0026.
 
-## Preliminary XP evidence — not qualification
+## XP entitlement and read-only evidence
 
-On 14/09/2026 the owner established a non-financial preliminary session:
+Non-secret operator evidence established the concrete XP MetaTrader 5 entitlement used by this work as R$0 additional recurring platform/data cost, with no minimum real-money operation requirement identified for retaining the entitlement. Investor/read-only authorization was established locally without exposing credentials or using an order attempt as a test.
 
 ```text
-XP_MT5_AUTHENTICATION = OBSERVED
-XP_INVESTOR_READ_ONLY = OBSERVED_LOCALLY
-PRE_RECONCILIATION_MQL5_COMPILATION = 0_ERRORS_0_WARNINGS
-XP_WIN_DISCOVERY = COMPLETE_PRELIMINARY
-XP_SERVER_SYMBOL_TOTAL = 57414
-XP_WIN_PREFIX_MATCHES = 16
-XP_WIN_EMITTED_SYMBOLS = 16
-XP_WIN_PREFIX_ERRORS = 0
-XP_WIN_ENUMERATION_ERRORS = 0
-PRELIMINARY_TARGET = WINV26
+XP_ZERO_ADDITIONAL_RECURRING_COST = PASS
+XP_MINIMUM_REAL_MONEY_OPERATION_REQUIRED = NO
+XP_INVESTOR_READ_ONLY = PASS_LOCAL
+CREDENTIAL_DISCLOSURE = NO
+ORDER_TEST_FOR_READ_ONLY = NO
 ```
 
-This supports the provider migration but does not satisfy realtime AC-05/AC-07. The raw discovery file is not committed. `WINV26` must be re-confirmed and preserved point-in-time in the qualifying-session evidence.
+Raw account/interface screenshots remain outside Git.
 
-The post-reconciliation indicator must be compiled again from the exact reviewed revision because the provider provenance changes from `rico-mt5` to `xp-mt5`.
+## Successful realtime qualification session
+
+On 16/09/2026, the controlled passive launcher completed `s1-xp-capture-a12` against `WINV26` / M1 on exact code revision `e622658922ff38e49e1112a48d91eecb2d43a522`, with a clean worktree at capture time.
+
+The exact reviewed `XPMarketDataBridge.mq5` source had been recompiled with `0 errors, 0 warnings` after the `FILE_COMMON` existence-check correction. The qualifying session then completed normally and returned the bridge to `IDLE`.
+
+Sanitized transport inventory:
+
+```text
+DISCOVERY_RECORDS = 18
+TICK_RECORDS = 8005
+FINAL_CANDLE_RECORDS_IN_RAW_CHANNEL = 2
+DISCOVERY_BYTES = 2011
+TICK_BYTES = 1517016
+CANDLE_BYTES = 538
+```
+
+The harness success condition validates complete discovery with exact `WINV26` presence, provider/symbol consistency, contiguous tick/candle sequences from one, at least two realtime ticks, at least one explicitly finalized candle, local monotonic latency evidence and a continuously `READY` health path. Raw files and the full evidence-session directory remain outside Git; their hashes are recorded in `S1-XP-MT5-RUNTIME-EVIDENCE-2026-09-16.md` and Issue #54.
+
+This successful runtime session supplies the previously missing real-provider evidence for the runtime portions of AC-01/02/05/07/08/09/12/13. It does not by itself satisfy the final-tree CI/NEG-CAP or official Security Diff Scan gates.
 
 ## Negative capabilities
 
@@ -136,6 +151,12 @@ Active runbook:
 docs/program/workstreams/S1-XP-MT5-FIRST-RUNTIME-QUALIFICATION.md
 ```
 
+Successful sanitized evidence record:
+
+```text
+docs/program/workstreams/S1-XP-MT5-RUNTIME-EVIDENCE-2026-09-16.md
+```
+
 Active file-only harness, retained under its historical filename:
 
 ```text
@@ -148,31 +169,31 @@ The harness consumes only append-only discovery/tick/candle files. It records Ru
 
 XP can be promoted to `SPRINT1_PROVIDER_QUALIFIED = YES` only after reviewed evidence demonstrates all of the following:
 
-1. concrete XP MT5/platform/feed entitlement used by the qualification is R$0 additional recurring cost;
-2. retaining that entitlement requires no minimum real-money operation, RLP, brokerage spend or equivalent;
-3. Investor/read-only authorization is established without credential exposure or order testing;
-4. passive discovery is complete and the exact current WIN symbol is explicitly confirmed point-in-time;
-5. realtime WIN observations satisfy AC-05/AC-07, including genuine tick flow and at least one genuinely finalized candle;
-6. bridge remains a custom MQL5 indicator only;
-7. trusted Python remains free of `MetaTrader5`, master password and account/order APIs;
-8. raw/passive evidence, provenance, heartbeat/staleness and local latency evidence are preserved/reviewed within their actual clock scope;
-9. exact-final-tree CI and negative-capability verification are green after evidence reconciliation;
-10. the official Security Diff Scan executes on the exact final Sprint 1 tree.
+1. concrete XP MT5/platform/feed entitlement used by the qualification is R$0 additional recurring cost — **PASS**;
+2. retaining that entitlement requires no minimum real-money operation, RLP, brokerage spend or equivalent — **PASS**;
+3. Investor/read-only authorization is established without credential exposure or order testing — **PASS**;
+4. passive discovery is complete and the exact current WIN symbol is explicitly confirmed point-in-time — **PASS (`WINV26`, a12)**;
+5. realtime WIN observations satisfy AC-05/AC-07, including genuine tick flow and at least one genuinely finalized candle — **PASS_RUNTIME**;
+6. bridge remains a custom MQL5 indicator only — **PASS**;
+7. trusted Python remains free of `MetaTrader5`, master password and account/order APIs — **PASS_CURRENT_TREE**;
+8. raw/passive evidence, provenance, heartbeat/staleness and local latency evidence are preserved/reviewed within their actual clock scope — **PASS_RUNTIME**;
+9. exact-final-tree CI and negative-capability verification are green after evidence reconciliation — **PENDING**;
+10. the official Security Diff Scan executes on the exact final Sprint 1 tree — **PENDING**.
 
-Failure of any item rejects XP qualification under current constraints; it does not relax the Sprint 1 contract.
+Failure of either remaining item blocks XP qualification and Sprint 1 acceptance; it does not relax the Sprint 1 contract.
 
 ## Evidence state
 
 ```text
 FIXTURE_AND_OFFLINE_ENGINEERING_EVIDENCE = AVAILABLE
 XP_PRELIMINARY_AUTH_DISCOVERY_COMPILE = AVAILABLE_NONQUALIFYING
-XP_OFFLINE_TICK_AND_CANDLE_TRANSPORT = INTEGRATED
-XP_OFFLINE_SYMBOL_DISCOVERY = INTEGRATED
-XP_OFFLINE_EVIDENCE_HARNESS = INTEGRATED_AND_TESTED
-REAL_XP_MT5_QUALIFYING_EVIDENCE = NOT_EXECUTED
-REALTIME_AC_05_AC_07 = NOT_YET_SATISFIED_BY_XP
-RUNTIME_PROVENANCE_HEARTBEAT_LATENCY_EVIDENCE = NOT_YET_SATISFIED_BY_XP
+XP_REALTIME_QUALIFYING_CAPTURE = PASS_RUNTIME
+XP_REALTIME_CAPTURE_SCOPE = s1-xp-capture-a12
+REALTIME_AC_05_AC_07 = SATISFIED_RUNTIME_EVIDENCE
+RUNTIME_PROVENANCE_HEARTBEAT_LATENCY_EVIDENCE = SATISFIED_RUNTIME_EVIDENCE
+EXACT_FINAL_TREE_CI_NEG_CAP = PENDING
 OFFICIAL_SECURITY_DIFF_SCAN = NOT_EXECUTED
+SPRINT1_PROVIDER_QUALIFIED = NO_PENDING_FINAL_TREE_GATES
 SPRINT1_ACCEPTANCE = NO
 ```
 
@@ -181,18 +202,12 @@ Historical BTG/Rico fixture/provider evidence remains auditable and is not relab
 ## Remaining Sprint 1 sequence
 
 ```text
-1. Confirm concrete XP R$0 platform/feed entitlement and no minimum real-money operation requirement.
-2. Reconfirm Investor/read-only locally without exposing credentials or attempting an order.
-3. Compile the exact post-reconciliation custom indicator: 0 errors, 0 warnings.
-4. Execute fresh XP WIN discovery and explicitly re-confirm WINV26 (or the then-current contract) point-in-time.
-5. Create a fresh qualifying namespace with empty/absent transport files and a non-repository evidence root.
-6. Start the file-only harness before attaching the indicator.
-7. Capture realtime ticks and at least one genuine finalized M1 candle for the exact confirmed symbol.
-8. Preserve/review raw evidence, RunId, config hash, provenance, heartbeat/staleness and local monotonic latency.
-9. Reconcile evidence against AC/RQM/XC without upgrading unsupported claims.
-10. Re-run exact-final-tree CI and NEG-CAP checks.
-11. Execute official Security Diff Scan on the exact final tree.
-12. Adjudicate all 11 exit criteria conjunctively and promote only after formal PASS.
+1. Complete this post-runtime documentation/evidence reconciliation without modifying frozen Foundation artifacts.
+2. Run exact-final-tree CI, typing, lint, Foundation, boundary and NEG-CAP checks on the reconciled tree.
+3. Execute the official Security Diff Scan on that exact final Sprint 1 tree/diff.
+4. Reconcile any findings without weakening 0F-E or the read-only boundary.
+5. Adjudicate all 11 Sprint 1 exit criteria conjunctively.
+6. Promote to Sprint 2 only after formal Sprint 1 PASS.
 ```
 
 No step above authorizes execution, Paper, Risk, Strategy, ML operational wiring or real money.
