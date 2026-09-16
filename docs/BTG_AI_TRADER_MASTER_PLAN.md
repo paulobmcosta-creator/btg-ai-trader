@@ -1,10 +1,10 @@
 # BTG AI Trader — Plano Mestre Vivo
 
-**Documento de referência transversal do projeto**  
-**Status:** ativo e evolutivo  
-**Última consolidação:** 2026-09-16  
-**Repositório:** `paulobmcosta-creator/btg-ai-trader`  
-**Visibilidade:** pública, source-visible, licença proprietária  
+**Documento de referência transversal do projeto**
+**Status:** ativo e evolutivo
+**Última consolidação:** 2026-09-16
+**Repositório:** `paulobmcosta-creator/btg-ai-trader`
+**Visibilidade:** pública, source-visible, licença proprietária
 
 ---
 
