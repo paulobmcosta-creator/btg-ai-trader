@@ -9,7 +9,6 @@ This living checkpoint records whether the current Sprint 1 state may be declare
 ```text
 FOUNDATION = FORMALLY_CLOSED
 SPRINT_1 = OPEN
-RECONCILIATION_BASELINE = bd9c9ce96cf0b0e44d609f16fc4d613efd1d3647
 CURRENT_PROVIDER_DECISION = ADR-0026
 CURRENT_PROVIDER_SELECTION = XP_SUPPLIED_MT5
 PROVIDER_ID = xp-mt5
@@ -19,14 +18,16 @@ MT5_TICK_BRIDGE = INTEGRATED
 MT5_FINAL_CANDLE_BRIDGE = INTEGRATED
 MT5_SYMBOL_DISCOVERY = INTEGRATED
 XP_MT5_RUNTIME_RUNBOOK = INTEGRATED
-MT5_LOCAL_EVIDENCE_HARNESS = INTEGRATED_OFFLINE_TESTED
+MT5_LOCAL_EVIDENCE_HARNESS = INTEGRATED_AND_REALTIME_EXERCISED
 READ_ONLY_BY_CONSTRUCTION_CURRENT_SCOPE = SATISFIED
 STRUCTURAL_ESCALATION_CURRENT_SCOPE = SATISFIED
 TRADING_CAPABILITY = ABSENT
 REAL_MONEY_PATH = ABSENT
 XP_PRELIMINARY_SESSION = EXECUTED_NONQUALIFYING
-REAL_QUALIFYING_PROVIDER_SESSION = NOT_EXECUTED
-SPRINT1_PROVIDER_QUALIFIED = NO
+REAL_QUALIFYING_PROVIDER_SESSION = PASS_RUNTIME
+RUNTIME_EVIDENCE_CODE_REVISION = e622658922ff38e49e1112a48d91eecb2d43a522
+RUNTIME_EVIDENCE_SCOPE = s1-xp-capture-a12
+SPRINT1_PROVIDER_QUALIFIED = NO_PENDING_FINAL_TREE_GATES
 SECURITY_DIFF_SCAN = NOT_EXECUTED
 SPRINT1_ACCEPTANCE = NO
 ```
@@ -37,21 +38,22 @@ SPRINT1_ACCEPTANCE = NO
 |---|---|---|
 | Foundation integrity | PASS | Frozen Foundation artifacts remain unchanged |
 | Functional Observer core | PASS_CURRENT_SCOPE | Passive Observer core integrated |
-| 41 RQMs | CONDITIONAL | Existing direct/fixture evidence remains; RQM-018 and RQM-036 still await official Security Diff Scan |
-| NEG-CAP-01..10 | PASS_CURRENT_SCOPE | Provider migration introduces no strategy/order/execution/economic authority |
-| Current provider decision | PASS_DECISION | ADR-0026 selects XP-supplied MT5 for qualification; selection is not qualification |
+| 41 RQMs | CONDITIONAL | Real-provider evidence gap is resolved; RQM-018 and RQM-036 still await official Security Diff Scan |
+| NEG-CAP-01..10 | PASS_CURRENT_SCOPE | XP runtime path introduces no strategy/order/execution/economic authority; exact-final-tree rerun pending |
+| Current provider decision | PASS_DECISION | ADR-0026 selects XP-supplied MT5 for qualification |
 | Historical BTG provider path | HISTORICAL_ONLY | ADR-0023 remains auditable reference history |
-| Historical Rico provider path | HISTORICAL_SUPERSEDED | ADR-0025 and Rico-named implementation lineage preserved; active qualification moves to XP |
-| MT5 tick bridge | PASS_IMPLEMENTATION | Passive append-only FILE_COMMON tick transport integrated/offline tested |
-| MT5 finalized-candle bridge | PASS_IMPLEMENTATION | Genuine finalized-candle transport integrated/offline tested |
-| MT5 WIN discovery | PASS_IMPLEMENTATION | Passive candidate enumeration; no automatic contract selection/mapping |
-| XP preliminary authentication | PRELIMINARY_PASS | XP login + Investor/read-only observed locally; must remain credential-free |
-| XP preliminary discovery | PRELIMINARY_PASS | Complete nonqualifying snapshot: 57.414 server symbols, 16 WIN candidates, zero discovery errors, WINV26 present |
-| Post-reconciliation MQL5 compile | FAIL_OPEN | Revised provider-provenance source must be compiled again from exact reviewed SHA |
-| Zero-cost concrete entitlement | FAIL_OPEN | Account-level R$0/no-minimum-real-trade condition still requires preserved evidence |
-| AC-05 real market data | FAIL_OPEN | No controlled qualifying realtime XP session executed |
-| AC-07 real ticks/candles | FAIL_OPEN | No qualifying real tick/final-candle capture adjudicated |
-| Heartbeat/staleness/latency | FAIL_OPEN_REAL_SCOPE | Offline instrumentation exists; real-feed evidence/thresholds remain unadjudicated |
+| Historical Rico provider path | HISTORICAL_SUPERSEDED | ADR-0025 and Rico-named implementation lineage preserved; active qualification is XP |
+| MT5 tick bridge | PASS_RUNTIME | Passive append-only FILE_COMMON tick transport exercised against live XP feed |
+| MT5 finalized-candle bridge | PASS_RUNTIME | Qualifying session captured explicitly finalized candle evidence |
+| MT5 WIN discovery | PASS_RUNTIME | Complete candidate snapshot preserved; `WINV26` explicitly confirmed without automatic selection |
+| XP Investor/read-only | PASS_LOCAL | Read-only authorization established without credential disclosure or order testing |
+| Post-fix MQL5 compile | PASS | Exact reviewed source compiled `0 errors, 0 warnings` before a12 |
+| Zero-cost concrete entitlement | PASS_EVIDENCE | Concrete account/interface evidence supports R$0 additional recurring entitlement and no minimum real-money operation requirement |
+| AC-05 real market data | PASS_RUNTIME | a12 captured 8,005 realtime `WINV26` tick records through passive boundary |
+| AC-07 real ticks/candles | PASS_RUNTIME | a12 completed with qualifying tick flow and explicitly finalized candle evidence |
+| Heartbeat/staleness/latency | PASS_RUNTIME_SCOPE | Harness preserved continuously `READY` health evidence and local monotonic ingress-to-validated-availability measurements |
+| Capture context/provenance/persistence | PASS_RUNTIME | Exact revision, run/config/provider context and preserved technical evidence recorded outside Git; sanitized hashes versioned |
+| Exact-final-tree CI / NEG-CAP | FAIL_OPEN | Must be rerun after this evidence/documentation reconciliation |
 | Official Security Diff Scan | FAIL_OPEN | Not executed; other checks cannot be relabeled as the official scan |
 
 ## Integrated XP/MT5 laboratory policy
@@ -60,7 +62,7 @@ SPRINT1_ACCEPTANCE = NO
 PROVIDER = XP-supplied MetaTrader 5
 PROVIDER_ID = xp-mt5
 INSTRUMENT_FAMILY = WIN
-PRELIMINARY_TARGET = WINV26
+QUALIFIED_RUNTIME_TARGET = WINV26
 CONCRETE_CONTRACT = EXPLICIT_POINT_IN_TIME_PROVIDER_SYMBOL
 AUTHORIZATION = INVESTOR_READ_ONLY_ONLY
 MQL5_PROGRAM_TYPE = CUSTOM_INDICATOR
@@ -74,9 +76,33 @@ REAL_MONEY_ORDER_TEST = FORBIDDEN
 RAW_PUBLIC_ARTIFACT = NO
 ```
 
-`WINV26` is a preliminary mapping and must be explicitly re-confirmed/preserved at qualification time. Passive discovery must preserve all server candidates without ranking. Ambiguous/incomplete/malformed evidence fails closed.
+The qualifying a12 discovery explicitly confirmed `WINV26` while preserving all discovered `WIN*` candidates without ranking. Ambiguous/incomplete/malformed evidence remains fail-closed.
 
-The custom indicator now emits explicit provider identity `xp-mt5`. Physical Rico-named artifact/class/script names are temporarily retained as compatibility names and must not be confused with runtime provenance.
+The custom indicator emits explicit provider identity `xp-mt5`. Physical Rico-named artifact/class/script names are temporarily retained as compatibility names and must not be confused with runtime provenance.
+
+## Successful qualifying-session record
+
+Sanitized evidence is versioned at:
+
+```text
+docs/program/workstreams/S1-XP-MT5-RUNTIME-EVIDENCE-2026-09-16.md
+```
+
+The successful session was:
+
+```text
+CAPTURE_SCOPE = s1-xp-capture-a12
+CODE_REVISION = e622658922ff38e49e1112a48d91eecb2d43a522
+INSTRUMENT = WINV26
+TIMEFRAME = PERIOD_M1
+DISCOVERY_RECORDS = 18
+TICK_RECORDS = 8005
+CANDLE_RECORDS = 2
+BRIDGE_FINAL_STATE = IDLE
+GIT_WORKTREE_AT_CAPTURE = CLEAN
+```
+
+Raw transport payloads and the complete evidence-session directory remain outside Git. Their sanitized sizes and SHA-256 fingerprints are preserved in the evidence record and Issue #54.
 
 ## Historical decisions and superseded paths
 
@@ -99,11 +125,12 @@ scripts/rico_mt5_first_lab_capture.py
 ```text
 SPRINT1_INTERNAL_OBSERVER_CORE = COMPLETE_CURRENT_SCOPE
 SPRINT1_CURRENT_PROVIDER_DECISION = COMPLETE
-SPRINT1_XP_OFFLINE_PROVIDER_BOUNDARY = INTEGRATED
-SPRINT1_XP_PRELIMINARY_AUTH_DISCOVERY = AVAILABLE_NONQUALIFYING
-SPRINT1_MT5_LOCAL_EVIDENCE_HARNESS = INTEGRATED_OFFLINE_TESTED
-SPRINT1_REAL_PROVIDER_QUALIFICATION = OPEN
-SPRINT1_REAL_CAPTURE_GATE = OPEN
+SPRINT1_XP_PROVIDER_BOUNDARY = REALTIME_EXERCISED
+SPRINT1_XP_ENTITLEMENT_READ_ONLY = PASS_EVIDENCE
+SPRINT1_REAL_PROVIDER_RUNTIME_EVIDENCE = PASS
+SPRINT1_REAL_CAPTURE_GATE = CLOSED_RUNTIME_SCOPE
+SPRINT1_PROVIDER_QUALIFICATION = PENDING_FINAL_TREE_GATES
+SPRINT1_EXACT_FINAL_TREE_CI_GATE = OPEN
 SPRINT1_SECURITY_GATE = OPEN
 SPRINT1_ACCEPTANCE = NO
 PROMOTION_TO_SPRINT_2 = NO
@@ -111,19 +138,13 @@ PROMOTION_TO_SPRINT_2 = NO
 
 ## Mandatory remaining sequence
 
-1. Pass CI/typing/lint/Foundation/boundary/NEG-CAP on the provider-reconciliation PR head before integration.
-2. After integration, verify the concrete XP MT5/platform/feed entitlement at R$0 additional recurring cost and no minimum real-money operation requirement.
-3. Re-establish/reconfirm Investor/read-only locally without exposing credentials or attempting an order.
-4. Compile the exact integrated custom indicator with `0 errors, 0 warnings`.
-5. Execute fresh passive WIN discovery and explicitly re-confirm the exact current provider symbol; no automatic front-contract selection, rollover or fallback.
-6. Start the local file-only harness before attaching the indicator in a fresh qualifying namespace.
-7. Capture genuine realtime tick flow and at least one genuinely finalized candle for the exact confirmed symbol.
-8. Review provider identity `xp-mt5`, continuity, provenance, RunId/config hash, heartbeat/staleness and local monotonic latency evidence without overstating scope.
-9. Reconcile real-provider evidence into AC/RQM/XC without upgrading unsupported claims.
-10. Re-run full exact-final-tree CI/boundary/NEG-CAP after runtime evidence/documentation reconciliation.
-11. Execute the official Security Diff Scan on the exact final Sprint 1 diff/tree.
-12. Adjudicate all 11 exit criteria conjunctively.
-13. Promote to Sprint 2 only after formal Sprint 1 PASS.
+1. Complete the post-runtime documentation/evidence reconciliation without changing frozen Foundation artifacts.
+2. Run full exact-final-tree tests, typing, lint, Foundation, boundary and NEG-CAP checks on the reconciled tree.
+3. Execute the official Security Diff Scan on that exact final Sprint 1 diff/tree.
+4. Reconcile any finding without weakening 0F-E, read-only-by-construction or structural-escalation requirements.
+5. Adjudicate all 11 exit criteria conjunctively.
+6. Set `SPRINT1_PROVIDER_QUALIFIED = YES` and `SPRINT1_ACCEPTANCE = YES` only if every remaining gate passes.
+7. Promote to Sprint 2 only after formal Sprint 1 PASS.
 
 ## Explicit prohibitions remain in force
 
