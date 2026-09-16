@@ -30,22 +30,7 @@ Os artefatos congelados da Fundação continuam históricos e não são reescrit
 
 Desenvolver um sistema privado de trading quantitativo intradiário, inicialmente voltado a instrumentos líquidos da B3, com evolução estritamente governada por gates de dados, replay, backtesting, validação quantitativa, risco, paper trading, recovery e segurança antes de qualquer capacidade financeira real.
 
-O sistema deverá evoluir para combinar:
-
-- dados de mercado em tempo real;
-- engenharia de atributos;
-- identificação de regime;
-- modelos estatísticos e de machine learning;
-- avaliação probabilística de cenários;
-- geração de sinais;
-- dimensionamento de posição;
-- gestão independente de risco;
-- execução auditável;
-- replay/backtesting;
-- paper trading;
-- monitoramento;
-- recovery/reconciliation;
-- infraestrutura apropriada ao estágio.
+O sistema deverá evoluir para combinar dados de mercado em tempo real, engenharia de atributos, identificação de regime, modelos estatísticos e de machine learning, avaliação probabilística, sinais, dimensionamento, gestão independente de risco, execução auditável, replay/backtesting, paper trading, monitoramento e recovery/reconciliation.
 
 O foco inicial permanece intradiário, com horizonte de segundos a minutos. O projeto não é HFT de microssegundos e não autoriza dinheiro real nesta fase.
 
@@ -184,18 +169,18 @@ A Fundação não autoriza trading. Ela estabelece autoridade, contratos, protoc
 
 ---
 
-## 6. Sprint 1 — Market Observer
+## 6. Sprint 1 — Market Observer — FORMALLY CLOSED / PASS
 
-### 6.1. Objetivo
+### 6.1. Objetivo cumprido
 
-Implementar observação de mercado real em modo estritamente passivo:
+O Sprint 1 implementou observação de mercado real em modo estritamente passivo:
 
 ```text
-READ_ONLY_BY_CONSTRUCTION
-STRUCTURAL_ESCALATION
+READ_ONLY_BY_CONSTRUCTION = PASS
+STRUCTURAL_ESCALATION = PASS
 ```
 
-### 6.2. Provider vigente
+### 6.2. Provider final
 
 Histórico:
 
@@ -203,7 +188,7 @@ Histórico:
 ADR-0023  BTG Data Services   -> referência histórica
 Cedro                         -> rejeitado como provider canônico de longo prazo
 ADR-0025  Rico + MT5          -> caminho histórico superseded
-ADR-0026  XP + MT5            -> provider vigente do Sprint 1
+ADR-0026  XP + MT5            -> provider qualificado do Sprint 1
 ```
 
 ### 6.3. Arquitetura efetivamente exercitada
@@ -237,62 +222,47 @@ CANDLE_RECORDS = 2
 BRIDGE_FINAL_STATE = IDLE
 ```
 
-O provider demonstrou o escopo read-only necessário ao Sprint 1. Payloads brutos permanecem fora do Git; fingerprints e metadados sanitizados estão versionados.
+Payloads brutos permanecem fora do Git; fingerprints e metadados sanitizados estão versionados.
 
-### 6.5. Engenharia do HEAD integrado
+### 6.5. Engenharia final
 
-Após o PR #59, a branch `sprint/1-market-observer` alcançou:
+Após o PR #59, o commit integrado `6457ae1dfec6e91034741e57c6343397f368cbc2` passou GitHub Actions run `35126543429`.
 
-```text
-HEAD = 6457ae1dfec6e91034741e57c6343397f368cbc2
-GITHUB_ACTIONS_RUN = 35126543429
-```
-
-No HEAD exato passaram:
+A reconciliação final `977923a4693b4b14d1ddab47a77d7bf86cb250b9` passou:
 
 ```text
-tests
-lint
-types
-compile
-dependencies
-foundation
-boundary
-diff
+Remote Python CI = PASS (35128804489)
+Pinned upstream engineering verification = PASS (35128804436)
 ```
 
 ### 6.6. Segurança final
 
-O Official Codex Security Diff Scan não foi executado. Por decisão humana explícita em 2026-09-16, o instrumento final de assurance do Sprint 1 é o pacote GitHub-native documentado em:
-
-`docs/program/S1_GITHUB_SECURITY_ALTERNATIVE_GATE_2026-09-16.md`.
-
-A substituição não reduz os requisitos de 0F-E. Permanecem obrigatórios NEG-CAP, inspeção estática, configuração/segredos, integridade da Fundação e revisão formal.
+O Official Codex Security Diff Scan não foi executado. Por decisão humana explícita em 2026-09-16, o instrumento final de assurance do Sprint 1 é o pacote GitHub-native documentado em `docs/program/S1_GITHUB_SECURITY_ALTERNATIVE_GATE_2026-09-16.md`.
 
 ```text
 OFFICIAL_CODEX_SECURITY_DIFF_SCAN = NOT_EXECUTED
 GITHUB_NATIVE_SECURITY_GATE = PASS
 ```
 
-### 6.7. Estado de fechamento
+A substituição altera apenas o instrumento de evidência. NEG-CAP, inspeção estática, config/segredos, integridade da Fundação e os requisitos de 0F-E permanecem integrais.
 
-Durante a reconciliação final:
+### 6.7. Veredito final
 
 ```text
-RQMS = 41/41 SATISFIED_OR_CURRENT_SCOPE
+RQMS = 41/41 PASS_OR_CURRENT_SCOPE
 NEG_CAP_01_TO_10 = PASS
-REAL_PROVIDER_EVIDENCE = PASS
-READ_ONLY_BY_CONSTRUCTION = PASS
-STRUCTURAL_ESCALATION = PASS
-FINAL_RECONCILIATION_CI = PENDING
-SPRINT1_ACCEPTANCE = PENDING_FINAL_RECONCILIATION_CI
+XC_01_TO_11 = PASS
+OPEN_BLOCKERS = 0
+SPRINT1_PROVIDER_QUALIFIED = YES
+SPRINT1_ACCEPTANCE = YES
+PROMOTION_TO_SPRINT_2 = YES
 ```
 
-O veredito formal será emitido somente após o HEAD documental final também passar os checks exatos.
+Sprint 1 — Market Observer está formalmente concluído e aprovado.
 
 ---
 
-## 7. Negative capabilities vigentes ao final do Sprint 1
+## 7. Negative capabilities herdadas pelo Sprint 2
 
 ```text
 TRUSTED_PYTHON_IMPORTS_METATRADER5 = NO
@@ -314,24 +284,20 @@ A promoção ao Sprint 2 não altera essas proibições.
 
 ## 8. Roadmap vigente
 
-### Sprint 1 — Market Observer
+### Sprint 2 — Data Platform & Causal Market Replay — AUTHORIZED TO OPEN
 
-Observação passiva, discovery, ticks/candles, provenance, health, latência, admission/quarantine, persistência técnica e negative-capability assurance.
-
-### Sprint 2 — Data Platform & Causal Market Replay
-
-Escopo autorizado após aceitação formal do Sprint 1:
+Escopo autorizado:
 
 - normalização e plataforma de dados;
 - replay formal de dados históricos de mercado;
 - ordenação causal;
-- controle explícito de knowledge cutoffs;
+- knowledge cutoffs explícitos;
 - reprodutibilidade;
 - velocidade virtual controlada;
-- preservação de provenance;
+- provenance;
 - qualidade e consistência de dados.
 
-Explicitamente fora do Sprint 2:
+Fora do Sprint 2:
 
 - execução de ordens;
 - Strategy operacional;
@@ -344,56 +310,35 @@ Explicitamente fora do Sprint 2:
 
 ### Sprint 3 — Deterministic Economic Backtesting
 
-- replay econômico determinístico;
-- custos;
-- spread;
-- slippage;
-- latência econômica;
-- métricas;
-- testes de leakage.
+Replay econômico determinístico, custos, spread, slippage, latência econômica, métricas e testes de leakage.
 
 ### Sprint 4 — Statistical Baselines
 
-- benchmarks;
-- regressão/logística e modelos simples;
-- calibração;
-- out-of-sample.
+Benchmarks, modelos simples, calibração e out-of-sample.
 
 ### Sprint 5 — ML Engine
 
-- feature pipeline;
-- model registry;
-- treino/validação;
-- comparação de modelos.
+Feature pipeline, model registry, treino/validação e comparação de modelos.
 
 ### Sprint 6 — Scenario Engine
 
-- regimes;
-- cenários;
-- stress;
-- distribuição de resultados.
+Regimes, cenários, stress e distribuição de resultados.
 
 ### Sprint 7 — Risk Engine
 
-- limites;
-- sizing;
-- circuit breakers;
-- veto;
-- drawdown;
-- daily loss;
-- fail-safe.
+Limites, sizing, circuit breakers, veto, drawdown, daily loss e fail-safe.
 
 ### Sprint 8 — Paper Trader
 
 Mercado real, decisões reais e dinheiro fictício, com registro completo e zero dinheiro real.
 
-### Sprint 9 — Recovery / Cloud Trading Node preparation
+### Sprint 9 — Recovery / Cloud preparation
 
-Recovery, reconciliation, watchdog, observabilidade e segurança operacional, sem ativação financeira automática.
+Recovery, reconciliation, watchdog, observabilidade e segurança operacional.
 
 ### Sprint 10 — Dashboard
 
-Status, posições simuladas/permitidas pelo estágio, risco, pause, kill switch e alertas.
+Status, risco, pause, kill switch e alertas.
 
 ### Sprint 11 — Auditoria pré-produção
 
@@ -407,14 +352,14 @@ Somente se todos os gates posteriores forem cumpridos e houver nova autorizaçã
 
 ## 9. Machine Learning — orientação preservada
 
-Não iniciar pelo modelo mais complexo. Sequência preferencial:
+Sequência preferencial futura:
 
 1. baseline aleatório;
 2. regressão logística;
 3. Random Forest;
 4. Gradient Boosting;
 5. XGBoost/LightGBM;
-6. modelos temporais complexos somente com ganho robusto;
+6. modelos temporais complexos apenas com ganho robusto;
 7. RL apenas como pesquisa futura.
 
 Meta-labeling permanece linha futura válida, sem wiring operacional antecipado.
@@ -423,16 +368,7 @@ Meta-labeling permanece linha futura válida, sem wiring operacional antecipado.
 
 ## 10. Avaliação e risco
 
-Métricas futuras candidatas:
-
-- expected return/downside;
-- VaR / Expected Shortfall;
-- drawdown;
-- Sharpe / Sortino / Calmar;
-- profit factor;
-- expectancy;
-- probabilidade de perda/ruína;
-- slippage e latência efetivos.
+Métricas futuras candidatas incluem expected return/downside, VaR/Expected Shortfall, drawdown, Sharpe/Sortino/Calmar, profit factor, expectancy, probabilidade de perda/ruína, slippage e latência efetivos.
 
 Objetivo conceitual: maximizar retorno ajustado ao risco, nunca retorno bruto isolado.
 
@@ -468,9 +404,9 @@ Direção futura de produção continua separando Trading Node, Research/AI Node
 - repositório público;
 - licença proprietária source-visible;
 - `main` preserva deliberadamente a baseline histórica/public-readiness e não representa automaticamente o HEAD operacional de sprint;
-- branch canônica corrente do Sprint 1: `sprint/1-market-observer`;
-- branch de reconciliação final: `s1/30-final-acceptance-github-security`;
-- código e gates de sprint são promovidos apenas após checks explícitos.
+- branch canônica do Sprint 1: `sprint/1-market-observer`;
+- branch de fechamento: `s1/30-final-acceptance-github-security`;
+- Sprint 2 está autorizado a abrir a partir do head aceito do Sprint 1.
 
 ### 12.2. Segurança do repositório
 
@@ -501,22 +437,9 @@ O GitHub remoto é a fonte do estado implementado e deve ser preferido a context
 
 ## 14. Política de atualização
 
-Atualizar este Plano Mestre quando houver:
+Atualizar este Plano Mestre quando houver fechamento/abertura de sprint, mudança de provider, nova decisão arquitetural material, alteração de gate, mudança de infraestrutura, nova classe de ativo ou descoberta que invalide premissa vigente.
 
-- fechamento/abertura de sprint;
-- mudança de provider;
-- nova decisão arquitetural material;
-- alteração de gate;
-- mudança de infraestrutura;
-- nova classe de ativo;
-- descoberta que invalide premissa vigente.
-
-Nunca:
-
-- reescrever silenciosamente ADR histórico;
-- alterar snapshots congelados para harmonizar o presente;
-- promover hipótese a regra sem evidência;
-- conceder authority financeira por implicação.
+Nunca reescrever silenciosamente ADR histórico, alterar snapshots congelados para harmonizar o presente, promover hipótese a regra sem evidência ou conceder authority financeira por implicação.
 
 ---
 
@@ -528,24 +451,24 @@ Bootstrap, ambiente, arquitetura, contratos, protocolos quantitativos e Foundati
 
 ### 2026-09-13 — execução remota do Sprint 1
 
-Mandato remoto consolidou GitHub como superfície operacional. Observer, provenance, health, storage, admission/quarantine, dedup/backpressure, temporal lineage, testes de propriedades/mutação e negative-capability gates foram integrados.
+GitHub consolidado como superfície operacional. Observer, provenance, health, storage, admission/quarantine, dedup/backpressure, temporal lineage, propriedades/mutação e negative-capability gates integrados.
 
-### 2026-09-14 — provider exploration e public-readiness
+### 2026-09-14 — providers e public-readiness
 
-BTG Data Services, Cedro e Rico/MT5 foram avaliados historicamente. O repositório foi preparado para visibilidade pública com licença proprietária, SECURITY/NOTICE e scanner de histórico alcançável.
+BTG Data Services, Cedro e Rico/MT5 avaliados historicamente. Repositório preparado para visibilidade pública com licença proprietária, SECURITY/NOTICE e scanner de histórico alcançável.
 
 ### 2026-09-15 — XP/MT5
 
-ADR-0026 tornou XP/MT5 o provider vigente. Bridge/read-only path, discovery, portability Windows e captura automatizada foram reconciliados.
+ADR-0026 tornou XP/MT5 o provider vigente. Bridge read-only, discovery, portability Windows e captura automatizada foram reconciliados.
 
-### 2026-09-16 — runtime evidence e fechamento
+### 2026-09-16 — runtime evidence e aceitação do Sprint 1
 
-A sessão `s1-xp-capture-a12` completou com evidência real de discovery, ticks e candle finalizado. PR #59 foi integrado. O exact integrated head `6457ae1...` passou GitHub Actions run `35126543429`. A coordenação humana aceitou o pacote GitHub-native de segurança como substituto do Official Codex Security Diff Scan, preservando este último como `NOT_EXECUTED`.
+`s1-xp-capture-a12` completou com discovery, ticks e candle finalizado. PR #59 foi integrado. O exact integrated head `6457ae1...` passou CI. A reconciliação `977923a...` também passou CI/upstream. A coordenação humana aceitou o pacote GitHub-native de segurança como substituto do Official Codex Security Diff Scan, preservando este como `NOT_EXECUTED`. Os 41 RQMs e XC-01..XC-11 foram adjudicados PASS; Sprint 1 foi formalmente aceito e Sprint 2 autorizado.
 
 ---
 
 ## 16. Próxima ação oficial
 
-Finalizar a reconciliação documental do Sprint 1 em branch dedicada, exigir CI/Foundation/boundary/NEG-CAP verde no HEAD exato, emitir `SPRINT1_ACCEPTANCE = YES`, e então abrir formalmente o Sprint 2 — Data Platform & Causal Market Replay.
+Abrir formalmente o Sprint 2 — Data Platform & Causal Market Replay — em branch canônica própria derivada do head aceito do Sprint 1.
 
-Nenhuma dessas ações autoriza Paper, Risk, Strategy, ML operacional, ordens, execução financeira ou dinheiro real.
+A abertura do Sprint 2 não autoriza Paper, Risk, Strategy, ML operacional, backtesting econômico, ordens, execução financeira ou dinheiro real.
