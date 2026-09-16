@@ -119,15 +119,15 @@ def scan_secrets(source: str, path_str: str) -> list[Finding]:
     """Apply generic secret heuristics without exposing suspected values."""
     findings: list[Finding] = []
     for rule, pattern in SECRET_PATTERNS.items():
-        for match in pattern.finditer(source):
-            line_number = source.count("\n", 0, match.start()) + 1
+        for pattern_match in pattern.finditer(source):
+            line_number = source.count("\n", 0, pattern_match.start()) + 1
             findings.append(Finding(path_str, line_number, f"possible-secret:{rule}"))
 
     if not path_str.endswith(".py"):
         for number, line in enumerate(source.splitlines(), 1):
-            match = re.match(r"\s*([A-Za-z0-9_-]+)\s*[:=]\s*(.+)", line)
-            if match and SECRET_NAME.search(match[1]):
-                value = match[2].strip().strip("\"'")
+            credential_match = re.match(r"\s*([A-Za-z0-9_-]+)\s*[:=]\s*(.+)", line)
+            if credential_match and SECRET_NAME.search(credential_match[1]):
+                value = credential_match[2].strip().strip("\"'")
                 if value and not value.startswith(("${{", "${")):
                     findings.append(Finding(path_str, number, "possible-credential-literal"))
         return findings
