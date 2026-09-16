@@ -1,59 +1,114 @@
 # Sprint 1 — Market Observer
 
-## Estado de abertura
+## Estado final
 
 ```text
-SPRINT_1_STATUS = OPEN
-CURRENT_GATE = S1_A_IMPLEMENTATION
-PR_5 = MERGED
-ISSUE_1 = COMPLETED
-PRE_CODE_RECONCILIATION = COMPLETE
-S1_A_AUTHORIZED = YES
-FIRST_FUNCTIONAL_CODE = AUTHORIZED
+SPRINT_1_STATUS = FORMALLY_CLOSED
+SPRINT_1_FINAL_VERDICT = PASS
+FOUNDATION_0A_TO_0F = FORMALLY_CLOSED
+S1_IMPLEMENTATION = COMPLETE
+REAL_PROVIDER_RUNTIME_EVIDENCE = PASS
+CURRENT_PROVIDER = XP_SUPPLIED_MT5
+PROVIDER_ID = xp-mt5
+PRE_RECONCILIATION_INTEGRATED_HEAD = 6457ae1dfec6e91034741e57c6343397f368cbc2
+FINAL_RECONCILIATION_VALIDATED_HEAD = 977923a4693b4b14d1ddab47a77d7bf86cb250b9
+FINAL_RECONCILIATION_REMOTE_CI_RUN = 35128804489
+FINAL_RECONCILIATION_PINNED_UPSTREAM_RUN = 35128804436
+GITHUB_NATIVE_SECURITY_GATE = PASS
+OFFICIAL_CODEX_SECURITY_DIFF_SCAN = NOT_EXECUTED
+SPRINT1_PROVIDER_QUALIFIED = YES
+SPRINT1_ACCEPTANCE = YES
+PROMOTION_TO_SPRINT_2 = YES
 ```
 
-O PR #5 foi integrado em `dabce69d92054b77cad72809669d4340c211c328` e a Issue #1 foi fechada como concluída. O mandato humano de execução autônoma de 2026-09-13 autoriza a primeira implementação funcional do Sprint 1 (`PRE_CODE_RECONCILIATION = COMPLETE`; `S1_A_AUTHORIZED = YES`; `FIRST_FUNCTIONAL_CODE = AUTHORIZED`), sob o contrato 0F-E integral e os gates de promoção.
+O Sprint 1 foi implementado e aceito sob o contrato 0F-E integral. O Market Observer real foi exercitado de forma estritamente passiva contra XP/MetaTrader 5 em `s1-xp-capture-a12`, com evidência de discovery, ticks, candle finalizado, provenance, health e latência, sem introdução de capacidade financeira.
 
-## Objetivo
-
-Implementar, conforme autorização humana vigente, um **Market Observer** estritamente:
+## Fronteira de segurança aceita
 
 ```text
-READ_ONLY_BY_CONSTRUCTION
-STRUCTURAL_ESCALATION
+READ_ONLY_BY_CONSTRUCTION = PASS
+STRUCTURAL_ESCALATION = PASS
+STRATEGY_OPERATIONAL_PATH = ABSENT
+RISK_AUTHORIZATION_ENGINE = ABSENT
+ORDER_API = ABSENT
+PAPER_PATH = ABSENT
+LIVE_PATH = ABSENT
+FINANCIAL_LEDGER_MUTATION = ABSENT
+REAL_MONEY_AUTHORITY = ABSENT
 ```
 
-O escopo positivo e os critérios de aceitação são governados integralmente pelo Contrato de Entrada canônico `docs/foundation/0F-E_sprint1_entry_contract.md`. O artefato `docs/foundation/0F-F_foundation_final_gate.md` é preservado como snapshot histórico da adjudicação final da Fundação.
+O escopo positivo e os critérios de aceitação permanecem governados pelo Contrato de Entrada canônico `docs/foundation/0F-E_sprint1_entry_contract.md`. O artefato `docs/foundation/0F-F_foundation_final_gate.md` permanece snapshot histórico da Fundação.
 
 ## Autoridade e rastreabilidade
 
-O Sprint 1 deve ser conduzido em conformidade cumulativa com:
+O Sprint 1 foi adjudicado cumulativamente contra:
 
-- 0F-B — registro canônico de 124 decisões deferidas; para navegação portátil das fontes de proveniência, usar [0F-B — Portable Provenance Navigation](../foundation/0F-B_provenance_navigation.md), sem alterar o snapshot canônico;
-- 0F-C — 41 RQMs, 27 HQIs aplicáveis ao Sprint 1 e 7 QPIs aplicáveis;
-- 0F-D — 20 Negative Capabilities e 10 obrigações de testes negativos;
+- 0F-B — decisões deferidas;
+- 0F-C — 41 RQMs, 27 HQIs e 7 QPIs aplicáveis;
+- 0F-D — 20 Negative Capabilities e 10 obrigações NEG-CAP;
 - 0F-E — 118 cláusulas `S1-EC-001` a `S1-EC-118`;
-- 0F-F — snapshot histórico da adjudicação da Fundação.
+- 0F-F — snapshot histórico da Fundação;
+- ADR-0026 — provider XP/MT5 vigente para o Observer.
 
-A cardinalidade de **28 Decision Gate Clauses** do 0F-E não é equivalente à cardinalidade de **26 decisões `MAY_DECIDE_DURING_SPRINT_1`** do 0F-B. Esses universos permanecem distintos.
+Nenhum artefato congelado foi reescrito para acomodar a implementação.
 
-## Gate pré-código concluído e implementação
-
-O PR #5 concluiu o gate documental; a Issue #1 está fechada. Seu escopo histórico permanece documental. O mandato humano subsequente autoriza agora código, testes e configuração seguros do Observer. Esta autorização não declara S1-A implementado nem Sprint 1 aceito.
-
-Implementação começa por modelos de domínio, contratos provider-agnostic e providers de teste. Risk, replay formal, ML e Paper de sprints futuros ficam em branches SPECULATIVE separadas e não podem entrar na baseline S1. As 118 cláusulas S1-EC, 41 RQMs e 10 obrigações NEG-CAP continuam integrais. O primeiro PR funcional exige Security Diff Scan do diff exato conforme Issue #1.
-
-Consulte [PROGRAM_EXECUTION](../program/PROGRAM_EXECUTION.md) para DAG, evidências, branches, PRs e próximos nós prontos.
-
-## Disciplina de decisões deferidas
-
-As decisões deferidas permanecem governadas pelo 0F-B e pelo 0F-E. Em particular:
+## Evidência real do provider
 
 ```text
-TOTAL_NORMALIZED_DECISIONS = 124
-MAY_DECIDE_DURING_SPRINT_1 = 26
-MAY_DEFER_BEYOND_SPRINT_1 = 50
-MUST_REMAIN_UNDECIDED_NOW = 48
+CAPTURE_SCOPE = s1-xp-capture-a12
+PROVIDER = xp-mt5
+INSTRUMENT = WINV26
+TIMEFRAME = PERIOD_M1
+CODE_REVISION = e622658922ff38e49e1112a48d91eecb2d43a522
+DISCOVERY_RECORDS = 18
+TICK_RECORDS = 8005
+CANDLE_RECORDS = 2
+BRIDGE_FINAL_STATE = IDLE
+WORKTREE_AT_CAPTURE = CLEAN
 ```
 
-Este documento não seleciona nem congela antecipadamente provider, vendor, SDK, MT5, ticker, instrumento definitivo, timeframe, resolução definitiva, storage, database, schema físico, cloud, thresholds quantitativos finais, broker, Paper, Live, ML ou Strategy.
+A evidência sanitizada está em `docs/program/workstreams/S1-XP-MT5-RUNTIME-EVIDENCE-2026-09-16.md`; payloads brutos permanecem fora do Git.
+
+## Evidência de engenharia
+
+O commit integrado `6457ae1dfec6e91034741e57c6343397f368cbc2` passou GitHub Actions run `35126543429`.
+
+A reconciliação final `977923a4693b4b14d1ddab47a77d7bf86cb250b9` passou:
+
+```text
+Remote Python CI = PASS (35128804489)
+Pinned upstream engineering verification = PASS (35128804436)
+```
+
+Os checks abrangem tests, lint, types, compile, dependencies, Foundation, boundary/config/possible-secret heuristics e diff.
+
+## Segurança final — instrumento aceito
+
+O Official Codex Security Diff Scan não foi executado e permanece registrado como `NOT_EXECUTED`.
+
+Por decisão humana explícita de 2026-09-16, o gate final usa o pacote GitHub-native documentado em `docs/program/S1_GITHUB_SECURITY_ALTERNATIVE_GATE_2026-09-16.md`. A substituição altera apenas o instrumento de evidência e não reduz RQMs, HQIs/QPIs, NEG-CAP, `READ_ONLY_BY_CONSTRUCTION` ou `STRUCTURAL_ESCALATION`.
+
+## Resultado final dos gates
+
+```text
+RQMS = 41/41 PASS_OR_CURRENT_SCOPE
+NEG_CAP_01_TO_10 = PASS
+XC_01_TO_11 = PASS
+OPEN_BLOCKERS = 0
+SPRINT1_PROVIDER_QUALIFIED = YES
+SPRINT1_ACCEPTANCE = YES
+PROMOTION_TO_SPRINT_2 = YES
+```
+
+Consulte:
+
+- `docs/program/PROGRAM_EXECUTION.md`;
+- `docs/program/RQM_EXECUTION_STATUS.md`;
+- `docs/program/S1_FINAL_ACCEPTANCE_GATE.md`;
+- `docs/program/S1_GITHUB_SECURITY_ALTERNATIVE_GATE_2026-09-16.md`.
+
+## Próxima transição autorizada
+
+O Sprint 2 — **Data Platform & Causal Market Replay** — está autorizado a abrir a partir do head aceito do Sprint 1.
+
+A promoção ao Sprint 2 não autoriza Paper, Risk, Strategy, ML operacional, backtesting econômico, ordens, execução financeira ou dinheiro real.
