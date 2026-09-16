@@ -72,6 +72,9 @@ SECRET_PATTERNS = {
     "api-token": re.compile(r"\bsk-[A-Za-z0-9_-]{24,}"),
     "url-credential": re.compile(r"https?://[^\s/@:]+:[^\s/@]+@"),
 }
+SECRET_NAME = re.compile(
+    r"(?:password|secret|api[_-]?key|access[_-]?token|auth[_-]?token)", re.I
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,11 +116,51 @@ def _call_name(node: ast.Call) -> str | None:
 
 
 def scan_secrets(source: str, path_str: str) -> list[Finding]:
+    """Apply generic secret heuristics without exposing suspected values."""
     findings: list[Finding] = []
     for rule, pattern in SECRET_PATTERNS.items():
         for match in pattern.finditer(source):
             line = source.count("\n", 0, match.start()) + 1
             findings.append(Finding(path_str, line, f"possible-secret:{rule}"))
+
+    if not path_str.endswith(".py"):
+        for number, line in enumerate(source.splitlines(), 1):
+            match = re.match(r"\s*([A-Za-z0-9_-]+)\s*[:=]\s*(.+)", line)
+            if match and SECRET_NAME.search(match[1]):
+                value = match[2].strip().strip("\"'")
+                if value and not value.startswith(("${{", "${")):
+                    findings.append(Finding(path_str, number, "possible-credential-literal"))
+        return findings
+
+    try:
+        tree = ast.parse(source, filename=path_str)
+    except SyntaxError:
+        return findings
+    for node in ast.walk(tree):
+        pairs: list[tuple[str, ast.AST]] = []
+        if isinstance(node, ast.Assign):
+            pairs = [
+                (target.id, node.value)
+                for target in node.targets
+                if isinstance(target, ast.Name)
+            ]
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            if node.value is not None:
+                pairs = [(node.target.id, node.value)]
+        elif isinstance(node, ast.Dict):
+            pairs = [
+                (key.value, value)
+                for key, value in zip(node.keys, node.values, strict=True)
+                if isinstance(key, ast.Constant) and isinstance(key.value, str)
+            ]
+        for name, value in pairs:
+            if (
+                SECRET_NAME.search(name)
+                and isinstance(value, ast.Constant)
+                and isinstance(value.value, str | bytes)
+                and bool(value.value)
+            ):
+                findings.append(Finding(path_str, value.lineno, "possible-credential-literal"))
     return findings
 
 
@@ -192,7 +235,8 @@ def main() -> int:
     for root in S2_ROOTS:
         if root.exists():
             file_count += sum(
-                1 for p in root.rglob("*")
+                1
+                for p in root.rglob("*")
                 if p.is_file() and not p.is_symlink() and "__pycache__" not in p.parts
             )
 
