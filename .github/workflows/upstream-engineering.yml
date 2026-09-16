@@ -2,9 +2,16 @@ name: Pinned upstream engineering verification
 
 on:
   push:
-    branches: ["s11/02-foundation-integrity"]
+    branches:
+      - "s11/02-foundation-integrity"
+      - "sprint/2-data-platform-replay"
   pull_request:
-    branches: ["s11/**", "s1/**", "sprint/1-market-observer"]
+    branches:
+      - "s11/**"
+      - "s1/**"
+      - "s2/**"
+      - "sprint/1-market-observer"
+      - "sprint/2-data-platform-replay"
 
 permissions:
   contents: read
