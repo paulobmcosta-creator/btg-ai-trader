@@ -19,8 +19,18 @@ SPRINT1_ACCEPTANCE = YES
 SPRINT_2_BRANCH = sprint/2-data-platform-replay
 SPRINT_2_LIFECYCLE = OPEN
 SPRINT_2_SCOPE = DATA_PLATFORM_AND_CAUSAL_MARKET_REPLAY
-SPRINT_2_ENTRY_DOC = docs/sprints/SPRINT_2.md
-SPRINT_2_FUNCTIONAL_IMPLEMENTATION = BLOCKED_UNTIL_ENTRY_MATERIALIZATION
+SPRINT_2_ENTRY_CONTRACT = docs/program/S2_ENTRY_CONTRACT.md
+SPRINT_2_DECISION_REGISTER = docs/program/S2_DECISION_REGISTER.md
+SPRINT_2_CAPABILITY_MATRIX = docs/program/S2_CAPABILITY_MATRIX.md
+SPRINT_2_ENTRY_GATE = PASS
+SPRINT_2_FIRST_FUNCTIONAL_CODE = AUTHORIZED
+SPRINT_2_FIRST_IMPLEMENTATION_TOOL = ANTIGRAVITY
+SPRINT_2_NEXT_INCREMENT = CAUSAL_REPLAY_CORE
+
+S2_ENTRY_VALIDATED_HEAD = 8cfb17e3ba7b02c2eccc4d94f17dec986d6bb474
+S2_ENTRY_CI_RUN = 35130469411
+S2_ENTRY_UPSTREAM_RUN = 35130469284
+S2_ENTRY_ENGINEERING = PASS
 
 OFFICIAL_CODEX_SECURITY_DIFF_SCAN = NOT_EXECUTED
 SPRINT1_GITHUB_NATIVE_SECURITY_GATE = PASS
@@ -32,6 +42,7 @@ STRATEGY_OPERATIONAL_PATH = ABSENT
 RISK_OPERATIONAL_PATH = ABSENT
 BROKER_ORDER_API = ABSENT
 FINANCIAL_LEDGER_MUTATION = ABSENT
+ECONOMIC_BACKTEST = ABSENT_IN_SPRINT_2
 ECONOMIC_COMMITMENT = IMPOSSIBLE
 ```
 
@@ -45,9 +56,19 @@ The Official Codex Security Diff Scan was not executed. The accepted Sprint 1 se
 
 ## Sprint 2 authority
 
-Sprint 2 is open only for **Data Platform & Causal Market Replay**. Its canonical entry/scope record is `docs/sprints/SPRINT_2.md`.
+Sprint 2 is open only for **Data Platform & Causal Market Replay**. The governing records are:
 
-Authorized design/engineering domains include:
+- `docs/sprints/SPRINT_2.md`;
+- `docs/program/S2_ENTRY_CONTRACT.md`;
+- `docs/program/S2_DECISION_REGISTER.md`;
+- `docs/program/S2_CAPABILITY_MATRIX.md`;
+- `docs/program/S2_ENTRY_GATE.md`.
+
+The Entry Gate is substantively PASS. The materialization head `8cfb17e3ba7b02c2eccc4d94f17dec986d6bb474` passed all eight Sprint 2 CI jobs in run `35130469411` and both pinned upstream engineering jobs in run `35130469284`.
+
+Because the final PASS declarations themselves change the PR head, the final PR head must also pass the same checks before integration into `sprint/2-data-platform-replay`. This is an exact-tree integration condition, not an unresolved design blocker.
+
+## Sprint 2 authorized engineering domains
 
 - market-data normalization while preserving source facts and missingness;
 - historical capture/dataset contracts and provenance;
@@ -57,6 +78,24 @@ Authorized design/engineering domains include:
 - deterministic replay ordering and reproducibility;
 - historical data quality and lineage;
 - replay-specific tests and evidence.
+
+## First functional increment
+
+After the Entry Gate PR is merged and the canonical branch remains green, the first new functional increment is authorized via Antigravity under:
+
+```text
+docs/program/workstreams/S2-ANTIGRAVITY-HANDOFF.md
+```
+
+Preferred child branch:
+
+```text
+s2/01-causal-replay-core
+```
+
+The first increment is limited to a pure causal replay core over existing accepted `EventEnvelope` values. It must use one explicit `(provider_id, capture_scope)` lane, known `knowledge_time`, monotonic inclusive cutoffs, supplied causal order and exact rational logical speed. It must not depend on wall clock, provider/network access or financial capability.
+
+Historical PRs #9 and #37 are research-only sources. No historical branch is automatically merged or cherry-picked.
 
 ## Sprint 2 exclusions
 
@@ -69,7 +108,7 @@ RiskAuthorization operational path
 OrderIntent / OrderPlan / ExecutionOrder
 Paper execution
 Live execution
-broker order APIs
+broker order/account APIs
 real-money operation
 P&L simulation
 economic spread/cost model
@@ -81,18 +120,27 @@ predictive ML operational wiring
 
 Economic backtesting belongs to Sprint 3 or a later formally authorized stage.
 
-## Historical speculative work
+## Sprint 2 engineering controls
 
-PRs #9 and #37 are closed as superseded research precursors. They may be consulted as historical design evidence but are not part of the Sprint 2 baseline and must not be merged or promoted automatically.
-
-## Current gate
+The canonical Sprint 2 engineering gate now includes:
 
 ```text
-S2_CURRENT_GATE = ENTRY_MATERIALIZATION
-S2_FIRST_FUNCTIONAL_CODE = NOT_AUTHORIZED_YET
+Sprint 2 Python CI
+  tests
+  lint
+  types
+  compile
+  dependencies
+  foundation
+  s2-boundary
+  diff
+
+Pinned upstream engineering verification
+  pinned-docs-engineering
+  pinned-ci-engineering
 ```
 
-Before new Sprint 2 functional code, materialize the Sprint 2 entry contract/scope gate, capability matrix, temporal/replay decisions and verification plan against the accepted Sprint 1 baseline.
+`scripts/check_s2_boundary.py` is the stage-specific boundary checker. The Sprint 1 boundary checker is intentionally not repurposed to reject capabilities that are legitimate only after Sprint 1.
 
 ## Repository hardening
 
