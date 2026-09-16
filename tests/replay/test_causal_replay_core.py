@@ -15,9 +15,17 @@ from btg_ai_trader.observer.envelope import EventEnvelope, EventType
 from btg_ai_trader.observer.identity import (
     EventId,
     ProviderInstrumentRef,
+    RunId,
     TradableInstrumentId,
 )
 from btg_ai_trader.observer.market import Tick
+from btg_ai_trader.observer.provenance import (
+    CodeRevision,
+    ConfigHash,
+    ContentHash,
+    InputIdentity,
+    RunManifest,
+)
 from btg_ai_trader.observer.temporal import EventTime, ObservationTimes
 from btg_ai_trader.observer.values import MissingReason
 from btg_ai_trader.replay import (
@@ -25,9 +33,16 @@ from btg_ai_trader.replay import (
     CausalMarketReplayCursor,
     CausalMarketReplaySchedule,
     ReplayEmission,
+    ReplayEmissionLineage,
+    ReplayInputBoundary,
     ReplayRate,
     ReplaySpeed,
+    RunInputBoundary,
 )
+
+TEST_RUN_ID = RunId("00000000-0000-0000-0000-000000000001")
+TEST_CODE_REVISION = CodeRevision("00cc56100d5c9a7cb28a34947726eb32bdfab8fd")
+TEST_CONFIG_HASH = ConfigHash("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
 
 
 def _utc(second: int, *, microsecond: int = 0) -> datetime:
@@ -73,17 +88,29 @@ def _event(
 def _schedule(
     events: Iterable[EventEnvelope],
     *,
-    provider_id: str = "fixture-provider",
-    capture_scope: str = "capture-a",
+    provider_id: str | None = "fixture-provider",
+    capture_scope: str | None = "capture-a",
     speed: ReplaySpeed | None = None,
     rate: ReplaySpeed | None = None,
+    boundary: ReplayInputBoundary | None = None,
+    run_id: RunId | None = None,
+    code_revision: CodeRevision | None = None,
+    config_hash: ConfigHash | None = None,
+    content_hashes: Iterable[ContentHash | None] | None = None,
+    temporal_semantics: str = "knowledge_time_v1",
 ) -> CausalMarketReplaySchedule:
     return CausalMarketReplaySchedule(
         events,
+        boundary=boundary,
+        run_id=run_id or (TEST_RUN_ID if boundary is None else None),
+        code_revision=code_revision or (TEST_CODE_REVISION if boundary is None else None),
+        config_hash=config_hash or (TEST_CONFIG_HASH if boundary is None else None),
         provider_id=provider_id,
         capture_scope=capture_scope,
         speed=speed,
         rate=rate,
+        content_hashes=content_hashes,
+        temporal_semantics=temporal_semantics,
     )
 
 
@@ -443,7 +470,13 @@ def test_lane_and_schedule_parameter_validation() -> None:
 
     lane = CausalLane("prov", "scope")
     # Using lane object
-    sch = CausalMarketReplaySchedule([], lane=lane)
+    sch = CausalMarketReplaySchedule(
+        [],
+        lane=lane,
+        run_id=TEST_RUN_ID,
+        code_revision=TEST_CODE_REVISION,
+        config_hash=TEST_CONFIG_HASH,
+    )
     assert sch.lane == lane
     assert sch.provider_id == "prov"
     assert sch.capture_scope == "scope"
@@ -522,6 +555,7 @@ def test_replay_emission_validation() -> None:
             knowledge_time=_utc(0),
             source_delta_us=0,
             virtual_delay_us=Fraction(0, 1),
+            run_id=TEST_RUN_ID,
         )
     # Non EventEnvelope
     with pytest.raises(ValueError, match="emission requires EventEnvelope"):
@@ -531,6 +565,7 @@ def test_replay_emission_validation() -> None:
             knowledge_time=_utc(0),
             source_delta_us=0,
             virtual_delay_us=Fraction(0, 1),
+            run_id=TEST_RUN_ID,
         )
     # Negative source_delta_us
     with pytest.raises(ValueError, match="source_delta_us must be nonnegative"):
@@ -540,6 +575,7 @@ def test_replay_emission_validation() -> None:
             knowledge_time=_utc(0),
             source_delta_us=-5,
             virtual_delay_us=Fraction(0, 1),
+            run_id=TEST_RUN_ID,
         )
     # Negative virtual_delay_us
     with pytest.raises(ValueError, match="virtual_delay_us must be a nonnegative exact Fraction"):
@@ -549,6 +585,17 @@ def test_replay_emission_validation() -> None:
             knowledge_time=_utc(0),
             source_delta_us=0,
             virtual_delay_us=Fraction(-1, 2),
+            run_id=TEST_RUN_ID,
+        )
+    # Invalid run_id
+    with pytest.raises(ValueError, match="run_id must be RunId"):
+        ReplayEmission(
+            ordinal=0,
+            envelope=envelope,
+            knowledge_time=_utc(0),
+            source_delta_us=0,
+            virtual_delay_us=Fraction(0, 1),
+            run_id="invalid-run-id",  # type: ignore[arg-type]
         )
 
 
@@ -557,3 +604,450 @@ def test_delta_microseconds_function() -> None:
     assert replay_module._delta_microseconds(timedelta(microseconds=42)) == 42
     with pytest.raises(ValueError, match="replay delta must not be negative"):
         replay_module._delta_microseconds(timedelta(seconds=-1))
+
+
+def test_replay_emission_lineage_and_properties() -> None:
+    envelope = _event(0, _utc(0), provider="p1", scope="s1")
+    emission = ReplayEmission(
+        ordinal=5,
+        envelope=envelope,
+        knowledge_time=_utc(0),
+        source_delta_us=100,
+        virtual_delay_us=Fraction(100, 1),
+        run_id=TEST_RUN_ID,
+    )
+    assert emission.event_id == envelope.event_id
+    assert emission.symbol == envelope.source.symbol
+    assert emission.run_id == TEST_RUN_ID
+
+    lineage = emission.lineage
+    assert isinstance(lineage, ReplayEmissionLineage)
+    assert lineage.run_id == TEST_RUN_ID
+    assert lineage.event_id == envelope.event_id
+    assert lineage.ordinal == 5
+    assert lineage.provider_id == "p1"
+    assert lineage.capture_scope == "s1"
+
+    # Lineage immutability
+    with pytest.raises(FrozenInstanceError):
+        lineage.ordinal = 10  # type: ignore[misc]
+
+    # Lineage validation
+    with pytest.raises(ValueError, match="run_id must be RunId"):
+        ReplayEmissionLineage(
+            run_id="not-run-id",  # type: ignore[arg-type]
+            event_id=envelope.event_id,
+            ordinal=0,
+            provider_id="p1",
+            capture_scope="s1",
+        )
+    with pytest.raises(ValueError, match="event_id must be EventId"):
+        ReplayEmissionLineage(
+            run_id=TEST_RUN_ID,
+            event_id="not-event-id",  # type: ignore[arg-type]
+            ordinal=0,
+            provider_id="p1",
+            capture_scope="s1",
+        )
+    with pytest.raises(ValueError, match="ordinal must be a nonnegative integer"):
+        ReplayEmissionLineage(
+            run_id=TEST_RUN_ID,
+            event_id=envelope.event_id,
+            ordinal=-1,
+            provider_id="p1",
+            capture_scope="s1",
+        )
+    with pytest.raises(ValueError, match="provider_id must be nonempty text"):
+        ReplayEmissionLineage(
+            run_id=TEST_RUN_ID,
+            event_id=envelope.event_id,
+            ordinal=0,
+            provider_id="",
+            capture_scope="s1",
+        )
+    with pytest.raises(ValueError, match="capture_scope must be nonempty text"):
+        ReplayEmissionLineage(
+            run_id=TEST_RUN_ID,
+            event_id=envelope.event_id,
+            ordinal=0,
+            provider_id="p1",
+            capture_scope="   ",
+        )
+
+
+def test_replay_input_boundary_initialization_and_validation() -> None:
+    assert RunInputBoundary is ReplayInputBoundary
+
+    eid1 = EventId(str(UUID(int=1)))
+    eid2 = EventId(str(UUID(int=2)))
+    ch1 = ContentHash("a" * 64)
+    ch2 = ContentHash("b" * 64)
+
+    boundary = ReplayInputBoundary(
+        run_id=TEST_RUN_ID,
+        code_revision=TEST_CODE_REVISION,
+        config_hash=TEST_CONFIG_HASH,
+        provider_id="xp-mt5",
+        capture_scope="s1-xp-capture-a12",
+        event_ids=(eid1, eid2),
+        content_hashes=(ch1, ch2),
+        temporal_semantics="knowledge_time_v1",
+    )
+    assert boundary.run_id == TEST_RUN_ID
+    assert boundary.code_revision == TEST_CODE_REVISION
+    assert boundary.config_hash == TEST_CONFIG_HASH
+    assert boundary.provider_id == "xp-mt5"
+    assert boundary.capture_scope == "s1-xp-capture-a12"
+    assert boundary.event_ids == (eid1, eid2)
+    assert boundary.content_hashes == (ch1, ch2)
+    assert boundary.temporal_semantics == "knowledge_time_v1"
+    assert boundary.lane == CausalLane("xp-mt5", "s1-xp-capture-a12")
+    assert boundary.input_identities == (InputIdentity(eid1, ch1), InputIdentity(eid2, ch2))
+
+    # Immutability
+    with pytest.raises(FrozenInstanceError):
+        boundary.provider_id = "other"  # type: ignore[misc]
+
+    # Type validation
+    with pytest.raises(ValueError, match="run_id must be RunId"):
+        ReplayInputBoundary(
+            run_id="invalid",  # type: ignore[arg-type]
+            code_revision=TEST_CODE_REVISION,
+            config_hash=TEST_CONFIG_HASH,
+            provider_id="p",
+            capture_scope="s",
+            event_ids=(),
+        )
+    with pytest.raises(ValueError, match="code_revision must be CodeRevision"):
+        ReplayInputBoundary(
+            run_id=TEST_RUN_ID,
+            code_revision="invalid",  # type: ignore[arg-type]
+            config_hash=TEST_CONFIG_HASH,
+            provider_id="p",
+            capture_scope="s",
+            event_ids=(),
+        )
+    with pytest.raises(ValueError, match="config_hash must be ConfigHash"):
+        ReplayInputBoundary(
+            run_id=TEST_RUN_ID,
+            code_revision=TEST_CODE_REVISION,
+            config_hash="invalid",  # type: ignore[arg-type]
+            provider_id="p",
+            capture_scope="s",
+            event_ids=(),
+        )
+    with pytest.raises(ValueError, match="provider_id must be nonempty text"):
+        ReplayInputBoundary(
+            run_id=TEST_RUN_ID,
+            code_revision=TEST_CODE_REVISION,
+            config_hash=TEST_CONFIG_HASH,
+            provider_id="",
+            capture_scope="s",
+            event_ids=(),
+        )
+    with pytest.raises(ValueError, match="capture_scope must be nonempty text"):
+        ReplayInputBoundary(
+            run_id=TEST_RUN_ID,
+            code_revision=TEST_CODE_REVISION,
+            config_hash=TEST_CONFIG_HASH,
+            provider_id="p",
+            capture_scope="",
+            event_ids=(),
+        )
+    with pytest.raises(ValueError, match="event_ids must be a tuple"):
+        ReplayInputBoundary(
+            run_id=TEST_RUN_ID,
+            code_revision=TEST_CODE_REVISION,
+            config_hash=TEST_CONFIG_HASH,
+            provider_id="p",
+            capture_scope="s",
+            event_ids=[eid1],  # type: ignore[arg-type]
+        )
+    with pytest.raises(ValueError, match="event_ids must contain EventId instances"):
+        ReplayInputBoundary(
+            run_id=TEST_RUN_ID,
+            code_revision=TEST_CODE_REVISION,
+            config_hash=TEST_CONFIG_HASH,
+            provider_id="p",
+            capture_scope="s",
+            event_ids=("not-event-id",),  # type: ignore[arg-type]
+        )
+    # Duplicate EventId rejection
+    with pytest.raises(ValueError, match="duplicate EventId in boundary event_ids"):
+        ReplayInputBoundary(
+            run_id=TEST_RUN_ID,
+            code_revision=TEST_CODE_REVISION,
+            config_hash=TEST_CONFIG_HASH,
+            provider_id="p",
+            capture_scope="s",
+            event_ids=(eid1, eid1),
+        )
+    with pytest.raises(ValueError, match="content_hashes must be a tuple"):
+        ReplayInputBoundary(
+            run_id=TEST_RUN_ID,
+            code_revision=TEST_CODE_REVISION,
+            config_hash=TEST_CONFIG_HASH,
+            provider_id="p",
+            capture_scope="s",
+            event_ids=(eid1,),
+            content_hashes=[ch1],  # type: ignore[arg-type]
+        )
+    # Content hashes count mismatch
+    with pytest.raises(ValueError, match="content_hashes count must match event_ids count"):
+        ReplayInputBoundary(
+            run_id=TEST_RUN_ID,
+            code_revision=TEST_CODE_REVISION,
+            config_hash=TEST_CONFIG_HASH,
+            provider_id="p",
+            capture_scope="s",
+            event_ids=(eid1,),
+            content_hashes=(ch1, ch2),
+        )
+    # Content hashes non-ContentHash / non-None
+    with pytest.raises(ValueError, match="content_hashes entries must be ContentHash or None"):
+        ReplayInputBoundary(
+            run_id=TEST_RUN_ID,
+            code_revision=TEST_CODE_REVISION,
+            config_hash=TEST_CONFIG_HASH,
+            provider_id="p",
+            capture_scope="s",
+            event_ids=(eid1,),
+            content_hashes=("not-hash",),  # type: ignore[arg-type]
+        )
+    with pytest.raises(ValueError, match="temporal_semantics must be nonempty text"):
+        ReplayInputBoundary(
+            run_id=TEST_RUN_ID,
+            code_revision=TEST_CODE_REVISION,
+            config_hash=TEST_CONFIG_HASH,
+            provider_id="p",
+            capture_scope="s",
+            event_ids=(eid1,),
+            temporal_semantics="",
+        )
+
+
+def test_replay_input_boundary_partial_content_hashes_and_input_identities() -> None:
+    eid1 = EventId(str(UUID(int=1)))
+    eid2 = EventId(str(UUID(int=2)))
+    ch1 = ContentHash("c" * 64)
+
+    # Partial content hashes: one available, one None (omitted without fabricating)
+    boundary = ReplayInputBoundary(
+        run_id=TEST_RUN_ID,
+        code_revision=TEST_CODE_REVISION,
+        config_hash=TEST_CONFIG_HASH,
+        provider_id="p",
+        capture_scope="s",
+        event_ids=(eid1, eid2),
+        content_hashes=(ch1, None),
+    )
+    assert len(boundary.input_identities) == 1
+    assert boundary.input_identities[0] == InputIdentity(eid1, ch1)
+
+    # Empty content hashes
+    boundary_no_hashes = ReplayInputBoundary(
+        run_id=TEST_RUN_ID,
+        code_revision=TEST_CODE_REVISION,
+        config_hash=TEST_CONFIG_HASH,
+        provider_id="p",
+        capture_scope="s",
+        event_ids=(eid1, eid2),
+        content_hashes=(),
+    )
+    assert boundary_no_hashes.input_identities == ()
+
+
+def test_replay_input_boundary_factories() -> None:
+    e0 = _event(0, _utc(0), provider="p1", scope="s1")
+    e1 = _event(1, _utc(1), provider="p1", scope="s1")
+
+    # from_events
+    boundary = ReplayInputBoundary.from_events(
+        [e0, e1],
+        run_id=TEST_RUN_ID,
+        code_revision=TEST_CODE_REVISION,
+        config_hash=TEST_CONFIG_HASH,
+        provider_id="p1",
+        capture_scope="s1",
+    )
+    assert boundary.event_ids == (e0.event_id, e1.event_id)
+    assert boundary.provider_id == "p1"
+    assert boundary.capture_scope == "s1"
+    assert boundary.temporal_semantics == "knowledge_time_v1"
+
+    # from_events non EventEnvelope
+    with pytest.raises(ValueError, match="events must contain EventEnvelope"):
+        ReplayInputBoundary.from_events(
+            ["not-envelope"],  # type: ignore[list-item]
+            run_id=TEST_RUN_ID,
+            code_revision=TEST_CODE_REVISION,
+            config_hash=TEST_CONFIG_HASH,
+            provider_id="p1",
+            capture_scope="s1",
+        )
+
+    # from_manifest
+    manifest = RunManifest(
+        run_id=TEST_RUN_ID,
+        started_at=_utc(0),
+        code_revision=TEST_CODE_REVISION,
+        config_hash=TEST_CONFIG_HASH,
+        inputs=(InputIdentity(e0.event_id, ContentHash("f" * 64)),),
+    )
+    b_manifest = ReplayInputBoundary.from_manifest(
+        manifest,
+        provider_id="p1",
+        capture_scope="s1",
+        event_ids=(e0.event_id, e1.event_id),
+    )
+    assert b_manifest.run_id == TEST_RUN_ID
+    assert b_manifest.code_revision == TEST_CODE_REVISION
+    assert b_manifest.config_hash == TEST_CONFIG_HASH
+    assert b_manifest.provider_id == "p1"
+    assert b_manifest.capture_scope == "s1"
+    assert b_manifest.event_ids == (e0.event_id, e1.event_id)
+    assert b_manifest.content_hashes == (ContentHash("f" * 64), None)
+
+    # from_manifest validation
+    with pytest.raises(ValueError, match="manifest must be RunManifest"):
+        ReplayInputBoundary.from_manifest(
+            "not-manifest",  # type: ignore[arg-type]
+            provider_id="p1",
+            capture_scope="s1",
+            event_ids=(),
+        )
+
+
+def test_schedule_boundary_validation_fail_closed() -> None:
+    e0 = _event(0, _utc(0), provider="p1", scope="s1")
+    e1 = _event(1, _utc(1), provider="p1", scope="s1")
+    e2 = _event(2, _utc(2), provider="p1", scope="s1")
+
+    valid_boundary = ReplayInputBoundary.from_events(
+        [e0, e1],
+        run_id=TEST_RUN_ID,
+        code_revision=TEST_CODE_REVISION,
+        config_hash=TEST_CONFIG_HASH,
+        provider_id="p1",
+        capture_scope="s1",
+    )
+
+    # Valid schedule construction with boundary
+    sch = CausalMarketReplaySchedule([e0, e1], boundary=valid_boundary)
+    assert sch.boundary is valid_boundary
+    assert sch.run_id == TEST_RUN_ID
+    assert sch.code_revision == TEST_CODE_REVISION
+    assert sch.config_hash == TEST_CONFIG_HASH
+    assert sch.provider_id == "p1"
+    assert sch.capture_scope == "s1"
+    assert sch.temporal_semantics == "knowledge_time_v1"
+
+    # Reject schedule without boundary or explicit provenance
+    with pytest.raises(
+        ValueError,
+        match=(
+            "replay schedule requires boundary or explicit "
+            r"\(run_id, code_revision, config_hash\)"
+        ),
+    ):
+        CausalMarketReplaySchedule([e0, e1], provider_id="p1", capture_scope="s1")
+
+    # Reject non-ReplayInputBoundary
+    with pytest.raises(ValueError, match="boundary must be a ReplayInputBoundary instance"):
+        CausalMarketReplaySchedule([e0, e1], boundary="not-boundary")  # type: ignore[arg-type]
+
+    # Reject boundary provider mismatch
+    b_bad_provider = ReplayInputBoundary(
+        run_id=TEST_RUN_ID,
+        code_revision=TEST_CODE_REVISION,
+        config_hash=TEST_CONFIG_HASH,
+        provider_id="other-provider",
+        capture_scope="s1",
+        event_ids=(e0.event_id, e1.event_id),
+    )
+    with pytest.raises(ValueError, match="boundary provider_id does not match schedule provider"):
+        CausalMarketReplaySchedule([e0, e1], boundary=b_bad_provider, provider_id="p1")
+
+    # Reject boundary capture_scope mismatch
+    b_bad_scope = ReplayInputBoundary(
+        run_id=TEST_RUN_ID,
+        code_revision=TEST_CODE_REVISION,
+        config_hash=TEST_CONFIG_HASH,
+        provider_id="p1",
+        capture_scope="other-scope",
+        event_ids=(e0.event_id, e1.event_id),
+    )
+    with pytest.raises(
+        ValueError, match="boundary capture_scope does not match schedule capture_scope"
+    ):
+        CausalMarketReplaySchedule([e0, e1], boundary=b_bad_scope, capture_scope="s1")
+
+    # Reject boundary event sequence mismatch (different count)
+    b_fewer_events = ReplayInputBoundary(
+        run_id=TEST_RUN_ID,
+        code_revision=TEST_CODE_REVISION,
+        config_hash=TEST_CONFIG_HASH,
+        provider_id="p1",
+        capture_scope="s1",
+        event_ids=(e0.event_id,),
+    )
+    with pytest.raises(
+        ValueError, match="boundary event_ids do not match supplied events sequence"
+    ):
+        CausalMarketReplaySchedule([e0, e1], boundary=b_fewer_events)
+
+    # Reject boundary event sequence mismatch (different order)
+    b_reversed_order = ReplayInputBoundary(
+        run_id=TEST_RUN_ID,
+        code_revision=TEST_CODE_REVISION,
+        config_hash=TEST_CONFIG_HASH,
+        provider_id="p1",
+        capture_scope="s1",
+        event_ids=(e1.event_id, e0.event_id),
+    )
+    with pytest.raises(
+        ValueError, match="boundary event_ids do not match supplied events sequence"
+    ):
+        CausalMarketReplaySchedule([e0, e1], boundary=b_reversed_order)
+
+    # Reject boundary event sequence mismatch (different event IDs)
+    b_different_events = ReplayInputBoundary(
+        run_id=TEST_RUN_ID,
+        code_revision=TEST_CODE_REVISION,
+        config_hash=TEST_CONFIG_HASH,
+        provider_id="p1",
+        capture_scope="s1",
+        event_ids=(e0.event_id, e2.event_id),
+    )
+    with pytest.raises(
+        ValueError, match="boundary event_ids do not match supplied events sequence"
+    ):
+        CausalMarketReplaySchedule([e0, e1], boundary=b_different_events)
+
+    # Reject temporal semantics mismatch
+    with pytest.raises(ValueError, match="temporal_semantics does not match boundary"):
+        CausalMarketReplaySchedule(
+            [e0, e1],
+            boundary=valid_boundary,
+            temporal_semantics="other_semantics_v2",
+        )
+
+
+def test_schedule_lineage_preservation_during_replay() -> None:
+    e0 = _event(0, _utc(0), provider="p1", scope="s1")
+    e1 = _event(1, _utc(1), provider="p1", scope="s1")
+    e2 = _event(2, _utc(2), provider="p1", scope="s1")
+
+    sch = _schedule([e0, e1, e2], provider_id="p1", capture_scope="s1")
+    cursor = sch.cursor()
+    emissions = cursor.advance_to(_utc(5))
+    assert len(emissions) == 3
+
+    for idx, em in enumerate(emissions):
+        assert em.run_id == sch.run_id
+        lineage = em.lineage
+        assert lineage.run_id == sch.run_id
+        assert lineage.event_id == sch.events[idx].event_id
+        assert lineage.ordinal == idx
+        assert lineage.provider_id == "p1"
+        assert lineage.capture_scope == "s1"

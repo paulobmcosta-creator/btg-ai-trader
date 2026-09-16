@@ -5,8 +5,11 @@ from btg_ai_trader.replay.core import (
     CausalMarketReplayCursor,
     CausalMarketReplaySchedule,
     ReplayEmission,
+    ReplayEmissionLineage,
+    ReplayInputBoundary,
     ReplayRate,
     ReplaySpeed,
+    RunInputBoundary,
 )
 
 __all__ = [
@@ -14,6 +17,9 @@ __all__ = [
     "CausalMarketReplayCursor",
     "CausalMarketReplaySchedule",
     "ReplayEmission",
+    "ReplayEmissionLineage",
+    "ReplayInputBoundary",
     "ReplayRate",
     "ReplaySpeed",
+    "RunInputBoundary",
 ]

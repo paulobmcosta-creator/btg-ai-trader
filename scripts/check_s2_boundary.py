@@ -57,7 +57,9 @@ WALL_CLOCK_CALLS = {
     "time.sleep",
     "asyncio.sleep",
     "datetime.now",
+    "datetime.datetime.now",
     "datetime.utcnow",
+    "datetime.datetime.utcnow",
     "time.time",
 }
 
@@ -80,14 +82,6 @@ class Finding:
 
     def __str__(self) -> str:
         return f"{self.path}:{self.line}: {self.rule}"
-
-
-def _iter_sources() -> list[Path]:
-    paths: list[Path] = []
-    for root in S2_ROOTS:
-        if root.exists():
-            paths.extend(sorted(root.rglob("*.py")))
-    return paths
 
 
 def _import_name(node: ast.Import | ast.ImportFrom) -> str:
@@ -118,55 +112,91 @@ def _call_name(node: ast.Call) -> str | None:
     return None
 
 
-def check_source(path: Path) -> list[Finding]:
-    source = path.read_text(encoding="utf-8")
+def scan_secrets(source: str, path_str: str) -> list[Finding]:
+    findings: list[Finding] = []
+    for rule, pattern in SECRET_PATTERNS.items():
+        for match in pattern.finditer(source):
+            line = source.count("\n", 0, match.start()) + 1
+            findings.append(Finding(path_str, line, f"possible-secret:{rule}"))
+    return findings
+
+
+def check_python_ast(source: str, path_str: str) -> list[Finding]:
     findings: list[Finding] = []
     try:
-        tree = ast.parse(source, filename=str(path))
+        tree = ast.parse(source, filename=path_str)
     except SyntaxError as error:
-        return [Finding(str(path), error.lineno or 1, "invalid-python")]
+        return [Finding(path_str, error.lineno or 1, "invalid-python")]
 
     prohibited_names = FORBIDDEN_NAMES | FORBIDDEN_ECONOMIC_NAMES
     for node in ast.walk(tree):
         if isinstance(node, ast.Import | ast.ImportFrom):
             name = _import_name(node)
             if _is_forbidden_import(name):
-                findings.append(Finding(str(path), node.lineno, f"forbidden-import:{name}"))
+                findings.append(Finding(path_str, node.lineno, f"forbidden-import:{name}"))
         if isinstance(node, ast.Name) and node.id in prohibited_names:
-            findings.append(Finding(str(path), node.lineno, f"forbidden-name:{node.id}"))
+            findings.append(Finding(path_str, node.lineno, f"forbidden-name:{node.id}"))
         if isinstance(node, ast.Attribute) and node.attr in prohibited_names:
-            findings.append(Finding(str(path), node.lineno, f"forbidden-attribute:{node.attr}"))
+            findings.append(Finding(path_str, node.lineno, f"forbidden-attribute:{node.attr}"))
         if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
             if node.name in prohibited_names:
                 findings.append(
-                    Finding(str(path), node.lineno, f"forbidden-definition:{node.name}")
+                    Finding(path_str, node.lineno, f"forbidden-definition:{node.name}")
                 )
         if isinstance(node, ast.Call):
             called = _call_name(node)
             if called in WALL_CLOCK_CALLS:
-                findings.append(Finding(str(path), node.lineno, f"wall-clock-call:{called}"))
+                findings.append(Finding(path_str, node.lineno, f"wall-clock-call:{called}"))
             if called is not None and called.split(".")[-1] in FORBIDDEN_NAMES:
-                findings.append(Finding(str(path), node.lineno, f"forbidden-call:{called}"))
+                findings.append(Finding(path_str, node.lineno, f"forbidden-call:{called}"))
+    return findings
 
-    for rule, pattern in SECRET_PATTERNS.items():
-        for match in pattern.finditer(source):
-            line = source.count("\n", 0, match.start()) + 1
-            findings.append(Finding(str(path), line, f"possible-secret:{rule}"))
+
+def check_file(path: Path) -> list[Finding]:
+    path_str = str(path)
+    try:
+        source = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as err:
+        return [Finding(path_str, 1, f"unreadable-file:{type(err).__name__}")]
+
+    findings = scan_secrets(source, path_str)
+    if path.suffix == ".py":
+        findings.extend(check_python_ast(source, path_str))
+    return findings
+
+
+def verify_s2_boundary(roots: tuple[Path, ...] = S2_ROOTS) -> list[Finding]:
+    findings: list[Finding] = []
+    for root in roots:
+        if not root.exists():
+            continue
+        for path in sorted(root.rglob("*")):
+            if "__pycache__" in path.parts:
+                continue
+            if path.is_symlink():
+                findings.append(Finding(str(path), 1, "s2-symlink-rejected"))
+                continue
+            if path.is_file():
+                findings.extend(check_file(path))
     return findings
 
 
 def main() -> int:
-    findings: list[Finding] = []
-    sources = _iter_sources()
-    for path in sources:
-        findings.extend(check_source(path))
-
+    findings = verify_s2_boundary(S2_ROOTS)
     if findings:
         for finding in findings:
             print(finding)
         return 1
 
-    print(f"S2 boundary PASS: {len(sources)} Sprint 2 Python source file(s) inspected")
+    file_count = 0
+    for root in S2_ROOTS:
+        if root.exists():
+            file_count += sum(
+                1 for p in root.rglob("*")
+                if p.is_file() and not p.is_symlink() and "__pycache__" not in p.parts
+            )
+
+    print(f"S2 boundary PASS: {file_count} Sprint 2 file(s) inspected")
     return 0
 
 
