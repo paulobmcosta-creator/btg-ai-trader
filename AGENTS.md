@@ -16,10 +16,15 @@ Por decisão humana explícita de 2026-09-16, o Official Codex Security Diff Sca
 SPRINT1_PROVIDER_QUALIFIED = YES
 SPRINT1_ACCEPTANCE = YES
 PROMOTION_TO_SPRINT_2 = YES
-SPRINT_2_LIFECYCLE = AUTHORIZED_TO_OPEN
+SPRINT_2_LIFECYCLE = OPEN
+S2_ENTRY_GATE = PASS
+S2_FIRST_FUNCTIONAL_CODE = AUTHORIZED
+S2_FIRST_IMPLEMENTATION_TOOL = ANTIGRAVITY
 ```
 
-O Sprint 2 pode tratar exclusivamente de **Data Platform & Causal Market Replay** dentro de seus gates. Não há autorização para negociação automática, envio de ordens, Paper, Risk operacional, Strategy operacional, execução financeira ou uso de dinheiro real.
+O Sprint 2 pode tratar exclusivamente de **Data Platform & Causal Market Replay** dentro de `docs/program/S2_ENTRY_CONTRACT.md`, `S2_DECISION_REGISTER.md`, `S2_CAPABILITY_MATRIX.md` e dos gates subsequentes. O primeiro incremento funcional está autorizado de forma limitada pelo handoff `docs/program/workstreams/S2-ANTIGRAVITY-HANDOFF.md`.
+
+Não há autorização para negociação automática, envio de ordens, Paper, Risk operacional, Strategy operacional, execução financeira, backtesting econômico ou uso de dinheiro real.
 
 ## Autoridade normativa e realidade implementada
 
@@ -30,6 +35,7 @@ O Sprint 2 pode tratar exclusivamente de **Data Platform & Causal Market Replay*
 - Snapshots históricos aprovados não são modificados retroativamente para harmonizar o presente.
 - A integração read-only de market data admitida no Sprint 1 não cria precedente para autoridade financeira em sprints posteriores.
 - A promoção de um sprint não importa automaticamente capacidades de sprints futuros.
+- Antigravity, ChatGPT/Codex ou qualquer outro agente de implementação está subordinado aos contratos e gates versionados do repositório; a ferramenta não é fonte de autoridade normativa.
 
 ## Restrições absolutas nesta fase
 
@@ -42,6 +48,7 @@ O Sprint 2 pode tratar exclusivamente de **Data Platform & Causal Market Replay*
 - Não inserir credenciais, tokens, chaves, senhas, números de conta ou outros segredos no repositório, logs, documentação ou chat.
 - Não fazer deploy de infraestrutura financeira produtiva.
 - No Sprint 2, não implementar backtesting econômico, custos, slippage, P&L ou queue-fill econômico; esses itens pertencem ao Sprint 3 ou posterior conforme gate aplicável.
+- No primeiro incremento funcional do Sprint 2, não ampliar o escopo além do causal replay core autorizado no handoff do Antigravity.
 
 Qualquer mudança futura dessas restrições exige decisão humana explícita, decisão arquitetural/documental adequada e satisfação dos gates correspondentes. Ausência de proibição não equivale a autorização.
 
@@ -60,6 +67,8 @@ Qualquer mudança futura dessas restrições exige decisão humana explícita, d
 - Prevenir obrigatoriamente look-ahead bias, data leakage e contaminação entre treino, validação e teste.
 - Preservar `event_time`, `ingestion_time`, `knowledge_time` e demais fronteiras temporais sem síntese otimista.
 - O Sprint 2 deve manter ordenação causal, knowledge cutoffs explícitos e provenance reproduzível no replay.
+- `knowledge_time` é a fronteira de visibilidade causal do primeiro replay; `event_time` não pode substituí-la para revelar conhecimento futuro.
+- Missingness/`UNKNOWN` não pode ser silenciosamente imputada ou descartada no caminho canônico de normalização.
 - Usar separação temporal e validação fora da amostra antes de promover qualquer modelo futuro.
 - Modelar custos, spread, slippage, latência e liquidez apenas nos estágios econômicos autorizados.
 - Backtest não é evidência suficiente de desempenho futuro.
@@ -80,6 +89,8 @@ Nenhuma execução real pode ser criada até aprovação explícita, no mínimo,
 - Não ampliar o escopo de um sprint sem aprovação.
 - Revalidar o HEAD remoto antes de merge ou promoção.
 - Branches experimentais de sprints futuros permanecem SPECULATIVE até promoção formal; histórico experimental não entra automaticamente na baseline canônica.
+- No Sprint 2, toda mudança funcional deve passar `Sprint 2 Python CI`, inclusive `s2-boundary`, além da verificação upstream aplicável.
+- PRs #9 e #37 são referências históricas de pesquisa; não fazer merge/cherry-pick integral deles para a baseline canônica.
 
 ## Definição de pronto
 
@@ -92,6 +103,8 @@ O GitHub remoto é a superfície operacional e a fonte do estado implementado. O
 Integração em branches canônicas de sprint/staging exige testes, typing, lint, checks de integridade, segurança/capacidades negativas aplicáveis, dependências satisfeitas e nenhum finding bloqueante. Promoção global para `main` não é automática.
 
 O Sprint 1 preservou `READ_ONLY_BY_CONSTRUCTION` e `STRUCTURAL_ESCALATION`; o Sprint 2 herda essas barreiras e todas as negative financial capabilities. Dinheiro real, credenciais de negociação, ordens de broker e ativação financeira permanecem proibidos.
+
+A partir do Gate de Entrada do Sprint 2, Antigravity está autorizado a implementar o primeiro incremento funcional estritamente dentro do handoff versionado, em branch filha da baseline canônica, com CI completo antes de merge. Qualquer necessidade de ampliar escopo deve parar a implementação e gerar decisão explícita.
 
 Arquitetura e dry-run de sprints futuros podem avançar isoladamente como pesquisa, mas promoção ou ativação exige gate próprio. Decisões in-sprint são registradas antes da primeira dependência material; mudanças arquiteturais materiais seguem ADR. A Issue #6 preserva a errata histórica do 0F-F e `TRACEABILITY.md` continua autoridade canônica das QPIs.
 

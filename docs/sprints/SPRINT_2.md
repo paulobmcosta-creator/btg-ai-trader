@@ -1,6 +1,6 @@
 # Sprint 2 — Data Platform & Causal Market Replay
 
-## Estado de abertura
+## Estado atual
 
 ```text
 SPRINT_2_STATUS = OPEN
@@ -9,17 +9,21 @@ SPRINT_1_FINAL_VERDICT = PASS
 SPRINT_1_ACCEPTED_HEAD = 57d820e256dd386624c1842c6f60b6797ba792aa
 SPRINT_2_BRANCH = sprint/2-data-platform-replay
 SPRINT_2_LIFECYCLE = OPEN
-SPRINT_2_FUNCTIONAL_IMPLEMENTATION = NOT_YET_PROMOTED
+S2_ENTRY_GATE = PASS
+S2_FIRST_FUNCTIONAL_CODE = AUTHORIZED
+FIRST_IMPLEMENTATION_TOOL = ANTIGRAVITY
+FIRST_IMPLEMENTATION_TARGET = CAUSAL_REPLAY_CORE
 FINANCIAL_AUTHORITY = ABSENT
+ECONOMIC_BACKTEST_AUTHORITY = ABSENT
 ```
 
-O Sprint 2 é aberto a partir do head formalmente aceito do Sprint 1. Nenhuma branch experimental anterior é automaticamente promovida para esta baseline.
+O Sprint 2 parte do head formalmente aceito do Sprint 1. Nenhuma branch experimental anterior é automaticamente promovida para esta baseline.
 
 ## 1. Missão
 
 Construir a camada de **Data Platform & Causal Market Replay** necessária para transformar evidência de mercado preservada em dados historicamente reproduzíveis e replay causal auditável, sem introduzir simulação econômica ou capacidade financeira.
 
-O Sprint 2 deve preservar integralmente a semântica temporal, provenance, identidade e negative capabilities herdadas do Sprint 1.
+O Sprint 2 preserva a semântica temporal, provenance, identidade e negative capabilities herdadas do Sprint 1.
 
 ## 2. Escopo positivo autorizado
 
@@ -41,6 +45,8 @@ O Sprint 2 pode projetar, implementar e testar, mediante decisões registradas a
 - qualidade e consistência de dados históricos;
 - evidência técnica de replay e rastreabilidade de entradas/saídas;
 - testes de propriedades e determinismo apropriados ao escopo de dados/replay.
+
+O contrato operacional detalhado é `docs/program/S2_ENTRY_CONTRACT.md`, complementado por `S2_DECISION_REGISTER.md` e `S2_CAPABILITY_MATRIX.md`.
 
 ## 3. Fronteira explícita com o Sprint 3
 
@@ -86,16 +92,16 @@ REAL_MONEY_AUTHORITY = ABSENT
 ECONOMIC_COMMITMENT = IMPOSSIBLE
 ```
 
-A abertura do Sprint 2 não modifica essas restrições.
+A abertura e o Gate de Entrada do Sprint 2 não modificam essas restrições.
 
 ## 5. Invariantes temporais mínimos
 
 - Conhecimento posterior ao cutoff não pode alterar o estado observável de um replay anterior.
 - Nenhum componente pode ordenar fatos por `event_time` de modo a fabricar conhecimento que não estava disponível.
-- `UNKNOWN`/`NOT_PROVIDED` aplicáveis devem permanecer conservadores e não ser convertidos silenciosamente em timestamps sintéticos.
-- Igualdade de tempos deve preservar a ordenação causal original quando houver evidência de ordem.
-- Regressão de `knowledge_time` em uma lane causal deve falhar fechado, salvo contrato explícito que prove outra semântica.
-- Replay repetido com os mesmos inputs, configuração e versão deve produzir a mesma sequência lógica observável.
+- `UNKNOWN`/`NOT_PROVIDED` aplicáveis permanecem conservadores e não são convertidos silenciosamente em timestamps sintéticos.
+- Igualdade de tempos preserva a ordenação causal original quando houver evidência de ordem.
+- Regressão de `knowledge_time` em uma lane causal falha fechado, salvo contrato explícito que prove outra semântica.
+- Replay repetido com os mesmos inputs, configuração e versão produz a mesma sequência lógica observável.
 
 ## 6. Provenance e lineage
 
@@ -113,7 +119,7 @@ ordered output identities
 lineage between input evidence and replay outputs
 ```
 
-O replay não pode modificar os artefatos de origem para registrar processamento; receipts/lineage devem permanecer separados.
+O replay não modifica os artefatos de origem para registrar processamento; receipts/lineage permanecem separados.
 
 ## 7. Relação com experimentos históricos
 
@@ -121,29 +127,58 @@ Os antigos PRs experimentais #9 e #37 foram encerrados como `SUPERSEDED BY FORMA
 
 - seus commits não são baseline canônica;
 - seus resultados não são automaticamente aceitos como requisitos ou implementação do Sprint 2;
-- qualquer conceito reutilizado deve ser reavaliado contra o head aceito do Sprint 1 e documentado antes da nova implementação;
+- qualquer conceito reutilizado deve ser reavaliado contra o head aceito do Sprint 1 e os contratos vigentes do Sprint 2;
 - nenhuma branch experimental deve ser mesclada diretamente nesta branch apenas por existir anteriormente.
 
-## 8. Gate de entrada funcional
+## 8. Gate de entrada funcional — PASS
 
-Antes do primeiro código funcional novo do Sprint 2, materializar e revisar:
+O Gate de Entrada foi materializado com:
 
-1. escopo/contrato de entrada do Sprint 2 derivado da autoridade vigente;
-2. decisões deferidas que atingem a primeira dependência material;
-3. matriz de capacidades positivas e negativas do Sprint 2;
-4. definição do dataset/capture boundary e replay identity;
-5. definição da semântica de ordering/cutoff/virtual clock;
-6. plano de testes de determinismo, temporalidade, provenance e negative capability;
-7. CI/boundary apropriado ao novo escopo, sem reutilizar cegamente um scanner feito para rejeitar capacidades Sprint-2+ na árvore do Sprint 1.
+1. `docs/program/S2_ENTRY_CONTRACT.md`;
+2. `docs/program/S2_DECISION_REGISTER.md`;
+3. `docs/program/S2_CAPABILITY_MATRIX.md`;
+4. `docs/program/S2_ENTRY_GATE.md`;
+5. `docs/program/workstreams/S2-ANTIGRAVITY-HANDOFF.md`;
+6. `scripts/check_s2_boundary.py`;
+7. `.github/workflows/s2-python-ci.yml`;
+8. verificação upstream estendida para branches S2.
+
+A materialização funcional foi validada no head `8cfb17e3ba7b02c2eccc4d94f17dec986d6bb474` pelos runs `35130469411` (Sprint 2 Python CI) e `35130469284` (Pinned upstream engineering verification), todos verdes.
 
 ```text
-S2_FIRST_FUNCTIONAL_CODE = BLOCKED_UNTIL_ENTRY_MATERIALIZATION
+S2_ENTRY_GATE = PASS
+S2_FIRST_FUNCTIONAL_CODE = AUTHORIZED
 ```
 
-## 9. Critério de não-regressão do Sprint 1
+O PR final do gate ainda deve permanecer verde em seu próprio HEAD exato antes do merge; essa revalidação é condição de integração, não reabertura do gate substantivo.
+
+## 9. Primeiro incremento funcional autorizado
+
+O primeiro incremento será executado via **Antigravity** em branch filha da baseline canônica após o merge do Gate de Entrada, preferencialmente:
+
+```text
+s2/01-causal-replay-core
+```
+
+Escopo máximo do primeiro incremento:
+
+- namespace S2 isolado, preferencialmente `src/btg_ai_trader/replay/`;
+- schedule imutável sobre `EventEnvelope` aceito;
+- uma lane explícita `(provider_id, capture_scope)`;
+- `knowledge_time` conhecido como fronteira causal;
+- ordem fornecida preservada, sem ordenação reparadora por `event_time`;
+- rejeição de lanes misturadas, EventId duplicado e regressão temporal;
+- `advance_to(knowledge_cutoff)` inclusivo e monotônico;
+- velocidade lógica representada por racional positivo exato;
+- estado/emissões determinísticos;
+- testes completos e `s2-boundary` verde.
+
+O handoff operacional para o Antigravity é `docs/program/workstreams/S2-ANTIGRAVITY-HANDOFF.md`.
+
+## 10. Critério de não-regressão do Sprint 1
 
 A Data Platform e o Replay podem consumir contratos/evidência do Observer, mas não podem enfraquecer os invariantes aceitos no Sprint 1. Qualquer incompatibilidade entre necessidade do Sprint 2 e contratos herdados deve parar a implementação e produzir decisão explícita, não alteração silenciosa.
 
-## 10. Próxima ação
+## 11. Próxima ação
 
-Materializar o **Sprint 2 Entry Contract / scope gate** e a matriz de verificação antes de promover qualquer código experimental anterior ou implementar novos componentes funcionais.
+Após o merge do Gate de Entrada e sua validação pós-merge, criar `s2/01-causal-replay-core` a partir da branch canônica e entregar ao Antigravity o primeiro incremento funcional conforme o handoff versionado.
