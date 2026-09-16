@@ -2,93 +2,68 @@
 
 ## Gate purpose
 
-This living checkpoint records whether the current Sprint 1 state may be declared a formal PASS under immutable 0F-E. It does not rewrite 0F-B, 0F-E or 0F-F.
+This living checkpoint records the final Sprint 1 acceptance reconciliation under immutable 0F-E. It does not rewrite 0F-B, 0F-E or 0F-F.
 
 ## Current state
 
 ```text
 FOUNDATION = FORMALLY_CLOSED
-SPRINT_1 = OPEN
+SPRINT_1 = FINAL_ACCEPTANCE_RECONCILIATION
 CURRENT_PROVIDER_DECISION = ADR-0026
 CURRENT_PROVIDER_SELECTION = XP_SUPPLIED_MT5
 PROVIDER_ID = xp-mt5
 ZERO_ADDITIONAL_RECURRING_COST = HARD_CONSTRAINT
 REALTIME_REQUIREMENT = PRESERVED
-MT5_TICK_BRIDGE = INTEGRATED
-MT5_FINAL_CANDLE_BRIDGE = INTEGRATED
-MT5_SYMBOL_DISCOVERY = INTEGRATED
-XP_MT5_RUNTIME_RUNBOOK = INTEGRATED
-MT5_LOCAL_EVIDENCE_HARNESS = INTEGRATED_AND_REALTIME_EXERCISED
-READ_ONLY_BY_CONSTRUCTION_CURRENT_SCOPE = SATISFIED
-STRUCTURAL_ESCALATION_CURRENT_SCOPE = SATISFIED
+READ_ONLY_BY_CONSTRUCTION = SATISFIED
+STRUCTURAL_ESCALATION = SATISFIED
 TRADING_CAPABILITY = ABSENT
 REAL_MONEY_PATH = ABSENT
-XP_PRELIMINARY_SESSION = EXECUTED_NONQUALIFYING
 REAL_QUALIFYING_PROVIDER_SESSION = PASS_RUNTIME
 RUNTIME_EVIDENCE_CODE_REVISION = e622658922ff38e49e1112a48d91eecb2d43a522
 RUNTIME_EVIDENCE_SCOPE = s1-xp-capture-a12
-SPRINT1_PROVIDER_QUALIFIED = NO_PENDING_FINAL_TREE_GATES
-SECURITY_DIFF_SCAN = NOT_EXECUTED
-SPRINT1_ACCEPTANCE = NO
+PRE_RECONCILIATION_INTEGRATED_HEAD = 6457ae1dfec6e91034741e57c6343397f368cbc2
+PRE_RECONCILIATION_EXACT_TREE_CI = PASS
+PRE_RECONCILIATION_GITHUB_ACTIONS_RUN = 35126543429
+OFFICIAL_CODEX_SECURITY_DIFF_SCAN = NOT_EXECUTED
+GITHUB_NATIVE_SECURITY_GATE = PASS
+SPRINT1_PROVIDER_QUALIFIED = YES_CONDITIONAL_ON_FINAL_RECONCILIATION_CI
+SPRINT1_ACCEPTANCE = PENDING_FINAL_RECONCILIATION_CI
+PROMOTION_TO_SPRINT_2 = PENDING_FINAL_RECONCILIATION_CI
 ```
+
+## Security-gate decision
+
+By explicit human coordination decision on 2026-09-16, the unavailable Official Codex Security Diff Scan is replaced for Sprint 1 closure by the GitHub-native security assurance package documented in:
+
+```text
+docs/program/S1_GITHUB_SECURITY_ALTERNATIVE_GATE_2026-09-16.md
+```
+
+The Official Codex scan remains recorded as `NOT_EXECUTED`; it is not relabeled as PASS. The accepted replacement combines exact-tree GitHub Actions, NEG-CAP/runtime tests, static/boundary/config/possible-secret inspection, repository/history secret-scanner controls, PR security review and a formal human gate decision. No substantive 0F-E security requirement is waived.
 
 ## Evidence adjudication
 
 | Gate area | Result | Basis |
 |---|---|---|
-| Foundation integrity | PASS | Frozen Foundation artifacts remain unchanged |
-| Functional Observer core | PASS_CURRENT_SCOPE | Passive Observer core integrated |
-| 41 RQMs | CONDITIONAL | Real-provider evidence gap is resolved; RQM-018 and RQM-036 still await official Security Diff Scan |
-| NEG-CAP-01..10 | PASS_CURRENT_SCOPE | XP runtime path introduces no strategy/order/execution/economic authority; exact-final-tree rerun pending |
-| Current provider decision | PASS_DECISION | ADR-0026 selects XP-supplied MT5 for qualification |
-| Historical BTG provider path | HISTORICAL_ONLY | ADR-0023 remains auditable reference history |
-| Historical Rico provider path | HISTORICAL_SUPERSEDED | ADR-0025 and Rico-named implementation lineage preserved; active qualification is XP |
-| MT5 tick bridge | PASS_RUNTIME | Passive append-only FILE_COMMON tick transport exercised against live XP feed |
-| MT5 finalized-candle bridge | PASS_RUNTIME | Qualifying session captured explicitly finalized candle evidence |
-| MT5 WIN discovery | PASS_RUNTIME | Complete candidate snapshot preserved; `WINV26` explicitly confirmed without automatic selection |
-| XP Investor/read-only | PASS_LOCAL | Read-only authorization established without credential disclosure or order testing |
-| Post-fix MQL5 compile | PASS | Exact reviewed source compiled `0 errors, 0 warnings` before a12 |
-| Zero-cost concrete entitlement | PASS_EVIDENCE | Concrete account/interface evidence supports R$0 additional recurring entitlement and no minimum real-money operation requirement |
-| AC-05 real market data | PASS_RUNTIME | a12 captured 8,005 realtime `WINV26` tick records through passive boundary |
-| AC-07 real ticks/candles | PASS_RUNTIME | a12 completed with qualifying tick flow and explicitly finalized candle evidence |
-| Heartbeat/staleness/latency | PASS_RUNTIME_SCOPE | Harness preserved continuously `READY` health evidence and local monotonic ingress-to-validated-availability measurements |
-| Capture context/provenance/persistence | PASS_RUNTIME | Exact revision, run/config/provider context and preserved technical evidence recorded outside Git; sanitized hashes versioned |
-| Exact-final-tree CI / NEG-CAP | FAIL_OPEN | Must be rerun after this evidence/documentation reconciliation |
-| Official Security Diff Scan | FAIL_OPEN | Not executed; other checks cannot be relabeled as the official scan |
-
-## Integrated XP/MT5 laboratory policy
-
-```text
-PROVIDER = XP-supplied MetaTrader 5
-PROVIDER_ID = xp-mt5
-INSTRUMENT_FAMILY = WIN
-QUALIFIED_RUNTIME_TARGET = WINV26
-CONCRETE_CONTRACT = EXPLICIT_POINT_IN_TIME_PROVIDER_SYMBOL
-AUTHORIZATION = INVESTOR_READ_ONLY_ONLY
-MQL5_PROGRAM_TYPE = CUSTOM_INDICATOR
-TRANSPORT = APPEND_ONLY_FILE_COMMON
-PYTHON_METATRADER5_IMPORT = FORBIDDEN
-PROGRAMMATIC_MARKET_WATCH_MUTATION = FORBIDDEN
-AUTO_CONTRACT_SELECTION = FORBIDDEN
-AUTO_ROLLOVER = FORBIDDEN
-AUTO_FALLBACK = FORBIDDEN
-REAL_MONEY_ORDER_TEST = FORBIDDEN
-RAW_PUBLIC_ARTIFACT = NO
-```
-
-The qualifying a12 discovery explicitly confirmed `WINV26` while preserving all discovered `WIN*` candidates without ranking. Ambiguous/incomplete/malformed evidence remains fail-closed.
-
-The custom indicator emits explicit provider identity `xp-mt5`. Physical Rico-named artifact/class/script names are temporarily retained as compatibility names and must not be confused with runtime provenance.
+| Foundation integrity | PASS | Frozen Foundation artifacts unchanged |
+| Functional Observer core | PASS | Passive Observer core integrated |
+| 41 RQMs | PASS | 41/41 satisfied/current scope; RQM-018/036 satisfied through accepted security alternative |
+| NEG-CAP-01..10 | PASS | Integrated negative-capability/runtime suite and boundary evidence |
+| Current provider decision | PASS | ADR-0026 selects XP-supplied MT5 |
+| XP entitlement/read-only | PASS | R$0 additional recurring entitlement; Investor/read-only without credential disclosure/order testing |
+| MT5 tick bridge | PASS_RUNTIME | Passive append-only FILE_COMMON transport exercised against live XP feed |
+| MT5 finalized-candle bridge | PASS_RUNTIME | Genuine finalized-candle evidence captured |
+| MT5 WIN discovery | PASS_RUNTIME | Complete candidate snapshot; `WINV26` explicitly confirmed point-in-time |
+| AC-05 real market data | PASS_RUNTIME | 8,005 realtime tick records captured |
+| AC-07 real ticks/candles | PASS_RUNTIME | Tick flow plus finalized-candle evidence |
+| Heartbeat/staleness/latency | PASS_RUNTIME_SCOPE | Continuously READY path and local monotonic latency evidence |
+| Capture context/provenance/persistence | PASS_RUNTIME | Exact revision, config/run/provider context and technical evidence preserved |
+| Exact integrated-head CI | PASS | GitHub Actions run `35126543429` on exact `6457ae1...` |
+| GitHub-native security alternative | PASS | Formal gate record; PR #59 security review had 0 blocking and 0 non-blocking findings |
+| Official Codex Security Diff Scan | NOT_EXECUTED / HUMAN-SUBSTITUTED | Preserved as historical fact, not treated as executed |
+| Final documentary reconciliation CI | REQUIRED_BEFORE_MERGE | This branch must pass the same exact-head engineering/Foundation/boundary checks |
 
 ## Successful qualifying-session record
-
-Sanitized evidence is versioned at:
-
-```text
-docs/program/workstreams/S1-XP-MT5-RUNTIME-EVIDENCE-2026-09-16.md
-```
-
-The successful session was:
 
 ```text
 CAPTURE_SCOPE = s1-xp-capture-a12
@@ -102,50 +77,45 @@ BRIDGE_FINAL_STATE = IDLE
 GIT_WORKTREE_AT_CAPTURE = CLEAN
 ```
 
-Raw transport payloads and the complete evidence-session directory remain outside Git. Their sanitized sizes and SHA-256 fingerprints are preserved in the evidence record and Issue #54.
+Raw transport payloads and the complete evidence-session directory remain outside Git. Sanitized sizes and SHA-256 fingerprints are preserved in `docs/program/workstreams/S1-XP-MT5-RUNTIME-EVIDENCE-2026-09-16.md`.
 
-## Historical decisions and superseded paths
+## Candidate conjunctive adjudication of XC-01..XC-11
 
-BTG Data Services and the Rico/MT5 provider selection remain auditable history. No historical evidence is rewritten into XP evidence.
+| XC | Candidate verdict | Basis |
+|---|---|---|
+| XC-01 | PASS | Required capabilities implemented and evidenced |
+| XC-02 | PASS | Decisions resolved before material dependencies or legitimately deferred |
+| XC-03 | PASS | 41/41 RQMs satisfied/current scope |
+| XC-04 | PASS | Applicable HQI/QPI evidence preserved |
+| XC-05 | PASS | NEG-CAP-01..10 green |
+| XC-06 | PASS | READ_ONLY_BY_CONSTRUCTION physically demonstrated |
+| XC-07 | PASS | STRUCTURAL_ESCALATION preserved |
+| XC-08 | PASS | Zero trading credentials and zero financial-ledger mutation path |
+| XC-09 | PASS_PRE_RECONCILIATION; FINAL_HEAD_RERUN_REQUIRED | Exact integrated head green; documentary closure branch must also be green |
+| XC-10 | PASS | RunManifest/CaptureContext evidence from a12 |
+| XC-11 | PASS | No Sprint-2+ operational escape in Sprint 1 baseline |
 
-The earlier Rico runtime runbook remains historical. The active procedure is:
+## Candidate final adjudication
 
 ```text
-docs/program/workstreams/S1-XP-MT5-FIRST-RUNTIME-QUALIFICATION.md
-```
-
-The evidence harness remains file-only under its compatibility filename:
-
-```text
-scripts/rico_mt5_first_lab_capture.py
-```
-
-## Current adjudication
-
-```text
-SPRINT1_INTERNAL_OBSERVER_CORE = COMPLETE_CURRENT_SCOPE
-SPRINT1_CURRENT_PROVIDER_DECISION = COMPLETE
+SPRINT1_INTERNAL_OBSERVER_CORE = COMPLETE
 SPRINT1_XP_PROVIDER_BOUNDARY = REALTIME_EXERCISED
-SPRINT1_XP_ENTITLEMENT_READ_ONLY = PASS_EVIDENCE
+SPRINT1_XP_ENTITLEMENT_READ_ONLY = PASS
 SPRINT1_REAL_PROVIDER_RUNTIME_EVIDENCE = PASS
-SPRINT1_REAL_CAPTURE_GATE = CLOSED_RUNTIME_SCOPE
-SPRINT1_PROVIDER_QUALIFICATION = PENDING_FINAL_TREE_GATES
-SPRINT1_EXACT_FINAL_TREE_CI_GATE = OPEN
-SPRINT1_SECURITY_GATE = OPEN
-SPRINT1_ACCEPTANCE = NO
-PROMOTION_TO_SPRINT_2 = NO
+SPRINT1_SECURITY_GATE = PASS_GITHUB_NATIVE_ALTERNATIVE
+SPRINT1_PROVIDER_QUALIFICATION = READY_FOR_FINALIZATION_AFTER_GREEN_RECONCILIATION_HEAD
+SPRINT1_ACCEPTANCE = READY_FOR_FINALIZATION_AFTER_GREEN_RECONCILIATION_HEAD
+PROMOTION_TO_SPRINT_2 = READY_AFTER_FORMAL_SPRINT1_FINALIZATION
 ```
 
-## Mandatory remaining sequence
+## Mandatory final sequence
 
-1. Complete the post-runtime documentation/evidence reconciliation without changing frozen Foundation artifacts.
-2. Run full exact-final-tree tests, typing, lint, Foundation, boundary and NEG-CAP checks on the reconciled tree.
-3. Execute the official Security Diff Scan on that exact final Sprint 1 diff/tree.
-4. Reconcile any finding without weakening 0F-E, read-only-by-construction or structural-escalation requirements.
-5. Adjudicate all 11 exit criteria conjunctively.
-6. Set `SPRINT1_PROVIDER_QUALIFIED = YES` and `SPRINT1_ACCEPTANCE = YES` only if every remaining gate passes.
-7. Promote to Sprint 2 only after formal Sprint 1 PASS.
+1. Run full exact-head tests, typing, lint, Foundation, boundary/NEG-CAP and diff checks on this final reconciliation branch.
+2. If green, record the exact head/run here and change XC-09 to PASS.
+3. Set `SPRINT1_PROVIDER_QUALIFIED = YES`, `SPRINT1_ACCEPTANCE = YES` and `PROMOTION_TO_SPRINT_2 = YES`.
+4. Merge this documentary closure into `sprint/1-market-observer`.
+5. Open Sprint 2 from the accepted Sprint 1 head.
 
 ## Explicit prohibitions remain in force
 
-No open, implemented or passed gate authorizes Strategy, ML production wiring, Paper execution, Risk authorization, broker order APIs, trading credentials, financial-ledger mutation, economic commitment or real-money operation.
+Sprint 1 closure does not authorize Strategy, ML production wiring, Paper execution, Risk authorization, broker order APIs, trading credentials, financial-ledger mutation, economic commitment or real-money operation.
