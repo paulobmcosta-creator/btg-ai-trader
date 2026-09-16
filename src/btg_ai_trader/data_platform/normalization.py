@@ -32,9 +32,14 @@ class NormalizedMarketBatch:
                 raise ValueError("event capture scope does not match lane capture_scope")
         if type(self.quality_findings) is not tuple:
             raise ValueError("quality_findings must be a tuple of QualityFinding")
+        event_ids = {e.event_id for e in self.events}
         for f in self.quality_findings:
             if not isinstance(f, QualityFinding):
                 raise ValueError("quality_findings must contain QualityFinding instances")
+            if f.event_id not in event_ids:
+                raise ValueError(
+                    f"orphan quality finding rejected: event_id {f.event_id} not in batch events"
+                )
 
     @property
     def provider_id(self) -> str:
@@ -99,26 +104,26 @@ def normalize_market_batch(
             raise ValueError("conflicting provider_id and lane")
         if capture_scope is not None and capture_scope != resolved_scope:
             raise ValueError("conflicting capture_scope and lane")
+    elif provider_id is not None and capture_scope is not None:
+        require_text(provider_id, "provider_id")
+        require_text(capture_scope, "capture_scope")
+        resolved_provider = provider_id
+        resolved_scope = capture_scope
+        lane = CausalLane(resolved_provider, resolved_scope)
+    elif provider_id is not None:
+        raise ValueError(
+            "explicit boundary requires both provider_id and capture_scope "
+            "when lane is not provided"
+        )
+    elif capture_scope is not None:
+        raise ValueError(
+            "explicit boundary requires both provider_id and capture_scope "
+            "when lane is not provided"
+        )
     else:
-        if provider_id is not None and capture_scope is not None:
-            require_text(provider_id, "provider_id")
-            require_text(capture_scope, "capture_scope")
-            resolved_provider = provider_id
-            resolved_scope = capture_scope
-            lane = CausalLane(resolved_provider, resolved_scope)
-        elif copied_events:
-            first = copied_events[0]
-            resolved_provider = first.source.provider
-            resolved_scope = first.source.scope
-            if provider_id is not None and provider_id != resolved_provider:
-                raise ValueError("conflicting provider_id and first event")
-            if capture_scope is not None and capture_scope != resolved_scope:
-                raise ValueError("conflicting capture_scope and first event")
-            lane = CausalLane(resolved_provider, resolved_scope)
-        else:
-            raise ValueError(
-                "empty events requires explicit lane or (provider_id, capture_scope)"
-            )
+        raise ValueError(
+            "explicit boundary required: provide lane or both (provider_id, capture_scope)"
+        )
 
     for e in copied_events:
         if e.source.provider != resolved_provider:

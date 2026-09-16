@@ -31,6 +31,8 @@ from btg_ai_trader.observer.market import Candle, CandleFinality, Tick
 from btg_ai_trader.observer.temporal import EventTime, ObservationTimes, TemporalValue
 from btg_ai_trader.observer.values import MissingReason, NumericValue
 
+DEFAULT_LANE = CausalLane("fixture-provider", "capture-a")
+
 
 def _utc(second: int, *, microsecond: int = 0) -> datetime:
     return datetime(2026, 1, 2, 10, 0, 0, tzinfo=UTC) + timedelta(
@@ -128,17 +130,18 @@ def test_empty_normalization_batch() -> None:
     assert batch2.capture_scope == "scope2"
 
     # Empty batch without lane or (provider_id, capture_scope) raises ValueError
-    with pytest.raises(ValueError, match="empty events requires explicit lane"):
+    with pytest.raises(ValueError, match="explicit boundary required"):
         normalize_market_batch([])
 
 
 # 2. Defensive input capture and immutability
 def test_defensive_input_capture_and_immutability() -> None:
+    lane = CausalLane("fixture-provider", "capture-a")
     e0 = _event(0)
     e1 = _event(1)
     event_list = [e0, e1]
 
-    batch = normalize_market_batch(event_list)
+    batch = normalize_market_batch(event_list, lane=lane)
     assert len(batch) == 2
 
     # Mutating caller list does not affect batch
@@ -159,12 +162,13 @@ def test_defensive_input_capture_and_immutability() -> None:
 
 # 3. Multiple instruments within same lane
 def test_multiple_instruments_in_same_lane() -> None:
+    lane = CausalLane("fixture-provider", "capture-a")
     e0 = _event(0, symbol="WINF26")
     e1 = _event(1, symbol="PETR4")
     e2 = _event(2, symbol="VALE3")
     e3 = _event(3, symbol="PETR4")
 
-    batch = normalize_market_batch([e0, e1, e2, e3])
+    batch = normalize_market_batch([e0, e1, e2, e3], lane=lane)
     assert len(batch) == 4
     assert batch.instruments == ("PETR4", "VALE3", "WINF26")
     assert batch.is_clean is True
@@ -175,13 +179,14 @@ def test_mixed_provider_rejection() -> None:
     e0 = _event(0, provider="provider-A")
     e1 = _event(1, provider="provider-B")
 
-    with pytest.raises(ValueError, match="mixed provider rejected"):
-        normalize_market_batch([e0, e1])
-
-    # Conflicting with explicit lane
     lane = CausalLane("provider-A", "capture-a")
     with pytest.raises(ValueError, match="mixed provider rejected"):
         normalize_market_batch([e0, e1], lane=lane)
+
+    with pytest.raises(ValueError, match="mixed provider rejected"):
+        normalize_market_batch(
+            [e0, e1], provider_id="provider-A", capture_scope="capture-a"
+        )
 
 
 # 5. Mixed capture scope rejection
@@ -189,13 +194,14 @@ def test_mixed_capture_scope_rejection() -> None:
     e0 = _event(0, scope="scope-A")
     e1 = _event(1, scope="scope-B")
 
-    with pytest.raises(ValueError, match="mixed capture scope rejected"):
-        normalize_market_batch([e0, e1])
-
-    # Conflicting with explicit lane
     lane = CausalLane("fixture-provider", "scope-A")
     with pytest.raises(ValueError, match="mixed capture scope rejected"):
         normalize_market_batch([e0, e1], lane=lane)
+
+    with pytest.raises(ValueError, match="mixed capture scope rejected"):
+        normalize_market_batch(
+            [e0, e1], provider_id="fixture-provider", capture_scope="scope-A"
+        )
 
 
 # 6. Exact preservation of source facts
@@ -223,7 +229,8 @@ def test_exact_preservation_of_source_facts() -> None:
         causation_id=caus_id,
     )
 
-    batch = normalize_market_batch([original])
+    lane = CausalLane("xp-mt5", "s1-xp-capture-a12")
+    batch = normalize_market_batch([original], lane=lane)
     normalized = batch[0]
 
     # Every single field is preserved identically
@@ -251,10 +258,11 @@ def test_exact_preservation_of_source_facts() -> None:
     assert normalized.causation_id == caus_id
 
     # Order preservation
+    lane_fixture = CausalLane("fixture-provider", "capture-a")
     e_rev0 = _event(10)
     e_rev1 = _event(5)
     e_rev2 = _event(8)
-    batch_order = normalize_market_batch([e_rev0, e_rev1, e_rev2])
+    batch_order = normalize_market_batch([e_rev0, e_rev1, e_rev2], lane=lane_fixture)
     assert [e.ingestion_order for e in batch_order] == [10, 5, 8]
 
 
@@ -281,7 +289,7 @@ def test_tick_missingness_preservation_individual(
 
     tick = Tick(**kwargs)
     event = _event(0, payload=tick)
-    batch = normalize_market_batch([event])
+    batch = normalize_market_batch([event], lane=DEFAULT_LANE)
 
     norm_tick = batch[0].payload
     assert isinstance(norm_tick, Tick)
@@ -306,7 +314,7 @@ def test_tick_multiple_missing_fields_preserved() -> None:
         volume=MissingReason.NOT_APPLICABLE,
     )
     event = _event(0, payload=tick)
-    batch = normalize_market_batch([event])
+    batch = normalize_market_batch([event], lane=DEFAULT_LANE)
 
     norm_tick = batch[0].payload
     assert isinstance(norm_tick, Tick)
@@ -340,7 +348,7 @@ def test_candle_missingness_preservation() -> None:
         volume=MissingReason.NOT_PROVIDED,
     )
     event = _event(0, payload=candle)
-    batch = normalize_market_batch([event])
+    batch = normalize_market_batch([event], lane=DEFAULT_LANE)
 
     norm_candle = batch[0].payload
     assert isinstance(norm_candle, Candle)
@@ -378,7 +386,7 @@ def test_clean_candle_produces_no_findings() -> None:
         volume=Decimal("500"),
     )
     event = _event(0, payload=candle)
-    batch = normalize_market_batch([event])
+    batch = normalize_market_batch([event], lane=DEFAULT_LANE)
     assert batch.is_clean is True
     assert len(batch.quality_findings) == 0
 
@@ -396,7 +404,7 @@ def test_missing_or_unknown_knowledge_time_marked_replay_blocking(
     reason: MissingReason, expected_code: QualityFindingCode
 ) -> None:
     event = _event(0, knowledge_time=reason)
-    batch = normalize_market_batch([event])
+    batch = normalize_market_batch([event], lane=DEFAULT_LANE)
 
     assert batch[0].times.knowledge_time is reason
     assert batch.blocks_replay is True
@@ -416,7 +424,7 @@ def test_missing_or_unknown_knowledge_time_marked_replay_blocking(
 def test_known_knowledge_time_retained_unmutated() -> None:
     kt = _utc(100)
     event = _event(0, knowledge_time=kt)
-    batch = normalize_market_batch([event])
+    batch = normalize_market_batch([event], lane=DEFAULT_LANE)
 
     assert batch[0].times.knowledge_time == kt
     assert batch.blocks_replay is False
@@ -431,7 +439,7 @@ def test_missing_event_time_evidence_surfaced_as_quality_evidence() -> None:
         event_time_basis=MissingReason.NOT_PROVIDED,
         event_time_resolution=MissingReason.NOT_APPLICABLE,
     )
-    batch = normalize_market_batch([event])
+    batch = normalize_market_batch([event], lane=DEFAULT_LANE)
 
     norm_et = batch[0].times.event_time
     assert norm_et.value is MissingReason.UNKNOWN
@@ -452,7 +460,7 @@ def test_missing_event_time_evidence_surfaced_as_quality_evidence() -> None:
 # 12. Unresolved instrument identity
 def test_unresolved_instrument_identity_surfaced() -> None:
     event = _event(0, instrument_id=MissingReason.UNKNOWN)
-    batch = normalize_market_batch([event])
+    batch = normalize_market_batch([event], lane=DEFAULT_LANE)
 
     assert batch[0].instrument_id is MissingReason.UNKNOWN
     findings = batch.quality_findings
@@ -474,7 +482,7 @@ def test_no_temporal_axis_substitution() -> None:
         knowledge_time=MissingReason.UNKNOWN,
         effective_time=effect_val,
     )
-    batch = normalize_market_batch([event])
+    batch = normalize_market_batch([event], lane=DEFAULT_LANE)
     norm = batch[0]
 
     # No substitution occurred
@@ -500,8 +508,8 @@ def test_deterministic_repeated_normalization() -> None:
         ),
     )
 
-    batch_a = normalize_market_batch([e0, e1])
-    batch_b = normalize_market_batch([e0, e1])
+    batch_a = normalize_market_batch([e0, e1], lane=DEFAULT_LANE)
+    batch_b = normalize_market_batch([e0, e1], lane=DEFAULT_LANE)
 
     assert batch_a.events == batch_b.events
     assert batch_a.quality_findings == batch_b.quality_findings
@@ -514,7 +522,7 @@ def test_source_envelope_remains_unchanged() -> None:
     original = _event(0, knowledge_time=MissingReason.UNKNOWN)
     original_dict = {f: getattr(original, f) for f in original.__slots__}
 
-    batch = normalize_market_batch([original])
+    batch = normalize_market_batch([original], lane=DEFAULT_LANE)
     post_dict = {f: getattr(original, f) for f in original.__slots__}
 
     assert original_dict == post_dict
@@ -527,7 +535,7 @@ def test_finding_to_source_event_id_lineage() -> None:
     e1 = _event(1)
     e2 = _event(2, instrument_id=MissingReason.NOT_PROVIDED)
 
-    batch = normalize_market_batch([e0, e1, e2])
+    batch = normalize_market_batch([e0, e1, e2], lane=DEFAULT_LANE)
     assert len(batch.quality_findings) == 2
 
     findings_e0 = batch.findings_for_event(e0.event_id)
@@ -624,7 +632,7 @@ def test_quality_finding_validation() -> None:
 def test_normalized_market_batch_validation() -> None:
     lane = CausalLane("p", "s")
     e0 = _event(0, provider="p", scope="s")
-    eid = EventId(str(UUID(int=1)))
+    eid = e0.event_id
     f0 = QualityFinding(
         event_id=eid,
         category=QualityFindingCategory.TEMPORAL,
@@ -659,12 +667,55 @@ def test_normalized_market_batch_validation() -> None:
         NormalizedMarketBatch(lane=lane, events=(e0,), quality_findings=("not-finding",))  # type: ignore[arg-type]
 
 
+def test_normalized_market_batch_finding_lineage_closure() -> None:
+    lane = CausalLane("p", "s")
+    e0 = _event(0, provider="p", scope="s")
+    e1 = _event(1, provider="p", scope="s")
+    eid = e0.event_id
+    f0 = QualityFinding(
+        event_id=eid,
+        category=QualityFindingCategory.TEMPORAL,
+        code=QualityFindingCode.MISSING_KNOWLEDGE_TIME,
+        field="times.knowledge_time",
+        reason=MissingReason.UNKNOWN,
+        blocks_replay=True,
+        detail="detail",
+    )
+    foreign_eid = EventId(str(UUID(int=999_999)))
+    f_foreign = QualityFinding(
+        event_id=foreign_eid,
+        category=QualityFindingCategory.TEMPORAL,
+        code=QualityFindingCode.MISSING_KNOWLEDGE_TIME,
+        field="times.knowledge_time",
+        reason=MissingReason.UNKNOWN,
+        blocks_replay=True,
+        detail="detail",
+    )
+
+    # 1. empty batch + quality finding = REJECT
+    with pytest.raises(ValueError, match="orphan quality finding rejected"):
+        NormalizedMarketBatch(lane=lane, events=(), quality_findings=(f0,))
+
+    # 2. batch + finding for foreign EventId = REJECT
+    with pytest.raises(ValueError, match="orphan quality finding rejected"):
+        NormalizedMarketBatch(lane=lane, events=(e0,), quality_findings=(f_foreign,))
+
+    with pytest.raises(ValueError, match="orphan quality finding rejected"):
+        NormalizedMarketBatch(lane=lane, events=(e0, e1), quality_findings=(f0, f_foreign))
+
+    # 3. batch + finding for contained EventId = ACCEPT
+    batch_accepted = NormalizedMarketBatch(lane=lane, events=(e0, e1), quality_findings=(f0,))
+    assert batch_accepted.quality_findings == (f0,)
+    assert batch_accepted.findings_for_event(e0.event_id) == (f0,)
+    assert batch_accepted.findings_for_event(e1.event_id) == ()
+
+
 # 19. normalize_market_batch parameter conflict handling
 def test_normalize_market_batch_parameter_conflicts() -> None:
     e0 = _event(0, provider="p1", scope="s1")
 
     with pytest.raises(ValueError, match="all items must be EventEnvelope"):
-        normalize_market_batch(["not-envelope"])  # type: ignore[list-item]
+        normalize_market_batch(["not-envelope"], provider_id="p1", capture_scope="s1")  # type: ignore[list-item]
 
     lane = CausalLane("p1", "s1")
     with pytest.raises(ValueError, match="lane must be a CausalLane"):
@@ -676,14 +727,62 @@ def test_normalize_market_batch_parameter_conflicts() -> None:
     with pytest.raises(ValueError, match="conflicting capture_scope and lane"):
         normalize_market_batch([e0], lane=lane, capture_scope="s2")
 
-    with pytest.raises(ValueError, match="conflicting provider_id and first event"):
-        normalize_market_batch([e0], provider_id="p2")
-
-    with pytest.raises(ValueError, match="conflicting capture_scope and first event"):
-        normalize_market_batch([e0], capture_scope="s2")
+    # Conflicting provider_id / capture_scope when matching lane
+    batch_matching = normalize_market_batch([e0], lane=lane, provider_id="p1", capture_scope="s1")
+    assert batch_matching.lane == lane
 
 
-# 20. Static absence of prohibited capabilities in data_platform
+# 20. Explicit boundary enforcement regressions
+def test_explicit_boundary_enforcement_regressions() -> None:
+    e0 = _event(0, provider="p1", scope="s1")
+    lane = CausalLane("p1", "s1")
+
+    # non-empty events + no boundary -> ValueError
+    with pytest.raises(ValueError, match="explicit boundary required"):
+        normalize_market_batch([e0])
+
+    # empty events + no boundary -> ValueError
+    with pytest.raises(ValueError, match="explicit boundary required"):
+        normalize_market_batch([])
+
+    # provider_id only -> ValueError (non-empty)
+    with pytest.raises(
+        ValueError, match="explicit boundary requires both provider_id and capture_scope"
+    ):
+        normalize_market_batch([e0], provider_id="p1")
+
+    # provider_id only -> ValueError (empty)
+    with pytest.raises(
+        ValueError, match="explicit boundary requires both provider_id and capture_scope"
+    ):
+        normalize_market_batch([], provider_id="p1")
+
+    # capture_scope only -> ValueError (non-empty)
+    with pytest.raises(
+        ValueError, match="explicit boundary requires both provider_id and capture_scope"
+    ):
+        normalize_market_batch([e0], capture_scope="s1")
+
+    # capture_scope only -> ValueError (empty)
+    with pytest.raises(
+        ValueError, match="explicit boundary requires both provider_id and capture_scope"
+    ):
+        normalize_market_batch([], capture_scope="s1")
+
+    # explicit lane + matching events -> PASS
+    batch_lane = normalize_market_batch([e0], lane=lane)
+    assert batch_lane.provider_id == "p1"
+    assert batch_lane.capture_scope == "s1"
+    assert len(batch_lane) == 1
+
+    # explicit provider_id + capture_scope + matching events -> PASS
+    batch_pair = normalize_market_batch([e0], provider_id="p1", capture_scope="s1")
+    assert batch_pair.provider_id == "p1"
+    assert batch_pair.capture_scope == "s1"
+    assert len(batch_pair) == 1
+
+
+# 21. Static absence of prohibited capabilities in data_platform
 def test_static_absence_of_prohibited_capabilities() -> None:
     src_dir = Path(inspect.getfile(dp_module)).parent
     assert src_dir.is_dir()
