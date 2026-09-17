@@ -614,22 +614,30 @@ def test_domain_prediction_input_and_sample_validation() -> None:
             feature_knowledge_time=_dt(1),
             target_semantics=TargetSemantics.CONTINUOUS,
         )
-    with pytest.raises(
-        ValueError, match=r"information_interval start .* cannot be after end"
-    ):
-        PredictionInput(
-            sample_id="p1",
-            feature_knowledge_time=_dt(1),
-            target_semantics=TargetSemantics.CONTINUOUS,
-            information_interval=(_dt(5), _dt(2)),
-        )
     valid_pi = PredictionInput(
         sample_id="p_valid",
         feature_knowledge_time=_dt(1),
         target_semantics=TargetSemantics.CONTINUOUS,
-        information_interval=(_dt(1), _dt(2)),
+        feature_metadata={"known_feature": "1"},
     )
-    assert valid_pi.information_interval == (_dt(1), _dt(2))
+    assert valid_pi.metadata["known_feature"] == "1"
+
+    shielded_sample = StatisticalSample(
+        sample_id="p_shielded",
+        feature_knowledge_time=_dt(1),
+        target_knowledge_time=_dt(2),
+        target_semantics=TargetSemantics.CONTINUOUS,
+        target_value=Decimal("1"),
+        feature_metadata={"known_feature": "1"},
+        audit_metadata={"future_label": "999", "target_debug": "999"},
+        source_lineage="audit-only-source",
+    )
+    shielded_input = shielded_sample.to_prediction_input()
+    assert shielded_input.feature_metadata["known_feature"] == "1"
+    assert not hasattr(shielded_input, "audit_metadata")
+    assert not hasattr(shielded_input, "source_lineage")
+    assert not hasattr(shielded_input, "information_interval")
+    assert not hasattr(shielded_input, "reference_value")
 
     with pytest.raises(
         TypeError,
