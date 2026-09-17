@@ -49,6 +49,11 @@ from btg_ai_trader.statistical_baselines.metrics import (
     mean_squared_error,
     root_mean_squared_error,
 )
+from btg_ai_trader.statistical_baselines.provenance import (
+    EvaluationProvenanceRecord,
+    StatisticalEvaluationInputBoundary,
+    StatisticalEvaluationManifest,
+)
 from btg_ai_trader.statistical_baselines.splits import (
     EmbargoPolicy,
     PurgePolicy,
@@ -67,6 +72,7 @@ __all__ = [
     "ConstantBaseline",
     "EmbargoPolicy",
     "EvaluationBoundary",
+    "EvaluationProvenanceRecord",
     "EvaluationRole",
     "FoldEvaluationResult",
     "HistoricalMeanBaseline",
@@ -82,6 +88,8 @@ __all__ = [
     "SplitPlanConfig",
     "StatisticalBaseline",
     "StatisticalEvaluationEngine",
+    "StatisticalEvaluationInputBoundary",
+    "StatisticalEvaluationManifest",
     "StatisticalSample",
     "TargetSemantics",
     "TemporalFold",
