@@ -8,7 +8,7 @@ This register activates and formalizes decisions whose first material dependency
 |---|---|---|---|
 | DD-13 | Algoritmo concreto de RNG para simulação | `NOT_TRIGGERED_AND_DEFERRED` — Baselines in Sprint 4 are strictly deterministic without stochastic or pseudo-random generation. RNG is absent and forbidden in baseline kernel. | Statistical baseline catalog |
 | DD-14 | Algoritmo de inicialização, derivação e particionamento de seeds | `NOT_TRIGGERED_AND_DEFERRED` — Deterministic run identities derived from content hashes (SHA-256) without PRNG seeds. Seed derivation remains deferred. | Deterministic evaluation runs |
-| DD-15 | Formato físico e representação do RunInputBoundary | `TRIGGERED_AND_SATISFIED` — Materialized as `StatisticalEvaluationInputBoundary` binding dataset identity, candidate identity, walk-forward plan, purging/embargo policies, metric/calibration configs, code revision, and environment signature. | Statistical evaluation runner |
+| DD-15 | Formato físico e representação do RunInputBoundary | `TRIGGERED_AND_SATISFIED` — Materialized as `StatisticalEvaluationInputBoundary` binding dataset identity, candidate identity, walk-forward plan, purging/embargo policies, metric/calibration configs, numeric policy, and code revision. | Statistical evaluation runner |
 | DD-16 | Critérios de determinismo e replay | `TRIGGERED_AND_SATISFIED` — Strict value and manifest reproducibility across repeated identical runs; AST scanner excludes stochastic entropy sources (`random`, `uuid4`, `secrets`, `os.urandom`). Exact `Decimal` arithmetic for metrics. | Statistical determinism |
 | DD-63 | Vinculação de artefatos de decisão (strategy/model version) | `PARTIALLY_TRIGGERED` — `CandidateIdentity` deterministically binds model family, version, and hyperparameter configuration; operational strategy/model decision binding remains deferred to Sprint 5 / 7. | Candidate versioning |
 | DD-68 | Definição do ativo concreto e timeframe | `CANONICAL_DEFERRED`, `S4_LOCAL_ASSET_SPECIFICATION = EXPERIMENT_LOCAL` — Target asset and timeframe are parameterized per evaluation plan. No universal asset is frozen globally in Sprint 4. | Evaluation plan configuration |
@@ -65,7 +65,7 @@ Metrics and probabilities use Python `Decimal` with explicit rounding via `Numer
 Statistical metrics assess predictive accuracy. Financial metrics (Sharpe, Sortino, P&L, drawdown) belong to Sprint 3 and must not be conflated with baseline prediction metrics.
 
 ### S4-D-09 — Descriptive probability calibration diagnostics
-`CalibrationReport` provides binned reliability diagnostics (observed frequency vs mean predicted probability) and Brier score. Learned ML calibrators are excluded.
+`CalibrationReport` provides binned reliability diagnostics (observed frequency vs mean predicted probability), ECE and MCE. Brier score is a separate probabilistic evaluation metric. Learned ML calibrators are excluded.
 
 ### S4-D-10 — Factual fold distribution reporting
 Per-fold results are reported as empirical vectors without fabricating unverified confidence intervals or p-values.
