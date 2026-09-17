@@ -69,7 +69,7 @@ def test_adversarial_future_target_injection_rejected() -> None:
     train_set, _, _ = WalkForwardPlanner.partition_samples(
         [s_legit, s_future_leak],
         fold,
-        PurgePolicy(default_horizon=timedelta(minutes=10)),
+        PurgePolicy(default_horizon=timedelta(minutes=10), fail_closed_on_unknown=False),
         EmbargoPolicy(duration=timedelta(0)),
     )
     assert len(train_set) == 1
@@ -107,7 +107,7 @@ def test_adversarial_overlapping_information_interval_purged() -> None:
     train_set, _, _ = WalkForwardPlanner.partition_samples(
         [s_overlapping],
         fold,
-        PurgePolicy(purge_overlapping=True),
+        PurgePolicy(purge_overlapping=True, fail_closed_on_unknown=False),
         EmbargoPolicy(duration=timedelta(0)),
     )
     # Must be purged
@@ -152,7 +152,7 @@ def test_adversarial_embargo_violation_blocked() -> None:
     _, val_set, _ = WalkForwardPlanner.partition_samples(
         [s_in_embargo, s_after_embargo],
         fold,
-        PurgePolicy(),
+        PurgePolicy(fail_closed_on_unknown=False),
         EmbargoPolicy(duration=timedelta(minutes=15)),
     )
     assert val_set is not None
