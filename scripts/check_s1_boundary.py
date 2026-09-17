@@ -16,6 +16,7 @@ POST_S1_ROOTS = (
     Path("src/btg_ai_trader/replay"),
     Path("src/btg_ai_trader/data_platform"),
     Path("src/btg_ai_trader/backtesting"),
+    Path("src/btg_ai_trader/statistical_baselines"),
 )
 S2_ROOTS = POST_S1_ROOTS
 EXTERNAL_IMPORTS = {
