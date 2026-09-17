@@ -26,19 +26,25 @@ S2_B = ACCEPTED
 S2_C = ACCEPTED
 PROMOTION_TO_SPRINT_3_GATE = YES
 
-SPRINT_3_STATUS = CLOSURE_CANDIDATE
-SPRINT_3_LIFECYCLE = CLOSURE_CANDIDATE
-SPRINT_3_FINAL_VERDICT = PROPOSED_PASS
+SPRINT_3_STATUS = FORMALLY_CLOSED
+SPRINT_3_LIFECYCLE = FORMALLY_CLOSED
+SPRINT_3_FINAL_VERDICT = PASS
+SPRINT_3_CANONICAL_HEAD = 6333b8f431d43be9c40f3222fbbe17cf06509033
+SPRINT_3_POST_MERGE_CI_RUN = 35256018204
+SPRINT_3_POST_MERGE_CI = PASS
+SPRINT_3_POST_MERGE_UPSTREAM_RUN = 35256018048
+SPRINT_3_POST_MERGE_UPSTREAM = PASS
 S3_ENTRY_GATE = PASS
 S3_CANONICAL_BRANCH = sprint/3-deterministic-economic-backtesting
 S3_WORK_BRANCH = s3/00-full-deterministic-economic-backtesting
-MERGE_AUTHORIZED = NO
-PROMOTION_TO_SPRINT_4_GATE = NO_UNTIL_INDEPENDENT_REAUDIT
+MERGE_COMPLETED = YES
+PROMOTION_TO_SPRINT_4_GATE = YES
+SPRINT_4_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 ```
 
 O Sprint 2 tratou exclusivamente de **Data Platform & Causal Market Replay** dentro de `docs/program/S2_ENTRY_CONTRACT.md`, `S2_DECISION_REGISTER.md`, `S2_CAPABILITY_MATRIX.md` e dos gates correspondentes. Os incrementos funcionais S2-A (Causal Replay Core) e S2-B (Lossless Normalization & Data Quality) e o gate final S2-C foram formalmente aceitos e fechados.
 
-O Sprint 3 trata de **Deterministic Economic Backtesting** sob o contrato `docs/program/S3_ENTRY_CONTRACT.md`, `S3_DECISION_REGISTER.md` e `S3_CAPABILITY_MATRIX.md`. Não há autorização para negociação automática, envio de ordens, Paper operacional, Live operacional, Risk operacional, Strategy operacional, execução financeira ou uso de dinheiro real.
+O Sprint 3 — **Deterministic Economic Backtesting** — foi formalmente concluído após auditoria independente, merge do PR #72 no commit canônico `6333b8f431d43be9c40f3222fbbe17cf06509033` e validação pós-merge dos runs `35256018204` e `35256018048`. A promoção resultante autoriza exclusivamente o **Sprint 4 Entry Gate**. Não há autorização para implementação funcional do Sprint 4, negociação automática, envio de ordens, Paper operacional, Live operacional, Risk operacional, Strategy operacional, execução financeira ou uso de dinheiro real.
 
 ## Autoridade normativa e realidade implementada
 
@@ -61,8 +67,7 @@ O Sprint 3 trata de **Deterministic Economic Backtesting** sob o contrato `docs/
 - Não implementar Strategy operacional, Risk operacional, Paper ou machine learning operacional fora do sprint formalmente autorizado.
 - Não inserir credenciais, tokens, chaves, senhas, números de conta ou outros segredos no repositório, logs, documentação ou chat.
 - Não fazer deploy de infraestrutura financeira produtiva.
-- No Sprint 2, não implementar backtesting econômico, custos, slippage, P&L ou queue-fill econômico; esses itens pertencem ao Sprint 3 ou posterior conforme gate aplicável.
-- No primeiro incremento funcional do Sprint 2, não ampliar o escopo além do causal replay core autorizado no handoff do Antigravity.
+- O Sprint 4 está autorizado apenas no nível de Entry Gate; nenhuma implementação funcional de Statistical Baselines, ML, Strategy, Risk, Paper ou Live está autorizada antes da materialização e aprovação do gate correspondente.
 
 Qualquer mudança futura dessas restrições exige decisão humana explícita, decisão arquitetural/documental adequada e satisfação dos gates correspondentes. Ausência de proibição não equivale a autorização.
 
@@ -80,7 +85,7 @@ Qualquer mudança futura dessas restrições exige decisão humana explícita, d
 
 - Prevenir obrigatoriamente look-ahead bias, data leakage e contaminação entre treino, validação e teste.
 - Preservar `event_time`, `ingestion_time`, `knowledge_time` e demais fronteiras temporais sem síntese otimista.
-- O Sprint 2 deve manter ordenação causal, knowledge cutoffs explícitos e provenance reproduzível no replay.
+- O replay canônico deve manter ordenação causal, knowledge cutoffs explícitos e provenance reproduzível.
 - `knowledge_time` é a fronteira de visibilidade causal do primeiro replay; `event_time` não pode substituí-la para revelar conhecimento futuro.
 - Missingness/`UNKNOWN` não pode ser silenciosamente imputada ou descartada no caminho canônico de normalização.
 - Usar separação temporal e validação fora da amostra antes de promover qualquer modelo futuro.
@@ -103,22 +108,22 @@ Nenhuma execução real pode ser criada até aprovação explícita, no mínimo,
 - Não ampliar o escopo de um sprint sem aprovação.
 - Revalidar o HEAD remoto antes de merge ou promoção.
 - Branches experimentais de sprints futuros permanecem SPECULATIVE até promoção formal; histórico experimental não entra automaticamente na baseline canônica.
-- No Sprint 2, toda mudança funcional deve passar `Sprint 2 Python CI`, inclusive `s2-boundary`, além da verificação upstream aplicável.
+- Toda mudança funcional deve passar o CI e os boundary checks aplicáveis ao estágio, além da verificação upstream pertinente.
 - PRs #9 e #37 são referências históricas de pesquisa; não fazer merge/cherry-pick integral deles para a baseline canônica.
 
 ## Definição de pronto
 
 Uma mudança só está pronta quando escopo, testes, documentação, implicações de segurança e pendências estão claros. Para componentes críticos, evidências auditáveis são obrigatórias. Um sprint só fecha por gate formal conjuntivo quando todos os critérios aplicáveis estiverem satisfeitos.
 
-## Mandato de execução remota — 2026-09-13, reconciliado em 2026-09-16
+## Mandato de execução remota — 2026-09-13, reconciliado em 2026-09-17
 
 O GitHub remoto é a superfície operacional e a fonte do estado implementado. O checkout físico do usuário não é a baseline canônica. Branches, commits e PRs remotos estão autorizados dentro dos gates vigentes.
 
 Integração em branches canônicas de sprint/staging exige testes, typing, lint, checks de integridade, segurança/capacidades negativas aplicáveis, dependências satisfeitas e nenhum finding bloqueante. Promoção global para `main` não é automática.
 
-O Sprint 1 preservou `READ_ONLY_BY_CONSTRUCTION` e `STRUCTURAL_ESCALATION`; o Sprint 2 herda essas barreiras e todas as negative financial capabilities. Dinheiro real, credenciais de negociação, ordens de broker e ativação financeira permanecem proibidos.
+O Sprint 1 preservou `READ_ONLY_BY_CONSTRUCTION` e `STRUCTURAL_ESCALATION`; os Sprints 2 e 3 herdaram essas barreiras e todas as negative financial capabilities. Dinheiro real, credenciais de negociação, ordens de broker e ativação financeira permanecem proibidos.
 
-No Sprint 2, os incrementos funcionais S2-A e S2-B foram implementados pelo Antigravity em branches filhas com CI completo e integrados à baseline canônica. A tarefa S2-C consolidou a reconciliação formal de fechamento sem alteração de código funcional. Qualquer transição para o Sprint 3 exige aprovação independente, merge e a materialização formal do gate de entrada do Sprint 3.
+O Sprint 3 foi formalmente fechado após auditoria independente, merge no commit `6333b8f431d43be9c40f3222fbbe17cf06509033` e post-merge green. A transição autorizada agora é exclusivamente para materialização e revisão do **Sprint 4 Entry Gate**; implementação funcional do Sprint 4 requer novo gate explícito.
 
 Arquitetura e dry-run de sprints futuros podem avançar isoladamente como pesquisa, mas promoção ou ativação exige gate próprio. Decisões in-sprint são registradas antes da primeira dependência material; mudanças arquiteturais materiais seguem ADR. A Issue #6 preserva a errata histórica do 0F-F e `TRACEABILITY.md` continua autoridade canônica das QPIs.
 
