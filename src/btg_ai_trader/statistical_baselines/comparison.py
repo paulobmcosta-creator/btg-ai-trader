@@ -96,17 +96,33 @@ class ProtectedEvidenceUse:
     parent_candidate_ids: tuple[str, ...] = ()
 
 
-class EvaluationHistory:
-    """Tracks consumption of evaluation evidence to prevent protected test leakage across
-    candidate adaptations.
-    """
+@dataclass(frozen=True, slots=True)
+class ProtectedEvidenceConsumption:
+    """Record that protected evidence was consumed to derive a new candidate."""
 
-    def __init__(self, records: Sequence[ProtectedEvidenceUse] = ()) -> None:
+    protected_boundary_id: str
+    source_candidate_id: str
+    derived_candidate_id: str
+
+
+class EvaluationHistory:
+    """Tracks protected evaluations and later evidence consumption across candidate lineage."""
+
+    def __init__(
+        self,
+        records: Sequence[ProtectedEvidenceUse] = (),
+        consumptions: Sequence[ProtectedEvidenceConsumption] = (),
+    ) -> None:
         self._records: list[ProtectedEvidenceUse] = list(records)
+        self._consumptions: list[ProtectedEvidenceConsumption] = list(consumptions)
 
     @property
     def records(self) -> tuple[ProtectedEvidenceUse, ...]:
         return tuple(self._records)
+
+    @property
+    def consumptions(self) -> tuple[ProtectedEvidenceConsumption, ...]:
+        return tuple(self._consumptions)
 
     def record_evaluation(
         self,
@@ -126,6 +142,36 @@ class EvaluationHistory:
         )
         self._records.append(record)
 
+    def record_protected_evidence_consumption(
+        self,
+        protected_boundary_id: str,
+        source_candidate_id: str,
+        derived_candidate_id: str,
+    ) -> None:
+        """Record that evidence from a protected evaluation informed a derived candidate."""
+        if not protected_boundary_id or not source_candidate_id or not derived_candidate_id:
+            raise ValueError(
+                "protected_boundary_id, source_candidate_id, and derived_candidate_id are required"
+            )
+        source_was_evaluated = any(
+            rec.protected_boundary_id == protected_boundary_id
+            and rec.candidate_id == source_candidate_id
+            and rec.evaluation_role is EvaluationRole.PROTECTED_TEST
+            for rec in self._records
+        )
+        if not source_was_evaluated:
+            raise ValueError(
+                f"Cannot consume protected evidence for candidate {source_candidate_id}: "
+                f"no protected evaluation recorded on boundary {protected_boundary_id}"
+            )
+        self._consumptions.append(
+            ProtectedEvidenceConsumption(
+                protected_boundary_id=protected_boundary_id,
+                source_candidate_id=source_candidate_id,
+                derived_candidate_id=derived_candidate_id,
+            )
+        )
+
     def check_admissibility(
         self,
         candidate_id: str,
@@ -137,19 +183,28 @@ class EvaluationHistory:
         if role is not EvaluationRole.PROTECTED_TEST:
             return
 
-        # Check if any parent/ancestor candidate evaluated on this boundary informed adaptation
+        for consumption in self._consumptions:
+            if (
+                consumption.protected_boundary_id == protected_boundary_id
+                and consumption.derived_candidate_id == candidate_id
+            ):
+                raise ProtectedEvidenceReuseError(
+                    f"Protected evidence reuse violation: candidate {candidate_id} was derived "
+                    f"using evidence from boundary {protected_boundary_id} consumed by "
+                    f"parent {consumption.source_candidate_id}"
+                )
+
+        # Backward-compatible guard for records that explicitly marked adaptation at evaluation time.
         for rec in self._records:
             if (
                 rec.protected_boundary_id == protected_boundary_id
                 and rec.evaluation_role is EvaluationRole.PROTECTED_TEST
             ):
-                # Direct repeat evaluation after adaptation
                 if rec.candidate_id == candidate_id and rec.informed_adaptation:
                     raise ProtectedEvidenceReuseError(
                         f"Protected evidence reuse violation: candidate {candidate_id} was already "
                         f"evaluated on boundary {protected_boundary_id} and informed adaptation"
                     )
-                # Parent evaluated on this boundary and informed adaptation of current candidate
                 if rec.informed_adaptation and rec.candidate_id in parent_candidate_ids:
                     raise ProtectedEvidenceReuseError(
                         f"Protected evidence reuse violation: candidate {candidate_id} was adapted "
