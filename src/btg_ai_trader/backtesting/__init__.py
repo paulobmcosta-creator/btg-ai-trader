@@ -51,6 +51,7 @@ from btg_ai_trader.backtesting.provenance import (
     compute_fills_hash,
     compute_instrument_economics_hash,
     compute_metrics_hash,
+    compute_replay_boundary_fingerprint,
 )
 from btg_ai_trader.backtesting.sensitivity import (
     MonotonicityViolationError,
@@ -100,6 +101,7 @@ __all__ = [
     "compute_fills_hash",
     "compute_instrument_economics_hash",
     "compute_metrics_hash",
+    "compute_replay_boundary_fingerprint",
     "run_fee_sensitivity_sweep",
     "run_latency_sensitivity_sweep",
     "run_slippage_sensitivity_sweep",

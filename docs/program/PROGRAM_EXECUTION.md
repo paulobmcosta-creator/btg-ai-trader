@@ -135,7 +135,7 @@ Sprint 3 has been fully implemented and verified under single-batch autonomous e
   - Deterministic replay orchestrator and session engine (`engine.py`)
   - Cryptographic input boundaries, manifest generation, and provenance (`provenance.py`)
   - Sensitivity sweeps and monotonicity invariant verification (`sensitivity.py`)
-- **Verification:** 91% combined coverage on backtesting kernel (1,325 statements, 86 missed, 598 branches, 57 missed/partial; 118 passed S3 tests), zero lint errors, zero type errors, all boundary checks PASS.
+- **Verification:** 91% combined coverage on backtesting kernel (1,328 statements, 86 missed, 598 branches, 57 missed/partial; 126 passed S3 tests, including 87 unit and 39 boundary/acceptance cases; 757 full repository tests), zero lint errors, zero type errors, all boundary checks PASS.
 - **Verdict:** `PROPOSED_SPRINT_3_VERDICT = PROPOSED_PASS`, `SPRINT_3_LIFECYCLE = CLOSURE_CANDIDATE`, `MERGE_AUTHORIZED = NO`, `PROMOTION_TO_SPRINT_4_GATE = NO_UNTIL_INDEPENDENT_REAUDIT`.
 
 ## Sprint 2 exclusions

@@ -42,10 +42,10 @@ from btg_ai_trader.observer.identity import (
     TradableInstrumentId,
 )
 from btg_ai_trader.observer.market import Candle, CandleFinality, Tick
-from btg_ai_trader.observer.provenance import CodeRevision, ConfigHash
+from btg_ai_trader.observer.provenance import CodeRevision, ConfigHash, ContentHash
 from btg_ai_trader.observer.temporal import EventTime, ObservationTimes
 from btg_ai_trader.observer.values import MissingReason
-from btg_ai_trader.replay.core import CausalMarketReplaySchedule
+from btg_ai_trader.replay.core import CausalMarketReplaySchedule, ReplayInputBoundary
 
 DUMMY_REV = CodeRevision("a" * 40)
 
@@ -605,3 +605,104 @@ def test_engine_session_id_derivation_regressions() -> None:
     # Salting effect: session_id alters RunId versus no session_id
     res_no_sess = engine1.run([a1], replay_schedule=schedule1)
     assert res1.manifest.run_id != res_no_sess.manifest.run_id
+
+
+def test_engine_complete_replay_boundary_fingerprint_regressions() -> None:
+    iid = TradableInstrumentId(make_uuid(1))
+    econ = InstrumentEconomics(iid, "BRL", Decimal("2.0"), Decimal("0.5"), Decimal("1.0"))
+    assumptions = EconomicAssumptions(
+        assumptions_id="base",
+        spread_model=SpreadModel(),
+        slippage_model=FixedPointsSlippageModel(adverse_points=Decimal("0.5")),
+        fee_schedule=FeeSchedule(schedule_id="fee", fixed_per_order=Decimal("5.0")),
+        latency_model=LatencyModel(decision_latency_us=100, transit_latency_us=200),
+        execution_policy=ExecutionPolicy(),
+    )
+    engine = DeterministicEconomicBacktester(econ, assumptions, code_revision=DUMMY_REV)
+
+    t0 = datetime(2026, 9, 16, 10, 0, 0, tzinfo=UTC)
+    a1 = make_action(1, t0, iid, Side.BUY, Decimal("10"))
+    e1 = make_tick_event(
+        1, t0 + timedelta(microseconds=500), iid, bid=Decimal("99.5"), ask=Decimal("100.0")
+    )
+    e2 = make_tick_event(
+        2, t0 + timedelta(microseconds=600), iid, bid=Decimal("99.5"), ask=Decimal("100.0")
+    )
+
+    source_run = RunId(make_uuid(50))
+    cfg_a = ConfigHash("a" * 64)
+    cfg_b = ConfigHash("b" * 64)
+    ch1 = ContentHash("1" * 64)
+    ch2 = ContentHash("2" * 64)
+
+    # Base boundary
+    rb_base = ReplayInputBoundary(
+        run_id=source_run,
+        code_revision=DUMMY_REV,
+        config_hash=cfg_a,
+        provider_id="xp",
+        capture_scope="market",
+        event_ids=(e1.event_id,),
+    )
+    sched_base = CausalMarketReplaySchedule([e1], boundary=rb_base)
+
+    # 1. identical complete boundary + identical inputs -> identical Backtest RunId
+    res_base = engine.run([a1], replay_schedule=sched_base)
+    res_base_repeat = engine.run([a1], replay_schedule=sched_base)
+    assert res_base.manifest.run_id == res_base_repeat.manifest.run_id
+    assert res_base.fills[0].fill_id == res_base_repeat.fills[0].fill_id
+
+    # 2. same source RunId + same actions/economics + changed event_ids -> different Backtest RunId
+    rb_changed_events = ReplayInputBoundary(
+        run_id=source_run,
+        code_revision=DUMMY_REV,
+        config_hash=cfg_a,
+        provider_id="xp",
+        capture_scope="market",
+        event_ids=(e1.event_id, e2.event_id),
+    )
+    sched_changed_events = CausalMarketReplaySchedule([e1, e2], boundary=rb_changed_events)
+    res_changed_events = engine.run([a1], replay_schedule=sched_changed_events)
+    assert res_base.manifest.run_id != res_changed_events.manifest.run_id
+
+    # 3. same source RunId + same event_ids + changed config_hash -> different Backtest RunId
+    rb_changed_config = ReplayInputBoundary(
+        run_id=source_run,
+        code_revision=DUMMY_REV,
+        config_hash=cfg_b,
+        provider_id="xp",
+        capture_scope="market",
+        event_ids=(e1.event_id,),
+    )
+    sched_changed_config = CausalMarketReplaySchedule([e1], boundary=rb_changed_config)
+    res_changed_config = engine.run([a1], replay_schedule=sched_changed_config)
+    assert res_base.manifest.run_id != res_changed_config.manifest.run_id
+
+    # 4. same source RunId + changed content_hashes when supplied -> different Backtest RunId
+    rb_with_ch1 = ReplayInputBoundary(
+        run_id=source_run,
+        code_revision=DUMMY_REV,
+        config_hash=cfg_a,
+        provider_id="xp",
+        capture_scope="market",
+        event_ids=(e1.event_id,),
+        content_hashes=(ch1,),
+    )
+    rb_with_ch2 = ReplayInputBoundary(
+        run_id=source_run,
+        code_revision=DUMMY_REV,
+        config_hash=cfg_a,
+        provider_id="xp",
+        capture_scope="market",
+        event_ids=(e1.event_id,),
+        content_hashes=(ch2,),
+    )
+    sched_ch1 = CausalMarketReplaySchedule([e1], boundary=rb_with_ch1)
+    sched_ch2 = CausalMarketReplaySchedule([e1], boundary=rb_with_ch2)
+    res_ch1 = engine.run([a1], replay_schedule=sched_ch1)
+    res_ch2 = engine.run([a1], replay_schedule=sched_ch2)
+    assert res_ch1.manifest.run_id != res_ch2.manifest.run_id
+
+    # 5. different Backtest RunId + same source event/action -> different fill_id
+    assert res_base.fills[0].fill_id != res_changed_config.fills[0].fill_id
+    assert res_ch1.fills[0].fill_id != res_ch2.fills[0].fill_id

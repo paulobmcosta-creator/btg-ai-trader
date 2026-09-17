@@ -35,6 +35,7 @@ from btg_ai_trader.backtesting.provenance import (
     compute_actions_hash,
     compute_assumptions_hash,
     compute_instrument_economics_hash,
+    compute_replay_boundary_fingerprint,
 )
 from btg_ai_trader.observer.envelope import EventEnvelope
 from btg_ai_trader.observer.identity import RunId, TradableInstrumentId
@@ -240,9 +241,11 @@ class DeterministicEconomicBacktester:
             econ_hash = compute_instrument_economics_hash(self.instrument_economics).value
             policy_str = self.end_of_window_policy.value
             code_rev = self.code_revision.value
-            boundary_run_id = schedule.boundary.run_id.value
+            replay_boundary_fingerprint = compute_replay_boundary_fingerprint(
+                schedule.boundary
+            ).value
             seed_str = (
-                f"backtest:{boundary_run_id}:{act_hash}:{assump_hash}:{econ_hash}:{policy_str}:{code_rev}"
+                f"backtest:{replay_boundary_fingerprint}:{act_hash}:{assump_hash}:{econ_hash}:{policy_str}:{code_rev}"
             )
             if session_id is not None:
                 seed_str = f"{seed_str}:{session_id}"

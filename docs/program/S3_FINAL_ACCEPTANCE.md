@@ -58,13 +58,13 @@ All entry preconditions (`S3-EG-01..10`) were verified and satisfied:
 
 ## 3. Implementation Overview & Architectural Scope
 
-Sprint 3 implemented the **Deterministic Execution Economics Kernel** in `src/btg_ai_trader/backtesting/` with 91% coverage (1,325 statements, 86 missed, 598 branches, 57 missed/partial, 85 passed backtesting tests), consisting of:
+Sprint 3 implemented the **Deterministic Execution Economics Kernel** in `src/btg_ai_trader/backtesting/` with 91% coverage (1,328 statements, 86 missed, 598 branches, 57 missed/partial, 87 passed backtesting test cases, 39 S3 boundary/acceptance cases, 126 S3-specific test cases, 757 full repository tests), consisting of:
 
 1. **Domain & Types (`domain.py`):**
-   - `ActionIdentity`: Immutable identity binding action ID, run ID, and ordinal sequence.
+   - `ActionIdentity`: Immutable UUID identity with `value` field (action/run/fill lineage is tracked via manifest and simulated fill models, not stored internally by this class).
    - `Side` (`BUY`, `SELL`), `OrderStyle` (`MARKET`), `ExecutionOutcome` (`FILL`, `NO_FILL`, `INDETERMINATE`, `REJECTED`).
    - `InstrumentEconomics`: Canonical instrument specification (`instrument_id`, `currency`, `money_per_price_unit`, `tick_size`, `quantity_step`).
-   - `ExecutionTiming`: Explicit causal timeline (`decision_time <= order_ready_time <= market_arrival_time <= execution_opportunity_time`).
+   - `ExecutionTiming`: Explicit causal timeline (`knowledge_cutoff <= decision_time <= order_ready_time <= simulated_market_arrival_time <= fill_opportunity_time`).
    - `BacktestAction`: Pure research action input specifying decision cutoff, timing, side, and quantity.
    - `SimulatedFill`: Immutable fill record capturing fill price, fill quantity, raw price, spread cost, slippage cost, fee paid, and quote reference.
 
@@ -94,7 +94,7 @@ Sprint 3 implemented the **Deterministic Execution Economics Kernel** in `src/bt
    - `DeterministicEconomicBacktester`: Orchestrates causal replay over `CausalMarketReplaySchedule`, evaluates actions at causal market arrival, feeds simulated fills into economic accounting, marks to market at window end, and generates comprehensive `BacktestResult`.
 
 7. **Provenance & Input Boundary (`provenance.py`):**
-   - `BacktestInputBoundary`: Cryptographically binds Replay Input Boundary, action hash, assumptions hash, instrument economics, and code revision.
+   - `BacktestInputBoundary`: Cryptographic input boundary directly containing `replay_boundary`, `actions_hash`, `code_revision`, `environment_signature`, and `derived_input_digest` (assumptions and instrument economics are bound at the `BacktestRunManifest` level).
    - `BacktestRunManifest`: Durable, reproducible artifact recording all input boundaries, execution statistics, accounting summaries, descriptive metrics, and lineage hashes.
 
 8. **Sensitivity & Monotonicity Verification (`sensitivity.py`):**
@@ -108,9 +108,9 @@ Every capability from `docs/program/S3_CAPABILITY_MATRIX.md` is adjudicated belo
 
 | ID | Contractual Capability | Applicability / Trigger Status | Canonical Implementation / Evidence | Specific Tests or Checks | Verdict |
 |---|---|---|---|---|---|
-| **S3-AC-01** | Explicit deterministic backtest input boundary | REQUIRED | `BacktestInputBoundary` (`provenance.py`) cryptographically binds replay boundary, actions hash, assumptions hash, instrument economics, code revision, and config hash. | `test_backtest_input_boundary_validation_and_codec`, `test_sha256_canonical_json_and_key_order`, `test_compute_actions_hash_determinism_and_sensitivity` | **PASS** |
+| **S3-AC-01** | Explicit deterministic backtest input boundary | REQUIRED | `BacktestInputBoundary` (`provenance.py`) directly binds `replay_boundary`, `actions_hash`, `code_revision`, `environment_signature`, and `derived_input_digest` (assumptions and economics bound at `BacktestRunManifest` level). | `test_backtest_input_boundary_validation_and_codec`, `test_sha256_canonical_json_and_key_order`, `test_compute_actions_hash_determinism_and_sensitivity` | **PASS** |
 | **S3-AC-02** | Causal economic replay derived from accepted S2 semantics | REQUIRED | `DeterministicEconomicBacktester` (`engine.py`) replays market events using S2 `CausalMarketReplaySchedule`, respecting `knowledge_cutoff`. | `test_engine_full_lifecycle_and_session_determinism`, `test_engine_initialization_and_result_validation` | **PASS** |
-| **S3-AC-03** | Explicit decision / order-ready / market-arrival / execution timing | REQUIRED | `ExecutionTiming` (`domain.py`) enforces `decision_time <= order_ready_time <= market_arrival_time <= execution_opportunity_time`. Non-positive delta or backward time is rejected fail-closed. | `test_execution_timing_valid`, `test_execution_timing_regressions`, `test_simulate_action_validation` | **PASS** |
+| **S3-AC-03** | Explicit decision / order-ready / market-arrival / execution timing | REQUIRED | `ExecutionTiming` (`domain.py`) enforces `knowledge_cutoff <= decision_time <= order_ready_time <= simulated_market_arrival_time <= fill_opportunity_time`. Non-positive delta or backward time is rejected fail-closed. | `test_execution_timing_valid`, `test_execution_timing_regressions`, `test_simulate_action_validation` | **PASS** |
 | **S3-AC-04** | Side-aware executable price semantics | REQUIRED | `SpreadModel.resolve_executable_price()` (`assumptions.py`) executes BUY against Ask and SELL against Bid. Mid-price aggressive fill is forbidden. | `test_spread_model_valid`, `test_successful_market_tick_fill`, `test_spread_model_edge_cases` | **PASS** |
 | **S3-AC-05** | Explicit deterministic spread treatment | REQUIRED | `SpreadModel` (`assumptions.py`) strictly enforces positive spread (`ask > bid`). Zero, negative, inverted, or crossed spreads produce `INDETERMINATE` with `NON_POSITIVE_SPREAD` fail-closed. | `test_spread_model_valid`, `test_spread_model_edge_cases`, `test_missing_quote_or_spread_rejection` | **PASS** |
 | **S3-AC-06** | Explicit configurable fee/cost model | REQUIRED | `FeeSchedule` (`assumptions.py`) supports fixed per-order fees, per-unit fees, and basis-point rates with currency validation. | `test_fee_schedule`, `test_fee_schedule_validation`, `test_run_fee_sensitivity_sweep` | **PASS** |
@@ -210,7 +210,7 @@ In accordance with `docs/program/S3_DECISION_REGISTER.md`, Foundation decisions 
 | **S3-D-14** | Diagnostic spread burden | **DECIDED_AND_SATISFIED** | Diagnostic spread burden tracked without altering gross P&L. Verified by `test_criterion_17_diagnostic_spread_burden`. |
 | **S3-D-15** | End-of-window position policy | **DECIDED_AND_SATISFIED** | Default `KEEP_OPEN`; close-at-quote deferred. Verified by `test_criterion_11_close_at_last_valid_quote_deferred`. |
 | **S3-D-16** | Descriptive economic metrics | **DECIDED_AND_SATISFIED** | Descriptive metrics only; inferential/promotional metrics deferred. Verified by `test_compute_descriptive_metrics_full_trade_lifecycle`. |
-| **S3-D-17** | Parameter sensitivity and monotonicity invariants | **DECIDED_AND_SATISFIED** | Friction increases monotonically degrade or preserve net P&L. Verified by `test_verify_pnl_monotonicity_direct`. |
+| **S3-D-17** | Parameter sensitivity and monotonicity invariants | **DECIDED_AND_SATISFIED** | Fee multiplier and adverse slippage: monotonic under stated model assumptions; latency: deterministic/comparable sensitivity only, no universal monotonicity claim. Verified by `test_verify_pnl_monotonicity_direct`. |
 | **S3-D-18** | Cryptographic run manifest | **DECIDED_AND_SATISFIED** | `BacktestRunManifest` SHA-256 hash binds all inputs and results. Verified by `test_criterion_7_hash_includes_bps_and_economics`. |
 | **S3-D-19** | Segregated simulated accounting | **DECIDED_AND_SATISFIED** | Zero mutation of operational `FinancialLedger`. Verified by `scripts/check_s3_boundary.py`. |
 | **S3-D-20** | Dual schedule and event ingestion | **DECIDED_AND_SATISFIED** | Accepts either `CausalMarketReplaySchedule` or validated event sequences. Verified by `test_engine_missing_events_and_invalid_schedule`. |
@@ -248,8 +248,8 @@ In accordance with quantitative protocols defined in Foundation 0E:
 To prevent documentary drift and phantom citations, every test function cited in this document has been verified against the repository's Abstract Syntax Tree (AST):
 
 ```text
-TOTAL_CITED_TEST_NAMES = 93
-AST_VERIFIED_TEST_NAMES = 93
+TOTAL_CITED_TEST_NAMES = 102
+AST_VERIFIED_TEST_NAMES = 102
 CITED_TEST_NAMES - ACTUAL_TEST_FUNCTION_NAMES = set()
 DRIFT_OR_PHANTOM_CITATIONS = 0
 ```
@@ -301,6 +301,7 @@ DRIFT_OR_PHANTOM_CITATIONS = 0
 - `tests/backtesting/test_determinism.py`:
   - `test_100_runs_exact_byte_determinism`
 - `tests/backtesting/test_engine.py`:
+  - `test_engine_complete_replay_boundary_fingerprint_regressions`
   - `test_engine_edge_cases_coverage`
   - `test_engine_empty_run_and_mismatched_instrument`
   - `test_engine_end_of_window_policy_close_long_and_short`
@@ -308,6 +309,7 @@ DRIFT_OR_PHANTOM_CITATIONS = 0
   - `test_engine_initialization_and_result_validation`
   - `test_engine_mark_prices_variations`
   - `test_engine_missing_mark_price_on_open_position`
+  - `test_engine_session_id_derivation_regressions`
 - `tests/backtesting/test_execution.py`:
   - `test_candle_execution_handling`
   - `test_capacity_rejection`
@@ -351,6 +353,14 @@ DRIFT_OR_PHANTOM_CITATIONS = 0
   - `test_run_latency_sensitivity_sweep`
   - `test_run_slippage_sensitivity_sweep`
   - `test_verify_pnl_monotonicity_direct`
+- `tests/test_s3_acceptance_symbols.py`:
+  - `test_phantom_class_negative`
+  - `test_phantom_enum_negative`
+  - `test_phantom_function_negative`
+  - `test_phantom_method_negative`
+  - `test_phantom_path_negative`
+  - `test_phantom_test_negative`
+  - `test_real_acceptance_passes`
 - `tests/test_s3_boundary.py`:
   - `test_acceptance_symbols_verification`
   - `test_allowed_python_file_passes`

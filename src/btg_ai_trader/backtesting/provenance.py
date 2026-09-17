@@ -293,6 +293,12 @@ def _replay_boundary_to_dict(rb: ReplayInputBoundary) -> dict[str, Any]:
     }
 
 
+def compute_replay_boundary_fingerprint(boundary: ReplayInputBoundary) -> ContentHash:
+    """Compute canonical SHA-256 fingerprint over complete ReplayInputBoundary."""
+    payload = _replay_boundary_to_dict(boundary)
+    return sha256_canonical_json(payload)
+
+
 def _replay_boundary_from_dict(d: dict[str, Any]) -> ReplayInputBoundary:
     return ReplayInputBoundary(
         run_id=RunId(d["run_id"]),
