@@ -309,15 +309,37 @@ class StatisticalEvaluationEngine:
         eff_purge = plan.purge_policy
         eff_embargo = plan.embargo_policy
 
-        # Pre-instantiate to extract identity and perform role checks
+        # Pre-instantiate to bind one scientific candidate identity for the entire run.
         dummy_cand = baseline_factory()
         candidate_id = dummy_cand.identity.candidate_id
-        eff_code_revision = code_revision or dummy_cand.identity.code_revision
+
+        if code_revision is not None and code_revision != dummy_cand.identity.code_revision:
+            raise ValueError(
+                f"code_revision mismatch: evaluation requested {code_revision}, "
+                f"candidate identity binds {dummy_cand.identity.code_revision}"
+            )
+        eff_code_revision = dummy_cand.identity.code_revision
+
+        candidate_numeric_policy = dummy_cand.identity.parameters.get("numeric_policy")
+        expected_numeric_policy = numeric_policy.to_canonical_dict()
+        if (
+            not isinstance(candidate_numeric_policy, Mapping)
+            or dict(candidate_numeric_policy) != expected_numeric_policy
+        ):
+            raise ValueError(
+                "numeric_policy mismatch: evaluation policy must equal the policy bound "
+                "into CandidateIdentity"
+            )
 
         eff_boundary_id = protected_boundary_id or f"{plan.plan_id}:protected"
 
-        # If role is PROTECTED_TEST and history is provided, check admissibility before execution
-        if role is EvaluationRole.PROTECTED_TEST and evaluation_history is not None:
+        # Protected evaluation provenance is mandatory; omission must fail closed.
+        if role is EvaluationRole.PROTECTED_TEST:
+            if evaluation_history is None:
+                raise ValueError(
+                    "PROTECTED_TEST evaluation requires EvaluationHistory to enforce "
+                    "protected-evidence reuse invariants"
+                )
             evaluation_history.check_admissibility(
                 candidate_id=candidate_id,
                 protected_boundary_id=eff_boundary_id,
@@ -344,6 +366,10 @@ class StatisticalEvaluationEngine:
                     target_eval_set = eval_set
 
                 baseline_instance = baseline_factory()
+                if baseline_instance.identity.identity_hash != dummy_cand.identity.identity_hash:
+                    raise ValueError(
+                        "baseline_factory returned inconsistent CandidateIdentity across folds"
+                    )
 
                 fold_res = cls.evaluate_candidate_on_fold(
                     baseline=baseline_instance,
@@ -454,7 +480,8 @@ class StatisticalEvaluationEngine:
 
         # Record evaluation in history if protected test
         protected_records: tuple[Any, ...] = ()
-        if role is EvaluationRole.PROTECTED_TEST and evaluation_history is not None:
+        if role is EvaluationRole.PROTECTED_TEST:
+            assert evaluation_history is not None
             from btg_ai_trader.statistical_baselines.comparison import ProtectedEvidenceUse
 
             evaluation_history.record_evaluation(
