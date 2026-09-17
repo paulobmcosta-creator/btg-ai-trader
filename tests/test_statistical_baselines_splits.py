@@ -69,7 +69,10 @@ def test_purge_policy_behavior() -> None:
     assert purge_active.should_purge(sample_with_info, eval_start) is True
 
     # Default horizon crossing eval_start -> Purged
-    purge_with_default = PurgePolicy(default_horizon=timedelta(hours=1), fail_closed_on_unknown=False)
+    purge_with_default = PurgePolicy(
+        fail_closed_on_unknown=False,
+        default_horizon=timedelta(hours=1),
+    )
     sample_no_info = StatisticalSample(
         sample_id="s3",
         feature_knowledge_time=t0,
@@ -361,7 +364,10 @@ def test_partition_samples_duplicate_id_rejected() -> None:
     )
     with pytest.raises(ValueError, match="Duplicate sample_id"):
         WalkForwardPlanner.partition_samples(
-            [s1, s1], fold, PurgePolicy(fail_closed_on_unknown=False), EmbargoPolicy(duration=timedelta(0))
+            [s1, s1],
+            fold,
+            PurgePolicy(fail_closed_on_unknown=False),
+            EmbargoPolicy(duration=timedelta(0)),
         )
 
 
