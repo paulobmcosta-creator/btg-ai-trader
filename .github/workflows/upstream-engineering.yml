@@ -5,13 +5,16 @@ on:
     branches:
       - "s11/02-foundation-integrity"
       - "sprint/2-data-platform-replay"
+      - "sprint/3-deterministic-economic-backtesting"
   pull_request:
     branches:
       - "s11/**"
       - "s1/**"
       - "s2/**"
+      - "s3/**"
       - "sprint/1-market-observer"
       - "sprint/2-data-platform-replay"
+      - "sprint/3-deterministic-economic-backtesting"
 
 permissions:
   contents: read

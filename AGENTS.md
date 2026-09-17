@@ -16,20 +16,26 @@ Por decisão humana explícita de 2026-09-16, o Official Codex Security Diff Sca
 SPRINT1_PROVIDER_QUALIFIED = YES
 SPRINT1_ACCEPTANCE = YES
 PROMOTION_TO_SPRINT_2 = YES
-SPRINT_2_STATUS = CLOSURE_CANDIDATE
-SPRINT_2_LIFECYCLE = PROPOSED_CLOSED
+SPRINT_2_STATUS = FORMALLY_CLOSED
+SPRINT_2_LIFECYCLE = FORMALLY_CLOSED
+SPRINT_2_FINAL_VERDICT = PASS
+SPRINT_2_CANONICAL_HEAD = ba6c0c41988fc9fefbdff13b0daedf96301dd74c
 S2_ENTRY_GATE = PASS
 S2_A = ACCEPTED
 S2_B = ACCEPTED
-S2_C = PROPOSED
-PROPOSED_SPRINT_2_FINAL_VERDICT = PASS
-PROPOSED_SPRINT_2_LIFECYCLE = FORMALLY_CLOSED
+S2_C = ACCEPTED
 PROMOTION_TO_SPRINT_3_GATE = YES
+
+SPRINT_3_STATUS = OPEN
+SPRINT_3_LIFECYCLE = OPEN
+S3_ENTRY_GATE = PASS
+S3_CANONICAL_BRANCH = sprint/3-deterministic-economic-backtesting
+S3_WORK_BRANCH = s3/00-full-deterministic-economic-backtesting
 ```
 
-O Sprint 2 tratou exclusivamente de **Data Platform & Causal Market Replay** dentro de `docs/program/S2_ENTRY_CONTRACT.md`, `S2_DECISION_REGISTER.md`, `S2_CAPABILITY_MATRIX.md` e dos gates correspondentes. Os incrementos funcionais S2-A (Causal Replay Core) e S2-B (Lossless Normalization & Data Quality) foram formalmente aceitos. O gate final S2-C consolidou a reconciliação formal conjuntiva em `docs/program/S2_FINAL_ACCEPTANCE.md`.
+O Sprint 2 tratou exclusivamente de **Data Platform & Causal Market Replay** dentro de `docs/program/S2_ENTRY_CONTRACT.md`, `S2_DECISION_REGISTER.md`, `S2_CAPABILITY_MATRIX.md` e dos gates correspondentes. Os incrementos funcionais S2-A (Causal Replay Core) e S2-B (Lossless Normalization & Data Quality) e o gate final S2-C foram formalmente aceitos e fechados.
 
-Não há autorização para negociação automática, envio de ordens, Paper, Risk operacional, Strategy operacional, execução financeira, backtesting econômico ou uso de dinheiro real.
+O Sprint 3 trata de **Deterministic Economic Backtesting** sob o contrato `docs/program/S3_ENTRY_CONTRACT.md`, `S3_DECISION_REGISTER.md` e `S3_CAPABILITY_MATRIX.md`. Não há autorização para negociação automática, envio de ordens, Paper operacional, Live operacional, Risk operacional, Strategy operacional, execução financeira ou uso de dinheiro real.
 
 ## Autoridade normativa e realidade implementada
 
