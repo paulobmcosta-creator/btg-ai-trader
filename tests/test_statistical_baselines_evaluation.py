@@ -14,12 +14,12 @@ from btg_ai_trader.statistical_baselines.boundaries import (
     EvaluationBoundary,
     TemporalFold,
 )
+from btg_ai_trader.statistical_baselines.comparison import EvaluationHistory
 from btg_ai_trader.statistical_baselines.domain import (
     EvaluationRole,
     StatisticalSample,
     TargetSemantics,
 )
-from btg_ai_trader.statistical_baselines.comparison import EvaluationHistory
 from btg_ai_trader.statistical_baselines.evaluation import (
     AggregateEvaluationResult,
     FoldEvaluationResult,
