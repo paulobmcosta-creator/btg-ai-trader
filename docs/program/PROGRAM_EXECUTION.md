@@ -25,7 +25,10 @@ SPRINT_2_CAPABILITY_MATRIX = docs/program/S2_CAPABILITY_MATRIX.md
 SPRINT_2_ENTRY_GATE = PASS
 S2_A = ACCEPTED (PR #65, 9faa43c3bc112c1d2e558aa3e1518371880cc518)
 S2_B = ACCEPTED (PR #67, 071e004f2be8e5925b0de63db97af61cbbf37b30)
-S2_C = PROPOSED (PR #68 branch s2/03-final-acceptance-reconciliation)
+S2_C = PROPOSED
+S2_C_ISSUE = #68
+S2_C_PR = #70
+S2_C_BRANCH = s2/03-final-acceptance-reconciliation
 PROPOSED_SPRINT_2_FINAL_VERDICT = PASS
 PROPOSED_SPRINT_2_LIFECYCLE = FORMALLY_CLOSED
 PROMOTION_TO_SPRINT_3_GATE = YES
@@ -95,7 +98,9 @@ Because the final PASS declarations themselves change the PR head, the final PR 
 - **Scope:** In-memory lossless Data Platform normalization (`NormalizedMarketBatch`, `normalize_market_batch`, `QualityFinding`). Preserves all source facts and `MissingReason` (DD-80), flags replay-blocking vs. non-blocking quality findings, zero silent imputation or synthetic temporal fabrication.
 
 ### S2-C — Final Acceptance Reconciliation & Sprint 2 Closure Gate
-- **Branch:** `s2/03-final-acceptance-reconciliation` (Issue #68)
+- **Branch:** `s2/03-final-acceptance-reconciliation`
+- **Issue:** #68
+- **PR:** #70
 - **Artifact:** `docs/program/S2_FINAL_ACCEPTANCE.md`
 - **Scope:** Full conjunctive audit of S2-AC-01..14, S2-NC-01..16, and active decisions DD-05..83. Zero new functional code. Formal proposal of Sprint 2 closure.
 
@@ -148,4 +153,4 @@ Pinned upstream engineering verification
 
 ## Repository hardening
 
-Administrative branch/ruleset protection remains tracked in Issue #61 because the connected GitHub integration does not expose branch-protection/ruleset write administration. This administrative limitation does not waive CI or sprint gates.
+Administrative branch/ruleset protection remains tracked in Issue #61 because the connected GitHub integration does not expose branch-protection/ruleset write administration. Administrative branch/ruleset protection remains absent/pending, and Issue #61 remains open as defense-in-depth. CI, boundary scanners, and manual pull request review provide technical verification gates, but these mechanisms do not replace GitHub administrative enforcement. Under the governing contract, administrative protection is not a functional closure requirement for Sprint 2.

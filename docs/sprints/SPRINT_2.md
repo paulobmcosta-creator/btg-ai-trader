@@ -12,7 +12,10 @@ SPRINT_2_LIFECYCLE = PROPOSED_CLOSED
 S2_ENTRY_GATE = PASS
 S2_A = ACCEPTED (PR #65, 9faa43c3bc112c1d2e558aa3e1518371880cc518)
 S2_B = ACCEPTED (PR #67, 071e004f2be8e5925b0de63db97af61cbbf37b30)
-S2_C = PROPOSED (PR #68 branch s2/03-final-acceptance-reconciliation)
+S2_C = PROPOSED
+S2_C_ISSUE = #68
+S2_C_PR = #70
+S2_C_BRANCH = s2/03-final-acceptance-reconciliation
 PROPOSED_SPRINT_2_FINAL_VERDICT = PASS
 PROPOSED_SPRINT_2_LIFECYCLE = FORMALLY_CLOSED
 PROMOTION_TO_SPRINT_3_GATE = YES
@@ -172,6 +175,7 @@ O PR final do gate ainda deve permanecer verde em seu próprio HEAD exato antes 
 ### S2-C — Final Acceptance Reconciliation & Sprint 2 Closure Gate (Em revisão)
 - **Branch:** `s2/03-final-acceptance-reconciliation`
 - **Issue:** #68
+- **PR:** #70
 - **Artefato:** `docs/program/S2_FINAL_ACCEPTANCE.md`
 - **Escopo:** Reconciliação formal conjuntiva de todas as capacidades positivas (S2-AC-01..14), negativas (S2-NC-01..16) e decisões ativas (DD-05..83). Zero código funcional novo.
 
