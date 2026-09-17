@@ -35,7 +35,7 @@ O Sprint 4 constrói uma camada de pesquisa para estimar e avaliar baselines est
    - Probabilidade Binária: Brier Score, Base Rate.
    - Categóricas: Accuracy, Class Prevalence, Confusion Counts.
    - Separação total de métricas financeiras/econômicas (pertencentes ao Sprint 3).
-9. **Diagnóstico de Calibração de Probabilidades:** `CalibrationReport` com bins explícitos e Brier Score (diagnóstico descritivo, sem ML calibrators aprendidos).
+9. **Diagnóstico de Calibração de Probabilidades:** `CalibrationReport` com bins explícitos, ECE e MCE; Brier Score permanece métrica probabilística separada (diagnóstico descritivo, sem ML calibrators aprendidos).
 10. **Distribuição Empírica entre Folds & Estabilidade:** Relato da distribuição fold-a-fold (pior fold, melhor fold, dispersão). Preservação do deferimento de thresholds universais de estabilidade (DD-91).
 11. **Ponderação de Agregação de Folds:** Políticas explícitas (`EQUAL_FOLD`, `SAMPLE_WEIGHTED`).
 12. **Comparação de Candidatos e Baselines:** Verificação estrita de paridade metodológica (mesma população, mesmo target, mesmos folds, mesmo horizonte).
