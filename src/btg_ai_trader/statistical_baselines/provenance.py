@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
@@ -35,6 +35,9 @@ from btg_ai_trader.statistical_baselines.splits import (
 )
 
 
+_BOUNDARY_VERIFICATION_TOKEN = object()
+
+
 @dataclass(frozen=True, slots=True)
 class StatisticalEvaluationInputBoundary:
     """Immutable input boundary verifying dataset, plan, and configurations before execution."""
@@ -56,8 +59,14 @@ class StatisticalEvaluationInputBoundary:
     numeric_policy: NumericPolicy
     code_revision: str
     logical_evaluation_digest: str
+    _verification_token: object = field(default=None, repr=False, compare=False)
 
     def __post_init__(self) -> None:
+        if self._verification_token is not _BOUNDARY_VERIFICATION_TOKEN:
+            raise ValueError(
+                "StatisticalEvaluationInputBoundary must be created via "
+                "StatisticalEvaluationInputBoundary.create()"
+            )
         object.__setattr__(self, "sample_ids", tuple(self.sample_ids))
         object.__setattr__(self, "candidate_identities", tuple(self.candidate_identities))
         object.__setattr__(self, "metric_names", tuple(sorted(self.metric_names)))
@@ -231,6 +240,7 @@ class StatisticalEvaluationInputBoundary:
             numeric_policy=numeric_policy,
             code_revision=code_revision,
             logical_evaluation_digest=logical_digest,
+            _verification_token=_BOUNDARY_VERIFICATION_TOKEN,
         )
 
 
@@ -412,17 +422,84 @@ class StatisticalEvaluationManifest:
             StatisticalEvaluationInputBoundary.compute_source_lineage_digest(valid_samples)
         )
 
+        first_res = aggregate_results[0] if aggregate_results else None
+        eff_agg_policy = (
+            first_res.aggregation_policy if first_res else FoldAggregationPolicy.EQUAL_FOLD
+        )
+        eff_num_policy = first_res.numeric_policy if first_res else DEFAULT_NUMERIC_POLICY
+        eff_target_contract = (
+            first_res.target_contract_id
+            if first_res and first_res.target_contract_id
+            else "generic_target_contract_s4"
+        )
+        eff_metric_names = tuple(
+            sorted(
+                {
+                    metric_name
+                    for aggregate in aggregate_results
+                    for fold in aggregate.fold_results
+                    for metric_name in fold.metrics
+                }
+            )
+        )
+        calibration_bin_counts = {
+            fold.calibration_report.num_bins
+            for aggregate in aggregate_results
+            for fold in aggregate.fold_results
+            if fold.calibration_report is not None
+        }
+        if len(calibration_bin_counts) > 1:
+            raise ValueError(
+                "aggregate_results contain inconsistent calibration bin configurations"
+            )
+        eff_cal_cfg: dict[str, Any] = (
+            {"bins": next(iter(calibration_bin_counts))}
+            if calibration_bin_counts
+            else {}
+        )
+
+        expected_boundary = StatisticalEvaluationInputBoundary.create(
+            samples=valid_samples,
+            plan=plan,
+            candidate_identities=candidate_identities,
+            code_revision=code_revision,
+            target_contract_id=eff_target_contract,
+            search_family=search_family,
+            metric_names=eff_metric_names,
+            calibration_config=eff_cal_cfg,
+            aggregation_policy=eff_agg_policy,
+            numeric_policy=eff_num_policy,
+        )
+
         if input_boundary is not None:
             if input_boundary.dataset_digest != dataset_digest:
                 raise ValueError(
                     f"input_boundary dataset_digest ({input_boundary.dataset_digest}) "
                     f"does not match dataset_digest of samples ({dataset_digest})"
                 )
+            if input_boundary.source_lineage_digest != source_lineage_digest:
+                raise ValueError(
+                    "input_boundary source_lineage_digest does not match samples"
+                )
+            if input_boundary.sample_ids != expected_boundary.sample_ids:
+                raise ValueError("input_boundary sample_ids/order does not match samples")
+            if input_boundary.target_semantics != expected_boundary.target_semantics:
+                raise ValueError("input_boundary target_semantics does not match samples")
+            if input_boundary.target_contract_id != eff_target_contract:
+                raise ValueError(
+                    "input_boundary target_contract_id does not match aggregate results"
+                )
             if input_boundary.plan_digest != plan_digest:
                 raise ValueError(
                     f"input_boundary plan_digest ({input_boundary.plan_digest}) does not match "
                     f"plan_digest ({plan_digest})"
                 )
+            if input_boundary.fold_definitions != expected_boundary.fold_definitions:
+                raise ValueError("input_boundary fold_definitions do not match plan")
+            if input_boundary.purge_policy != plan.purge_policy:
+                raise ValueError("input_boundary purge_policy does not match plan")
+            if input_boundary.embargo_policy != plan.embargo_policy:
+                raise ValueError("input_boundary embargo_policy does not match plan")
             if input_boundary.code_revision != code_revision:
                 raise ValueError(
                     f"input_boundary code_revision ({input_boundary.code_revision}) does not match "
@@ -435,49 +512,43 @@ class StatisticalEvaluationManifest:
                     f"input_boundary candidate_identities ({actual_cand_ids}) does not match "
                     f"expected candidate_identities ({expected_cand_ids})"
                 )
-            if aggregate_results:
-                first_agg_policy = aggregate_results[0].aggregation_policy
-                if input_boundary.aggregation_policy != first_agg_policy:
-                    raise ValueError(
-                        f"input_boundary aggregation_policy ({input_boundary.aggregation_policy}) "
-                        f"does not match aggregate_results aggregation_policy ({first_agg_policy})"
-                    )
-        else:
-            first_res = aggregate_results[0] if aggregate_results else None
-            eff_agg_policy = (
-                first_res.aggregation_policy if first_res else FoldAggregationPolicy.EQUAL_FOLD
+            expected_search = (
+                search_family.to_canonical_dict() if search_family is not None else None
             )
-            eff_num_policy = first_res.numeric_policy if first_res else DEFAULT_NUMERIC_POLICY
-            eff_target_contract = (
-                first_res.target_contract_id
-                if (
-                    first_res
-                    and hasattr(first_res, "target_contract_id")
-                    and first_res.target_contract_id
+            actual_search = (
+                input_boundary.search_family.to_canonical_dict()
+                if input_boundary.search_family is not None
+                else None
+            )
+            if actual_search != expected_search:
+                raise ValueError("input_boundary search_family does not match manifest inputs")
+            if input_boundary.metric_names != expected_boundary.metric_names:
+                raise ValueError("input_boundary metric_names do not match evaluated metrics")
+            if dict(input_boundary.calibration_config) != dict(
+                expected_boundary.calibration_config
+            ):
+                raise ValueError(
+                    "input_boundary calibration_config does not match evaluated calibration"
                 )
-                else "generic_target_contract_s4"
-            )
-            eff_metric_names = (
-                tuple(sorted(first_res.aggregate_metrics.keys())) if first_res else ()
-            )
-            eff_cal_cfg: dict[str, Any] = {}
-            if first_res and first_res.fold_results:
-                for fr in first_res.fold_results:
-                    if fr.calibration_report:
-                        eff_cal_cfg = {"bins": fr.calibration_report.num_bins}
-                        break
-            input_boundary = StatisticalEvaluationInputBoundary.create(
-                samples=valid_samples,
-                plan=plan,
-                candidate_identities=candidate_identities,
-                code_revision=code_revision,
-                target_contract_id=eff_target_contract,
-                search_family=search_family,
-                metric_names=eff_metric_names,
-                calibration_config=eff_cal_cfg,
-                aggregation_policy=eff_agg_policy,
-                numeric_policy=eff_num_policy,
-            )
+            if input_boundary.aggregation_policy != eff_agg_policy:
+                raise ValueError(
+                    f"input_boundary aggregation_policy ({input_boundary.aggregation_policy}) "
+                    f"does not match aggregate_results aggregation_policy ({eff_agg_policy})"
+                )
+            if input_boundary.numeric_policy != eff_num_policy:
+                raise ValueError(
+                    "input_boundary numeric_policy does not match aggregate results"
+                )
+            if (
+                input_boundary.logical_evaluation_digest
+                != expected_boundary.logical_evaluation_digest
+            ):
+                raise ValueError(
+                    "input_boundary logical_evaluation_digest does not match fully "
+                    "reconstructed evaluation boundary"
+                )
+        else:
+            input_boundary = expected_boundary
 
         # Build scientific payload for root hashing (strictly excluding execution timestamp)
         scientific_payload = {
