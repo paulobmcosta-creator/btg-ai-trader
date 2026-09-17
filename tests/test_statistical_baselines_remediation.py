@@ -1301,12 +1301,16 @@ def test_manifest_create_reconciliation_rejections_and_cal_config() -> None:
     b1 = ConstantBaseline(constant_value=Decimal("100"), code_revision="v1.0.0")
     cand_identity = b1.identity
 
+    evaluated_metric_names = tuple(
+        sorted({name for fold in res.fold_results for name in fold.metrics})
+    )
     bnd_valid = StatisticalEvaluationInputBoundary.create(
         samples=samples,
         plan=plan,
         candidate_identities=(cand_identity,),
         code_revision="v1.0.0",
         target_contract_id=res.target_contract_id,
+        metric_names=evaluated_metric_names,
         aggregation_policy=res.aggregation_policy,
         numeric_policy=res.numeric_policy,
     )
@@ -1489,18 +1493,18 @@ def test_manifest_create_reconciliation_rejections_and_cal_config() -> None:
     )
     assert m_valid.input_boundary == bnd_valid
 
-    # input_boundary provided with empty aggregate_results
-    m_empty_agg = StatisticalEvaluationManifest.create(
-        plan=plan,
-        samples=samples,
-        candidate_identities=bnd_valid.candidate_identities,
-        aggregate_results=[],
-        comparison_results=[],
-        code_revision="v1.0.0",
-        execution_timestamp=_dt(10),
-        input_boundary=bnd_valid,
-    )
-    assert m_empty_agg.input_boundary == bnd_valid
+    # A boundary that records evaluated metrics cannot be paired with no evaluation results.
+    with pytest.raises(ValueError, match="logical_evaluation_digest"):
+        StatisticalEvaluationManifest.create(
+            plan=plan,
+            samples=samples,
+            candidate_identities=bnd_valid.candidate_identities,
+            aggregate_results=[],
+            comparison_results=[],
+            code_revision="v1.0.0",
+            execution_timestamp=_dt(10),
+            input_boundary=bnd_valid,
+        )
 
 
 def test_baseline_code_revision_required_and_differentiating() -> None:
