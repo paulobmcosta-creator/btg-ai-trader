@@ -64,38 +64,23 @@ def _freeze_mapping(mapping: Mapping[str, Any]) -> Mapping[str, Any]:
 
 @dataclass(frozen=True, slots=True)
 class PredictionInput:
-    """Causally safe prediction input surface strictly omitting target fields."""
+    """Feature-safe prediction input surface with no target or audit-only provenance fields."""
 
     sample_id: str
     feature_knowledge_time: datetime
     target_semantics: TargetSemantics
-    reference_value: Decimal | None = None
-    information_interval: tuple[datetime, datetime] | None = None
-    source_lineage: str = ""
     feature_metadata: Mapping[str, str] = field(default_factory=dict)
-    audit_metadata: Mapping[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not self.sample_id or not isinstance(self.sample_id, str):
             raise ValueError("sample_id must be a non-empty string")
 
         _validate_timezone_aware(self.feature_knowledge_time, "feature_knowledge_time")
-
-        if self.information_interval is not None:
-            start, end = self.information_interval
-            _validate_timezone_aware(start, "information_interval.start")
-            _validate_timezone_aware(end, "information_interval.end")
-            if start > end:
-                raise ValueError(
-                    f"information_interval start ({start}) cannot be after end ({end})"
-                )
-
         object.__setattr__(self, "feature_metadata", _freeze_mapping(self.feature_metadata))
-        object.__setattr__(self, "audit_metadata", _freeze_mapping(self.audit_metadata))
 
     @property
     def metadata(self) -> Mapping[str, str]:
-        """Expose feature-safe metadata under generic metadata attribute for compatibility."""
+        """Expose only feature-safe metadata under the compatibility alias."""
         return self.feature_metadata
 
 
@@ -207,11 +192,7 @@ class StatisticalSample:
             sample_id=self.sample_id,
             feature_knowledge_time=self.feature_knowledge_time,
             target_semantics=self.target_semantics,
-            reference_value=self.reference_value,
-            information_interval=self.information_interval,
-            source_lineage=self.source_lineage,
             feature_metadata=self.feature_metadata,
-            audit_metadata=self.audit_metadata,
         )
 
 
