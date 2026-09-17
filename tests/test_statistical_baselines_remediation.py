@@ -1736,6 +1736,15 @@ def test_purge_policy_requires_explicit_unknown_horizon_choice() -> None:
 
 def test_protected_evidence_consumption_requires_recorded_source() -> None:
     history = EvaluationHistory()
+    assert history.consumptions == ()
+
+    with pytest.raises(ValueError, match="are required"):
+        history.record_protected_evidence_consumption(
+            protected_boundary_id="",
+            source_candidate_id="source",
+            derived_candidate_id="derived",
+        )
+
     with pytest.raises(ValueError, match="no protected evaluation recorded"):
         history.record_protected_evidence_consumption(
             protected_boundary_id="p",
