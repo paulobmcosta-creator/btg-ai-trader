@@ -1716,3 +1716,321 @@ def test_comparator_rejection_reasons_comprehensive() -> None:
     )
     with pytest.raises(ParityViolationError, match="Experimental parity violation: candidate"):
         Comparator.compare_candidates([res_folds1, res_folds2], "mae")
+
+def test_purge_policy_requires_explicit_unknown_horizon_choice() -> None:
+    """Omitting the unknown-horizon policy is not a valid PurgePolicy construction."""
+    with pytest.raises(TypeError):
+        PurgePolicy()  # type: ignore[call-arg]
+
+    with pytest.raises(TypeError, match="fail_closed_on_unknown"):
+        PurgePolicy(fail_closed_on_unknown=cast(Any, "yes"))
+
+
+def test_protected_evidence_consumption_requires_recorded_source() -> None:
+    history = EvaluationHistory()
+    with pytest.raises(ValueError, match="no protected evaluation recorded"):
+        history.record_protected_evidence_consumption(
+            protected_boundary_id="p",
+            source_candidate_id="source",
+            derived_candidate_id="derived",
+        )
+
+
+def test_evaluation_candidate_identity_coherence_guards() -> None:
+    """Run identity, numeric policy, and every factory instance must remain coherent."""
+    plan = WalkForwardPlanner.generate_plan(
+        start_time=_dt(0),
+        end_time=_dt(10),
+        config=SplitPlanConfig(
+            window_policy=WindowPolicy.EXPANDING,
+            train_duration=timedelta(hours=3),
+            validation_duration=timedelta(hours=2),
+            test_duration=timedelta(hours=2),
+            step_duration=timedelta(hours=2),
+            purge_policy=PurgePolicy(
+                fail_closed_on_unknown=False,
+                purge_overlapping=True,
+            ),
+            embargo_policy=EmbargoPolicy(duration=timedelta(0)),
+        ),
+        plan_id="identity_guard",
+    )
+    samples = [
+        _sample(1, 1, target=100),
+        _sample(2, 2, target=101),
+        _sample(3, 4, target=102),
+        _sample(4, 6, target=103),
+    ]
+
+    with pytest.raises(ValueError, match="code_revision mismatch"):
+        StatisticalEvaluationEngine.evaluate_candidate_on_plan(
+            baseline_factory=lambda: ConstantBaseline(
+                code_revision="rev-a",
+                constant_value=Decimal("100"),
+            ),
+            plan=plan,
+            samples=samples,
+            role=EvaluationRole.VALIDATION_SELECTION,
+            code_revision="rev-b",
+        )
+
+    custom_policy = NumericPolicy(precision=12)
+    with pytest.raises(ValueError, match="numeric_policy mismatch"):
+        StatisticalEvaluationEngine.evaluate_candidate_on_plan(
+            baseline_factory=lambda: ConstantBaseline(
+                code_revision="rev-a",
+                constant_value=Decimal("100"),
+                numeric_policy=custom_policy,
+            ),
+            plan=plan,
+            samples=samples,
+            role=EvaluationRole.VALIDATION_SELECTION,
+            numeric_policy=DEFAULT_NUMERIC_POLICY,
+        )
+
+    calls = 0
+
+    def unstable_factory() -> ConstantBaseline:
+        nonlocal calls
+        calls += 1
+        value = Decimal("100") if calls == 1 else Decimal("101")
+        return ConstantBaseline(
+            code_revision="rev-a",
+            constant_value=value,
+        )
+
+    with pytest.raises(ValueError, match="inconsistent CandidateIdentity"):
+        StatisticalEvaluationEngine.evaluate_candidate_on_plan(
+            baseline_factory=unstable_factory,
+            plan=plan,
+            samples=samples,
+            role=EvaluationRole.VALIDATION_SELECTION,
+        )
+
+
+def test_verified_boundary_constructor_and_manifest_full_reconciliation() -> None:
+    """Only factory-built boundaries are trusted and all material config is reconciled."""
+    import dataclasses
+
+    samples = [_sample(1, 1, target=100), _sample(2, 2, target=101)]
+    plan = WalkForwardPlanner.generate_plan(
+        start_time=_dt(0),
+        end_time=_dt(10),
+        config=SplitPlanConfig(
+            window_policy=WindowPolicy.EXPANDING,
+            train_duration=timedelta(hours=3),
+            validation_duration=timedelta(hours=2),
+            test_duration=timedelta(hours=2),
+            step_duration=timedelta(hours=2),
+            purge_policy=PurgePolicy(
+                fail_closed_on_unknown=False,
+                purge_overlapping=True,
+            ),
+            embargo_policy=EmbargoPolicy(duration=timedelta(0)),
+        ),
+        plan_id="boundary_guard",
+    )
+    baseline = ConstantBaseline(
+        code_revision="rev-a",
+        constant_value=Decimal("100"),
+    )
+    result = StatisticalEvaluationEngine.evaluate_candidate_on_plan(
+        baseline_factory=lambda: ConstantBaseline(
+            code_revision="rev-a",
+            constant_value=Decimal("100"),
+        ),
+        plan=plan,
+        samples=samples,
+        role=EvaluationRole.VALIDATION_SELECTION,
+    )
+    metric_names = tuple(
+        sorted({name for fold in result.fold_results for name in fold.metrics})
+    )
+    boundary = StatisticalEvaluationInputBoundary.create(
+        samples=samples,
+        plan=plan,
+        candidate_identities=(baseline.identity,),
+        code_revision="rev-a",
+        target_contract_id=result.target_contract_id,
+        metric_names=metric_names,
+        aggregation_policy=result.aggregation_policy,
+        numeric_policy=result.numeric_policy,
+    )
+
+    with pytest.raises(ValueError, match="must be created via"):
+        StatisticalEvaluationInputBoundary(
+            sample_ids=boundary.sample_ids,
+            dataset_digest=boundary.dataset_digest,
+            source_lineage_digest=boundary.source_lineage_digest,
+            target_semantics=boundary.target_semantics,
+            target_contract_id=boundary.target_contract_id,
+            candidate_identities=boundary.candidate_identities,
+            search_family=boundary.search_family,
+            plan_digest=boundary.plan_digest,
+            fold_definitions=boundary.fold_definitions,
+            purge_policy=boundary.purge_policy,
+            embargo_policy=boundary.embargo_policy,
+            metric_names=boundary.metric_names,
+            calibration_config=boundary.calibration_config,
+            aggregation_policy=boundary.aggregation_policy,
+            numeric_policy=boundary.numeric_policy,
+            code_revision=boundary.code_revision,
+            logical_evaluation_digest=boundary.logical_evaluation_digest,
+        )
+
+    altered_samples = [
+        dataclasses.replace(samples[0], source_lineage="different-lineage"),
+        samples[1],
+    ]
+    foreign_lineage = StatisticalEvaluationInputBoundary.create(
+        samples=altered_samples,
+        plan=plan,
+        candidate_identities=(baseline.identity,),
+        code_revision="rev-a",
+        target_contract_id=result.target_contract_id,
+        metric_names=metric_names,
+        aggregation_policy=result.aggregation_policy,
+        numeric_policy=result.numeric_policy,
+    )
+    with pytest.raises(ValueError, match="source_lineage_digest"):
+        StatisticalEvaluationManifest.create(
+            plan=plan,
+            samples=samples,
+            candidate_identities=(baseline.identity,),
+            aggregate_results=[result],
+            comparison_results=[],
+            code_revision="rev-a",
+            execution_timestamp=_dt(10),
+            input_boundary=foreign_lineage,
+        )
+
+    foreign_contract = StatisticalEvaluationInputBoundary.create(
+        samples=samples,
+        plan=plan,
+        candidate_identities=(baseline.identity,),
+        code_revision="rev-a",
+        target_contract_id="different-contract",
+        metric_names=metric_names,
+        aggregation_policy=result.aggregation_policy,
+        numeric_policy=result.numeric_policy,
+    )
+    with pytest.raises(ValueError, match="logical_evaluation_digest"):
+        StatisticalEvaluationManifest.create(
+            plan=plan,
+            samples=samples,
+            candidate_identities=(baseline.identity,),
+            aggregate_results=[result],
+            comparison_results=[],
+            code_revision="rev-a",
+            execution_timestamp=_dt(10),
+            input_boundary=foreign_contract,
+        )
+
+    foreign_numeric = StatisticalEvaluationInputBoundary.create(
+        samples=samples,
+        plan=plan,
+        candidate_identities=(baseline.identity,),
+        code_revision="rev-a",
+        target_contract_id=result.target_contract_id,
+        metric_names=metric_names,
+        aggregation_policy=result.aggregation_policy,
+        numeric_policy=NumericPolicy(precision=12),
+    )
+    with pytest.raises(ValueError, match="logical_evaluation_digest"):
+        StatisticalEvaluationManifest.create(
+            plan=plan,
+            samples=samples,
+            candidate_identities=(baseline.identity,),
+            aggregate_results=[result],
+            comparison_results=[],
+            code_revision="rev-a",
+            execution_timestamp=_dt(10),
+            input_boundary=foreign_numeric,
+        )
+
+
+def test_manifest_rejects_inconsistent_calibration_configs() -> None:
+    """One manifest cannot silently combine folds with different calibration bin configs."""
+    from btg_ai_trader.statistical_baselines.calibration import CalibrationBin, CalibrationReport
+    from btg_ai_trader.statistical_baselines.evaluation import AggregateEvaluationResult
+
+    samples = [_sample(1, 1, target=100), _sample(2, 2, target=101)]
+    plan = WalkForwardPlanner.generate_plan(
+        start_time=_dt(0),
+        end_time=_dt(10),
+        config=SplitPlanConfig(
+            window_policy=WindowPolicy.EXPANDING,
+            train_duration=timedelta(hours=3),
+            validation_duration=timedelta(hours=2),
+            test_duration=timedelta(hours=2),
+            step_duration=timedelta(hours=2),
+            purge_policy=PurgePolicy(
+                fail_closed_on_unknown=False,
+                purge_overlapping=True,
+            ),
+            embargo_policy=EmbargoPolicy(duration=timedelta(0)),
+        ),
+        plan_id="calibration_mismatch",
+    )
+    candidate = CandidateIdentity(
+        baseline_type="manual",
+        parameters={},
+        target_semantics=TargetSemantics.CONTINUOUS,
+        code_revision="rev-a",
+    )
+
+    def report(num_bins: int) -> CalibrationReport:
+        return CalibrationReport(
+            bins=(
+                CalibrationBin(
+                    0,
+                    Decimal("0"),
+                    Decimal("1"),
+                    1,
+                    Decimal("0.5"),
+                    Decimal("0"),
+                ),
+            ),
+            num_bins=num_bins,
+            expected_calibration_error=Decimal("0.5"),
+            maximum_calibration_error=Decimal("0.5"),
+        )
+
+    fold_a = FoldEvaluationResult(
+        fold_id="a",
+        candidate_id=candidate.candidate_id,
+        evaluation_role=EvaluationRole.VALIDATION_SELECTION,
+        metrics={"ece": Decimal("0.5")},
+        sample_count=1,
+        cold_start_count=0,
+        calibration_report=report(1),
+    )
+    fold_b = FoldEvaluationResult(
+        fold_id="b",
+        candidate_id=candidate.candidate_id,
+        evaluation_role=EvaluationRole.VALIDATION_SELECTION,
+        metrics={"ece": Decimal("0.5")},
+        sample_count=1,
+        cold_start_count=0,
+        calibration_report=report(2),
+    )
+    aggregate = AggregateEvaluationResult(
+        candidate_id=candidate.candidate_id,
+        evaluation_role=EvaluationRole.VALIDATION_SELECTION,
+        fold_results=(fold_a, fold_b),
+        aggregate_metrics={"mean_ece": Decimal("0.5")},
+        total_samples=2,
+        total_cold_starts=0,
+        code_revision="rev-a",
+    )
+    with pytest.raises(ValueError, match="inconsistent calibration bin"):
+        StatisticalEvaluationManifest.create(
+            plan=plan,
+            samples=samples,
+            candidate_identities=(candidate,),
+            aggregate_results=[aggregate],
+            comparison_results=[],
+            code_revision="rev-a",
+            execution_timestamp=_dt(10),
+        )
+
