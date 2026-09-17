@@ -1092,7 +1092,7 @@ def test_domain_information_interval_leakage_causal_error() -> None:
 
 
 def test_evaluation_protected_test_history_integration() -> None:
-    """evaluate_candidate_on_plan checks history and records protected test evaluations."""
+    """Protected evaluation requires history and blocks reuse after later evidence consumption."""
     plan = WalkForwardPlanner.generate_plan(
         start_time=_dt(0),
         end_time=_dt(10),
@@ -1112,8 +1112,19 @@ def test_evaluation_protected_test_history_integration() -> None:
         _sample(3, 4, target=100),
         _sample(4, 6, target=100),
     ]
-    history = EvaluationHistory()
 
+    with pytest.raises(ValueError, match="requires EvaluationHistory"):
+        StatisticalEvaluationEngine.evaluate_candidate_on_plan(
+            baseline_factory=lambda: ConstantBaseline(
+                constant_value=Decimal("100"), code_revision="v1.0.0"
+            ),
+            plan=plan,
+            samples=samples,
+            role=EvaluationRole.PROTECTED_TEST,
+            code_revision="v1.0.0",
+        )
+
+    history = EvaluationHistory()
     res1 = StatisticalEvaluationEngine.evaluate_candidate_on_plan(
         baseline_factory=lambda: ConstantBaseline(
             constant_value=Decimal("100"), code_revision="v1.0.0"
@@ -1123,13 +1134,19 @@ def test_evaluation_protected_test_history_integration() -> None:
         role=EvaluationRole.PROTECTED_TEST,
         evaluation_history=history,
         code_revision="v1.0.0",
-        informed_adaptation=True,
     )
     assert res1.evaluation_role is EvaluationRole.PROTECTED_TEST
     assert len(res1.protected_evidence_records) == 1
     cand1_id = res1.candidate_id
 
-    with pytest.raises(ProtectedEvidenceReuseError, match="adapted from parent"):
+    adapted = ConstantBaseline(constant_value=Decimal("105"), code_revision="v1.0.0")
+    history.record_protected_evidence_consumption(
+        protected_boundary_id="plan_prot:protected",
+        source_candidate_id=cand1_id,
+        derived_candidate_id=adapted.identity.candidate_id,
+    )
+
+    with pytest.raises(ProtectedEvidenceReuseError, match="derived using evidence"):
         StatisticalEvaluationEngine.evaluate_candidate_on_plan(
             baseline_factory=lambda: ConstantBaseline(
                 constant_value=Decimal("105"), code_revision="v1.0.0"
@@ -1141,6 +1158,20 @@ def test_evaluation_protected_test_history_integration() -> None:
             code_revision="v1.0.0",
             parent_candidate_ids=(cand1_id,),
         )
+
+    res_q = StatisticalEvaluationEngine.evaluate_candidate_on_plan(
+        baseline_factory=lambda: ConstantBaseline(
+            constant_value=Decimal("105"), code_revision="v1.0.0"
+        ),
+        plan=plan,
+        samples=samples,
+        role=EvaluationRole.PROTECTED_TEST,
+        evaluation_history=history,
+        protected_boundary_id="independent_q",
+        code_revision="v1.0.0",
+        parent_candidate_ids=(cand1_id,),
+    )
+    assert res_q.evaluation_role is EvaluationRole.PROTECTED_TEST
 
 
 def test_provenance_input_boundary_fake_digest_rejected() -> None:
