@@ -29,11 +29,13 @@ class WindowPolicy(str, Enum):
 class PurgePolicy:
     """Purging policy to remove samples whose information interval crosses evaluation boundaries."""
 
+    fail_closed_on_unknown: bool
     purge_overlapping: bool = True
     default_horizon: timedelta | None = None
-    fail_closed_on_unknown: bool = False
 
     def __post_init__(self) -> None:
+        if not isinstance(self.fail_closed_on_unknown, bool):
+            raise TypeError("fail_closed_on_unknown must be explicitly provided as bool")
         if self.default_horizon is not None and self.default_horizon < timedelta(0):
             raise ValueError(f"default_horizon cannot be negative, got {self.default_horizon}")
 
