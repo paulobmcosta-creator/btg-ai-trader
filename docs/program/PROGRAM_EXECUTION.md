@@ -17,7 +17,9 @@ SPRINT1_PROVIDER_QUALIFIED = YES
 SPRINT1_ACCEPTANCE = YES
 
 SPRINT_2_BRANCH = sprint/2-data-platform-replay
-SPRINT_2_LIFECYCLE = PROPOSED_CLOSED
+SPRINT_2_LIFECYCLE = FORMALLY_CLOSED
+SPRINT_2_FINAL_VERDICT = PASS
+SPRINT_2_CANONICAL_HEAD = ba6c0c41988fc9fefbdff13b0daedf96301dd74c
 SPRINT_2_SCOPE = DATA_PLATFORM_AND_CAUSAL_MARKET_REPLAY
 SPRINT_2_ENTRY_CONTRACT = docs/program/S2_ENTRY_CONTRACT.md
 SPRINT_2_DECISION_REGISTER = docs/program/S2_DECISION_REGISTER.md
@@ -25,13 +27,23 @@ SPRINT_2_CAPABILITY_MATRIX = docs/program/S2_CAPABILITY_MATRIX.md
 SPRINT_2_ENTRY_GATE = PASS
 S2_A = ACCEPTED (PR #65, 9faa43c3bc112c1d2e558aa3e1518371880cc518)
 S2_B = ACCEPTED (PR #67, 071e004f2be8e5925b0de63db97af61cbbf37b30)
-S2_C = PROPOSED
-S2_C_ISSUE = #68
-S2_C_PR = #70
-S2_C_BRANCH = s2/03-final-acceptance-reconciliation
-PROPOSED_SPRINT_2_FINAL_VERDICT = PASS
-PROPOSED_SPRINT_2_LIFECYCLE = FORMALLY_CLOSED
+S2_C = ACCEPTED (PR #70, ba6c0c41988fc9fefbdff13b0daedf96301dd74c)
 PROMOTION_TO_SPRINT_3_GATE = YES
+
+SPRINT_3_BRANCH = sprint/3-deterministic-economic-backtesting
+SPRINT_3_LIFECYCLE = CLOSURE_CANDIDATE
+SPRINT_3_FINAL_VERDICT = PROPOSED_PASS
+SPRINT_3_SCOPE = DETERMINISTIC_ECONOMIC_BACKTESTING
+SPRINT_3_ENTRY_CONTRACT = docs/program/S3_ENTRY_CONTRACT.md
+SPRINT_3_DECISION_REGISTER = docs/program/S3_DECISION_REGISTER.md
+SPRINT_3_CAPABILITY_MATRIX = docs/program/S3_CAPABILITY_MATRIX.md
+SPRINT_3_FINAL_ACCEPTANCE = docs/program/S3_FINAL_ACCEPTANCE.md
+SPRINT_3_ENTRY_GATE = PASS
+S3_TASK_PACKET = docs/program/workstreams/S3-ANTIGRAVITY-FULL-SPRINT.md
+S3_WORK_BRANCH = s3/00-full-deterministic-economic-backtesting
+S3_BASE_SHA = ba6c0c41988fc9fefbdff13b0daedf96301dd74c
+MERGE_AUTHORIZED = NO
+PROMOTION_TO_SPRINT_4_GATE = NO_UNTIL_INDEPENDENT_REAUDIT
 
 S2_ENTRY_VALIDATED_HEAD = 8cfb17e3ba7b02c2eccc4d94f17dec986d6bb474
 S2_ENTRY_CI_RUN = 35130469411
@@ -105,6 +117,26 @@ Because the final PASS declarations themselves change the PR head, the final PR 
 - **Scope:** Full conjunctive audit of S2-AC-01..14, S2-NC-01..16, and active decisions DD-05..83. Zero new functional code. Formal proposal of Sprint 2 closure.
 
 Historical PRs #9 and #37 remained research-only sources throughout Sprint 2; no historical branch was merged or cherry-picked.
+
+## Sprint 3 — Deterministic Economic Backtesting — Candidate Closure
+
+Sprint 3 has been fully implemented and verified under single-batch autonomous execution mode:
+
+- **Work Branch:** `s3/00-full-deterministic-economic-backtesting`
+- **Canonical Target:** `sprint/3-deterministic-economic-backtesting`
+- **Issue:** #71
+- **Artifact:** `docs/program/S3_FINAL_ACCEPTANCE.md`
+- **Scope:** Complete Deterministic Execution Economics Kernel (`btg_ai_trader.backtesting`):
+  - Domain, actions, and simulated fills (`domain.py`)
+  - Side-aware spread, adverse slippage, configurable fees, and virtual latency (`assumptions.py`)
+  - Causal execution engine with fail-closed missingness and quote staleness detection (`execution.py`)
+  - Isolated backtest position accounting, WACB, realized/unrealized P&L, non-double-counting, and end-of-window policy (`accounting.py`)
+  - Descriptive backtest statistics and drawdown metrics (`metrics.py`)
+  - Deterministic replay orchestrator and session engine (`engine.py`)
+  - Cryptographic input boundaries, manifest generation, and provenance (`provenance.py`)
+  - Sensitivity sweeps and monotonicity invariant verification (`sensitivity.py`)
+- **Verification:** 91% combined coverage on backtesting kernel (1,328 statements, 86 missed, 598 branches, 57 missed/partial; 126 passed S3 tests, including 87 unit and 39 boundary/acceptance cases; 757 full repository tests), zero lint errors, zero type errors, all boundary checks PASS.
+- **Verdict:** `PROPOSED_SPRINT_3_VERDICT = PROPOSED_PASS`, `SPRINT_3_LIFECYCLE = CLOSURE_CANDIDATE`, `MERGE_AUTHORIZED = NO`, `PROMOTION_TO_SPRINT_4_GATE = NO_UNTIL_INDEPENDENT_REAUDIT`.
 
 ## Sprint 2 exclusions
 

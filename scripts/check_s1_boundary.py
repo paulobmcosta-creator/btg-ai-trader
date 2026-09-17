@@ -12,10 +12,12 @@ from typing import cast
 
 MANIFEST = "docs/program/workstreams/s1-boundary-scope.json"
 COMPOSITION_PATH = "src/btg_ai_trader/observer/composition.py"
-S2_ROOTS = (
+POST_S1_ROOTS = (
     Path("src/btg_ai_trader/replay"),
     Path("src/btg_ai_trader/data_platform"),
+    Path("src/btg_ai_trader/backtesting"),
 )
+S2_ROOTS = POST_S1_ROOTS
 EXTERNAL_IMPORTS = {
     "base64", "hashlib", "json", "os", "re", "stat", "tempfile",
     "collections.abc.Iterable", "dataclasses.dataclass", "dataclasses.fields",
@@ -384,7 +386,7 @@ def verify(root: Path) -> list[Finding]:
         for path in (root / folder).rglob("*"):
             if "__pycache__" in path.parts:
                 continue
-            if any(path == root / s2 or (root / s2) in path.parents for s2 in S2_ROOTS):
+            if any(path == root / post or (root / post) in path.parents for post in POST_S1_ROOTS):
                 continue
             if path.is_symlink():
                 findings.append(Finding(path.relative_to(root).as_posix(), 1, "scope-symlink"))

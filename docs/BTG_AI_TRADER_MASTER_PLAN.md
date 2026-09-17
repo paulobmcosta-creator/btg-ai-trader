@@ -284,7 +284,7 @@ A promoção ao Sprint 2 não altera essas proibições.
 
 ## 8. Roadmap vigente
 
-### Sprint 2 — Data Platform & Causal Market Replay — PROPOSED CLOSED / PASS
+### Sprint 2 — Data Platform & Causal Market Replay — FORMALLY CLOSED / PASS
 
 Escopo executado e auditado:
 
@@ -308,9 +308,29 @@ Fora do Sprint 2:
 - custos, slippage e queue-fill como simulador econômico;
 - modelos preditivos operacionais.
 
-### Sprint 3 — Deterministic Economic Backtesting
+### Sprint 3 — Deterministic Economic Backtesting — CLOSURE_CANDIDATE / PROPOSED_PASS (MERGE_AUTHORIZED = NO; PROMOTION_TO_SPRINT_4_GATE = NO_UNTIL_INDEPENDENT_REAUDIT)
 
-Replay econômico determinístico, custos, spread, slippage, latência econômica, métricas e testes de leakage.
+Escopo executado e auditado:
+
+- kernel determinístico de economia de execução (`btg_ai_trader.backtesting`);
+- semântica de preço executável sensível ao lado (BUY -> Ask, SELL -> Bid);
+- modelos determinísticos de spread, slippage adverso e taxas explícitas sem RNG;
+- modelo de latência lógica não negativa sem dependência de wall-clock;
+- contabilidade de posição e P&L simulados com WACB e prevenção de dupla contagem;
+- métricas econômicas descritivas determinísticas (sem claims inferenciais ou promocionais);
+- testes estritos de invariância a eventos futuros (prevenção de vazamento / data leakage);
+- reproduzibilidade exata de 100 execuções e análise de monotonicidade de sensibilidade;
+- rastreabilidade criptográfica e manifestos de execução (`BacktestRunManifest`).
+
+Fora do Sprint 3:
+
+- envio de ordens a brokers ou plataformas;
+- Strategy ou Signal operacional;
+- Risk Engine operacional ou autorização de risco;
+- Paper trading operacional;
+- Live trading operacional;
+- mutação do `FinancialLedger` canônico futuro;
+- modelos de machine learning preditivos operacionais.
 
 ### Sprint 4 — Statistical Baselines
 
@@ -473,6 +493,6 @@ O Gate de Entrada do Sprint 2 foi formalizado via PR #63 (`00cc561...`). S2-A im
 
 ## 16. Próxima ação oficial
 
-Aprovar e mesclar o PR de reconciliação final do Sprint 2 (S2-C) e preparar formalmente o Gate de Entrada do Sprint 3 — Deterministic Economic Backtesting.
+Aguardar a aprovação da reauditoria independente do Sprint 3 (PR #72) sobre o novo HEAD remediado, com CI completo e documentação reconciliada.
 
-A promoção para o Gate do Sprint 3 significa exclusivamente autorização para abrir/materializar o gate do Sprint 3, não autorizando antecipadamente execução de ordens, Strategy, Risk, Paper, Live, P&L, custos, slippage, fills ou dinheiro real.
+A promoção para o Gate do Sprint 4 permanece condicionada à aprovação formal da reauditoria independente (`MERGE_AUTHORIZED = NO; PROMOTION_TO_SPRINT_4_GATE = NO_UNTIL_INDEPENDENT_REAUDIT`). Não há autorização para execução financeira, ordens, Strategy, Risk, Paper, Live ou uso de dinheiro real.
