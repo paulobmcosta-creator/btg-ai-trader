@@ -80,10 +80,23 @@ class StatisticalEvaluationInputBoundary:
         )
 
         logical_payload = {
+            "sample_ids": list(self.sample_ids),
             "dataset_digest": self.dataset_digest,
             "source_lineage_digest": self.source_lineage_digest,
+            "target_semantics": self.target_semantics.value,
             "target_contract_id": self.target_contract_id,
             "plan_digest": self.plan_digest,
+            "fold_definitions": [dict(d) for d in self.fold_definitions],
+            "purge_policy": {
+                "purge_overlapping": self.purge_policy.purge_overlapping,
+                "default_horizon": (
+                    str(self.purge_policy.default_horizon)
+                    if self.purge_policy.default_horizon is not None
+                    else None
+                ),
+                "fail_closed_on_unknown": self.purge_policy.fail_closed_on_unknown,
+            },
+            "embargo_policy": {"duration": str(self.embargo_policy.duration)},
             "candidate_ids": [c.candidate_id for c in self.candidate_identities],
             "search_family": self.search_family.to_canonical_dict() if self.search_family else None,
             "metric_names": sorted(self.metric_names),
@@ -207,10 +220,23 @@ class StatisticalEvaluationInputBoundary:
         embargo_pol = plan.embargo_policy
 
         logical_payload = {
+            "sample_ids": [s.sample_id for s in valid_samples],
             "dataset_digest": dataset_digest,
             "source_lineage_digest": source_lineage_digest,
+            "target_semantics": valid_samples[0].target_semantics.value,
             "target_contract_id": target_contract_id,
             "plan_digest": plan_digest,
+            "fold_definitions": fold_defs,
+            "purge_policy": {
+                "purge_overlapping": purge_pol.purge_overlapping,
+                "default_horizon": (
+                    str(purge_pol.default_horizon)
+                    if purge_pol.default_horizon is not None
+                    else None
+                ),
+                "fail_closed_on_unknown": purge_pol.fail_closed_on_unknown,
+            },
+            "embargo_policy": {"duration": str(embargo_pol.duration)},
             "candidate_ids": [c.candidate_id for c in candidate_identities],
             "search_family": search_family.to_canonical_dict() if search_family else None,
             "metric_names": sorted(metric_names),
@@ -481,25 +507,11 @@ class StatisticalEvaluationManifest:
                 raise ValueError(
                     "input_boundary source_lineage_digest does not match samples"
                 )
-            if input_boundary.sample_ids != expected_boundary.sample_ids:
-                raise ValueError("input_boundary sample_ids/order does not match samples")
-            if input_boundary.target_semantics != expected_boundary.target_semantics:
-                raise ValueError("input_boundary target_semantics does not match samples")
-            if input_boundary.target_contract_id != eff_target_contract:
-                raise ValueError(
-                    "input_boundary target_contract_id does not match aggregate results"
-                )
             if input_boundary.plan_digest != plan_digest:
                 raise ValueError(
                     f"input_boundary plan_digest ({input_boundary.plan_digest}) does not match "
                     f"plan_digest ({plan_digest})"
                 )
-            if input_boundary.fold_definitions != expected_boundary.fold_definitions:
-                raise ValueError("input_boundary fold_definitions do not match plan")
-            if input_boundary.purge_policy != plan.purge_policy:
-                raise ValueError("input_boundary purge_policy does not match plan")
-            if input_boundary.embargo_policy != plan.embargo_policy:
-                raise ValueError("input_boundary embargo_policy does not match plan")
             if input_boundary.code_revision != code_revision:
                 raise ValueError(
                     f"input_boundary code_revision ({input_boundary.code_revision}) does not match "
@@ -512,32 +524,10 @@ class StatisticalEvaluationManifest:
                     f"input_boundary candidate_identities ({actual_cand_ids}) does not match "
                     f"expected candidate_identities ({expected_cand_ids})"
                 )
-            expected_search = (
-                search_family.to_canonical_dict() if search_family is not None else None
-            )
-            actual_search = (
-                input_boundary.search_family.to_canonical_dict()
-                if input_boundary.search_family is not None
-                else None
-            )
-            if actual_search != expected_search:
-                raise ValueError("input_boundary search_family does not match manifest inputs")
-            if input_boundary.metric_names != expected_boundary.metric_names:
-                raise ValueError("input_boundary metric_names do not match evaluated metrics")
-            if dict(input_boundary.calibration_config) != dict(
-                expected_boundary.calibration_config
-            ):
-                raise ValueError(
-                    "input_boundary calibration_config does not match evaluated calibration"
-                )
             if input_boundary.aggregation_policy != eff_agg_policy:
                 raise ValueError(
                     f"input_boundary aggregation_policy ({input_boundary.aggregation_policy}) "
                     f"does not match aggregate_results aggregation_policy ({eff_agg_policy})"
-                )
-            if input_boundary.numeric_policy != eff_num_policy:
-                raise ValueError(
-                    "input_boundary numeric_policy does not match aggregate results"
                 )
             if (
                 input_boundary.logical_evaluation_digest
@@ -547,6 +537,7 @@ class StatisticalEvaluationManifest:
                     "input_boundary logical_evaluation_digest does not match fully "
                     "reconstructed evaluation boundary"
                 )
+
         else:
             input_boundary = expected_boundary
 
