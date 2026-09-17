@@ -171,7 +171,7 @@ def test_walk_forward_plan_with_policies() -> None:
         train_duration=timedelta(hours=2),
         test_duration=timedelta(hours=1),
         step_duration=timedelta(hours=1),
-        purge_policy=PurgePolicy(purge_overlapping=True),
+        purge_policy=PurgePolicy(purge_overlapping=True, fail_closed_on_unknown=False),
         embargo_policy=EmbargoPolicy(duration=timedelta(minutes=10)),
     )
     plan1 = WalkForwardPlanner.generate_plan(
@@ -180,7 +180,7 @@ def test_walk_forward_plan_with_policies() -> None:
         config=config,
         plan_id="plan_test",
     )
-    purge2 = PurgePolicy(purge_overlapping=False)
+    purge2 = PurgePolicy(purge_overlapping=False, fail_closed_on_unknown=False)
     embargo2 = EmbargoPolicy(duration=timedelta(minutes=30))
 
     plan2 = plan1.with_policies(purge_policy=purge2, embargo_policy=embargo2)
@@ -372,7 +372,7 @@ def test_evaluation_engine_role_enforcement() -> None:
         train_duration=timedelta(hours=2),
         test_duration=timedelta(hours=1),
         step_duration=timedelta(hours=1),
-        purge_policy=PurgePolicy(purge_overlapping=False),
+        purge_policy=PurgePolicy(purge_overlapping=False, fail_closed_on_unknown=False),
         embargo_policy=EmbargoPolicy(duration=timedelta(0)),
     )
     plan = WalkForwardPlanner.generate_plan(
@@ -505,7 +505,7 @@ def test_plan_digest_policy_sensitivity() -> None:
         train_duration=timedelta(hours=2),
         test_duration=timedelta(hours=1),
         step_duration=timedelta(hours=1),
-        purge_policy=PurgePolicy(purge_overlapping=True, default_horizon=timedelta(hours=1)),
+        purge_policy=PurgePolicy(purge_overlapping=True, default_horizon=timedelta(hours=1), fail_closed_on_unknown=False),
         embargo_policy=EmbargoPolicy(duration=timedelta(minutes=10)),
     )
     plan_p1 = WalkForwardPlanner.generate_plan(
@@ -515,7 +515,7 @@ def test_plan_digest_policy_sensitivity() -> None:
         plan_id="plan_test",
     )
     plan_p2 = plan_p1.with_policies(
-        purge_policy=PurgePolicy(purge_overlapping=False),
+        purge_policy=PurgePolicy(purge_overlapping=False, fail_closed_on_unknown=False),
         embargo_policy=EmbargoPolicy(duration=timedelta(minutes=20)),
     )
 
@@ -537,7 +537,7 @@ def test_manifest_scientific_hash_excludes_wall_clock() -> None:
         train_duration=timedelta(hours=2),
         test_duration=timedelta(hours=1),
         step_duration=timedelta(hours=1),
-        purge_policy=PurgePolicy(purge_overlapping=False),
+        purge_policy=PurgePolicy(purge_overlapping=False, fail_closed_on_unknown=False),
         embargo_policy=EmbargoPolicy(duration=timedelta(0)),
     )
     plan = WalkForwardPlanner.generate_plan(
@@ -987,7 +987,7 @@ def test_split_plan_config_mandatory_policies_rejection() -> None:
             train_duration=timedelta(hours=3),
             test_duration=timedelta(hours=1),
             step_duration=timedelta(hours=1),
-            purge_policy=PurgePolicy(purge_overlapping=True),
+            purge_policy=PurgePolicy(purge_overlapping=True, fail_closed_on_unknown=False),
             embargo_policy=None,  # type: ignore[arg-type]
         )
 
@@ -1002,7 +1002,7 @@ def test_partition_samples_purge_overlapping_branch() -> None:
             train_duration=timedelta(hours=4),
             test_duration=timedelta(hours=2),
             step_duration=timedelta(hours=2),
-            purge_policy=PurgePolicy(purge_overlapping=True, default_horizon=timedelta(hours=2)),
+            purge_policy=PurgePolicy(purge_overlapping=True, default_horizon=timedelta(hours=2), fail_closed_on_unknown=False),
             embargo_policy=EmbargoPolicy(duration=timedelta(0)),
         ),
         plan_id="plan_purge_test",
@@ -1093,7 +1093,7 @@ def test_evaluation_protected_test_history_integration() -> None:
             train_duration=timedelta(hours=3),
             test_duration=timedelta(hours=2),
             step_duration=timedelta(hours=2),
-            purge_policy=PurgePolicy(purge_overlapping=True),
+            purge_policy=PurgePolicy(purge_overlapping=True, fail_closed_on_unknown=False),
             embargo_policy=EmbargoPolicy(duration=timedelta(0)),
         ),
         plan_id="plan_prot",
@@ -1148,7 +1148,7 @@ def test_provenance_input_boundary_fake_digest_rejected() -> None:
             train_duration=timedelta(hours=3),
             test_duration=timedelta(hours=2),
             step_duration=timedelta(hours=2),
-            purge_policy=PurgePolicy(purge_overlapping=True),
+            purge_policy=PurgePolicy(purge_overlapping=True, fail_closed_on_unknown=False),
             embargo_policy=EmbargoPolicy(duration=timedelta(0)),
         ),
         plan_id="plan_fake",
@@ -1180,7 +1180,7 @@ def test_provenance_create_input_boundary_missing_plan_policies() -> None:
             train_duration=timedelta(hours=3),
             test_duration=timedelta(hours=2),
             step_duration=timedelta(hours=2),
-            purge_policy=PurgePolicy(purge_overlapping=True),
+            purge_policy=PurgePolicy(purge_overlapping=True, fail_closed_on_unknown=False),
             embargo_policy=EmbargoPolicy(duration=timedelta(0)),
         ),
         plan_id="plan_no_pol",
@@ -1245,7 +1245,7 @@ def test_manifest_create_reconciliation_rejections_and_cal_config() -> None:
             test_duration=timedelta(hours=2),
             step_duration=timedelta(hours=2),
             validation_duration=timedelta(hours=2),
-            purge_policy=PurgePolicy(purge_overlapping=True),
+            purge_policy=PurgePolicy(purge_overlapping=True, fail_closed_on_unknown=False),
             embargo_policy=EmbargoPolicy(duration=timedelta(0)),
         ),
         plan_id="plan_manifest_test",
@@ -1301,7 +1301,7 @@ def test_manifest_create_reconciliation_rejections_and_cal_config() -> None:
             test_duration=timedelta(hours=2),
             step_duration=timedelta(hours=2),
             validation_duration=timedelta(hours=2),
-            purge_policy=PurgePolicy(purge_overlapping=True),
+            purge_policy=PurgePolicy(purge_overlapping=True, fail_closed_on_unknown=False),
             embargo_policy=EmbargoPolicy(duration=timedelta(0)),
         ),
         plan_id="plan_manifest_diff",
@@ -1537,7 +1537,7 @@ def test_decimal_metamorphic_robustness() -> None:
             test_duration=timedelta(hours=2),
             step_duration=timedelta(hours=2),
             validation_duration=timedelta(hours=2),
-            purge_policy=PurgePolicy(purge_overlapping=True),
+            purge_policy=PurgePolicy(purge_overlapping=True, fail_closed_on_unknown=False),
             embargo_policy=EmbargoPolicy(duration=timedelta(0)),
         ),
         plan_id="plan_metamorphic",
