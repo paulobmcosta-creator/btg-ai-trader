@@ -158,6 +158,11 @@ class CandidateIdentity:
         digest = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
         object.__setattr__(self, "identity_hash", digest)
 
+    @property
+    def candidate_id(self) -> str:
+        """Deterministic candidate identifier derived from baseline_type and identity_hash."""
+        return f"{self.baseline_type}:{self.identity_hash[:12]}"
+
     @staticmethod
     def _canonicalize_params(params: Mapping[str, Any]) -> dict[str, Any]:
         """Convert parameter mapping into deterministic serializable structure."""
