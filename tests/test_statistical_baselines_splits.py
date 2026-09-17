@@ -29,7 +29,7 @@ def test_window_policy_enum() -> None:
 
 def test_purge_policy_validation() -> None:
     with pytest.raises(ValueError, match="cannot be negative"):
-        PurgePolicy(default_horizon=timedelta(minutes=-1))
+        PurgePolicy(default_horizon=timedelta(minutes=-1), fail_closed_on_unknown=False)
 
 
 def test_purge_policy_behavior() -> None:
@@ -46,11 +46,11 @@ def test_purge_policy_behavior() -> None:
     )
 
     # When purge_overlapping is False
-    no_purge = PurgePolicy(purge_overlapping=False)
+    no_purge = PurgePolicy(purge_overlapping=False, fail_closed_on_unknown=False)
     assert no_purge.should_purge(sample, eval_start) is False
 
     # When purge_overlapping is True, target crosses eval_start -> Purged
-    purge_active = PurgePolicy(purge_overlapping=True)
+    purge_active = PurgePolicy(purge_overlapping=True, fail_closed_on_unknown=False)
     assert purge_active.should_purge(sample, eval_start) is True
 
     # Target before eval_start -> not purged
@@ -69,7 +69,7 @@ def test_purge_policy_behavior() -> None:
     assert purge_active.should_purge(sample_with_info, eval_start) is True
 
     # Default horizon crossing eval_start -> Purged
-    purge_with_default = PurgePolicy(default_horizon=timedelta(hours=1))
+    purge_with_default = PurgePolicy(default_horizon=timedelta(hours=1), fail_closed_on_unknown=False)
     sample_no_info = StatisticalSample(
         sample_id="s3",
         feature_knowledge_time=t0,
@@ -296,7 +296,7 @@ def test_partition_samples() -> None:
         target_semantics=TargetSemantics.CONTINUOUS,
     )
 
-    purge_pol = PurgePolicy(purge_overlapping=True)
+    purge_pol = PurgePolicy(purge_overlapping=True, fail_closed_on_unknown=False)
     embargo_pol = EmbargoPolicy(duration=timedelta(0))
 
     train_set, val_set, test_set = WalkForwardPlanner.partition_samples(
@@ -361,7 +361,7 @@ def test_partition_samples_duplicate_id_rejected() -> None:
     )
     with pytest.raises(ValueError, match="Duplicate sample_id"):
         WalkForwardPlanner.partition_samples(
-            [s1, s1], fold, PurgePolicy(), EmbargoPolicy(duration=timedelta(0))
+            [s1, s1], fold, PurgePolicy(fail_closed_on_unknown=False), EmbargoPolicy(duration=timedelta(0))
         )
 
 
@@ -402,7 +402,7 @@ def test_partition_samples_with_validation_and_embargo() -> None:
     train_set, val_set, test_set = WalkForwardPlanner.partition_samples(
         [s_embargoed, s_val],
         fold,
-        PurgePolicy(),
+        PurgePolicy(fail_closed_on_unknown=False),
         embargo_pol,
     )
     assert val_set is not None
