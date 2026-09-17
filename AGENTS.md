@@ -27,12 +27,13 @@ S2_C = ACCEPTED
 PROMOTION_TO_SPRINT_3_GATE = YES
 
 SPRINT_3_STATUS = CLOSURE_CANDIDATE
-SPRINT_3_LIFECYCLE = PROPOSED_CLOSED
-SPRINT_3_FINAL_VERDICT = PASS
+SPRINT_3_LIFECYCLE = CLOSURE_CANDIDATE
+SPRINT_3_FINAL_VERDICT = PROPOSED_PASS
 S3_ENTRY_GATE = PASS
 S3_CANONICAL_BRANCH = sprint/3-deterministic-economic-backtesting
 S3_WORK_BRANCH = s3/00-full-deterministic-economic-backtesting
-PROMOTION_TO_SPRINT_4_GATE = YES
+MERGE_AUTHORIZED = NO
+PROMOTION_TO_SPRINT_4_GATE = NO_UNTIL_INDEPENDENT_REAUDIT
 ```
 
 O Sprint 2 tratou exclusivamente de **Data Platform & Causal Market Replay** dentro de `docs/program/S2_ENTRY_CONTRACT.md`, `S2_DECISION_REGISTER.md`, `S2_CAPABILITY_MATRIX.md` e dos gates correspondentes. Os incrementos funcionais S2-A (Causal Replay Core) e S2-B (Lossless Normalization & Data Quality) e o gate final S2-C foram formalmente aceitos e fechados.

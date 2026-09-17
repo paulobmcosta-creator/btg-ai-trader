@@ -550,3 +550,58 @@ def test_engine_missing_mark_price_on_open_position(monkeypatch: pytest.MonkeyPa
     assert res.economic_state.mark_evidence is None
     assert res.economic_state.pnl.unrealized_pnl is None
     assert res.economic_state.pnl.total_net_pnl is None
+
+
+def test_engine_session_id_derivation_regressions() -> None:
+    iid = TradableInstrumentId(make_uuid(1))
+    econ = InstrumentEconomics(iid, "BRL", Decimal("2.0"), Decimal("0.5"), Decimal("1.0"))
+    assumptions1 = EconomicAssumptions(
+        assumptions_id="base",
+        spread_model=SpreadModel(),
+        slippage_model=FixedPointsSlippageModel(adverse_points=Decimal("0.5")),
+        fee_schedule=FeeSchedule(schedule_id="fee", fixed_per_order=Decimal("5.0")),
+        latency_model=LatencyModel(decision_latency_us=100, transit_latency_us=200),
+        execution_policy=ExecutionPolicy(),
+    )
+    assumptions2 = EconomicAssumptions(
+        assumptions_id="altered",
+        spread_model=SpreadModel(),
+        slippage_model=FixedPointsSlippageModel(adverse_points=Decimal("1.0")),
+        fee_schedule=FeeSchedule(schedule_id="fee", fixed_per_order=Decimal("5.0")),
+        latency_model=LatencyModel(decision_latency_us=100, transit_latency_us=200),
+        execution_policy=ExecutionPolicy(),
+    )
+
+    engine1 = DeterministicEconomicBacktester(econ, assumptions1, code_revision=DUMMY_REV)
+    engine2 = DeterministicEconomicBacktester(econ, assumptions2, code_revision=DUMMY_REV)
+
+    t0 = datetime(2026, 9, 16, 10, 0, 0, tzinfo=UTC)
+    a1 = make_action(1, t0, iid, Side.BUY, Decimal("10"))
+    e1 = make_tick_event(
+        1, t0 + timedelta(microseconds=500), iid, bid=Decimal("99.5"), ask=Decimal("100.0")
+    )
+
+    schedule1 = make_schedule([e1], run_id=make_uuid(50))
+    schedule2 = make_schedule([e1], run_id=make_uuid(51))
+
+    # 1. same session_id + identical inputs -> same RunId
+    res1 = engine1.run([a1], replay_schedule=schedule1, session_id="sess-A")
+    res1_repeat = engine1.run([a1], replay_schedule=schedule1, session_id="sess-A")
+    assert res1.manifest.run_id == res1_repeat.manifest.run_id
+    assert res1.fills[0].fill_id == res1_repeat.fills[0].fill_id
+
+    # 2. same session_id + changed assumptions -> different RunId
+    res2 = engine2.run([a1], replay_schedule=schedule1, session_id="sess-A")
+    assert res1.manifest.run_id != res2.manifest.run_id
+    # changed RunId -> different fill IDs
+    assert res1.fills[0].fill_id != res2.fills[0].fill_id
+
+    # 3. same session_id + changed replay boundary -> different RunId
+    res3 = engine1.run([a1], replay_schedule=schedule2, session_id="sess-A")
+    assert res1.manifest.run_id != res3.manifest.run_id
+    # changed RunId -> different fill IDs
+    assert res1.fills[0].fill_id != res3.fills[0].fill_id
+
+    # Salting effect: session_id alters RunId versus no session_id
+    res_no_sess = engine1.run([a1], replay_schedule=schedule1)
+    assert res1.manifest.run_id != res_no_sess.manifest.run_id

@@ -230,10 +230,6 @@ class DeterministicEconomicBacktester:
                 raise ValueError(
                     f"run_id must be ActionIdentity, RunId, or UUID str, got {type(run_id)}"
                 )
-        elif session_id is not None:
-            resolved_run_id = ActionIdentity(
-                str(uuid5(BACKTEST_UUID_NAMESPACE, f"backtest.{session_id}"))
-            )
         else:
             act_hash = compute_actions_hash(actions).value
             assump_hash = compute_assumptions_hash(
@@ -248,6 +244,8 @@ class DeterministicEconomicBacktester:
             seed_str = (
                 f"backtest:{boundary_run_id}:{act_hash}:{assump_hash}:{econ_hash}:{policy_str}:{code_rev}"
             )
+            if session_id is not None:
+                seed_str = f"{seed_str}:{session_id}"
             resolved_run_id = ActionIdentity(str(uuid5(BACKTEST_UUID_NAMESPACE, seed_str)))
 
         # 4. Simulate standard action executions propagating resolved_run_id

@@ -31,8 +31,8 @@ S2_C = ACCEPTED (PR #70, ba6c0c41988fc9fefbdff13b0daedf96301dd74c)
 PROMOTION_TO_SPRINT_3_GATE = YES
 
 SPRINT_3_BRANCH = sprint/3-deterministic-economic-backtesting
-SPRINT_3_LIFECYCLE = PROPOSED_CLOSED
-SPRINT_3_FINAL_VERDICT = PASS
+SPRINT_3_LIFECYCLE = CLOSURE_CANDIDATE
+SPRINT_3_FINAL_VERDICT = PROPOSED_PASS
 SPRINT_3_SCOPE = DETERMINISTIC_ECONOMIC_BACKTESTING
 SPRINT_3_ENTRY_CONTRACT = docs/program/S3_ENTRY_CONTRACT.md
 SPRINT_3_DECISION_REGISTER = docs/program/S3_DECISION_REGISTER.md
@@ -42,7 +42,8 @@ SPRINT_3_ENTRY_GATE = PASS
 S3_TASK_PACKET = docs/program/workstreams/S3-ANTIGRAVITY-FULL-SPRINT.md
 S3_WORK_BRANCH = s3/00-full-deterministic-economic-backtesting
 S3_BASE_SHA = ba6c0c41988fc9fefbdff13b0daedf96301dd74c
-PROMOTION_TO_SPRINT_4_GATE = YES
+MERGE_AUTHORIZED = NO
+PROMOTION_TO_SPRINT_4_GATE = NO_UNTIL_INDEPENDENT_REAUDIT
 
 S2_ENTRY_VALIDATED_HEAD = 8cfb17e3ba7b02c2eccc4d94f17dec986d6bb474
 S2_ENTRY_CI_RUN = 35130469411
@@ -134,8 +135,8 @@ Sprint 3 has been fully implemented and verified under single-batch autonomous e
   - Deterministic replay orchestrator and session engine (`engine.py`)
   - Cryptographic input boundaries, manifest generation, and provenance (`provenance.py`)
   - Sensitivity sweeps and monotonicity invariant verification (`sensitivity.py`)
-- **Verification:** 100% statement (903/903) and branch (360/360) coverage on backtesting kernel, zero lint errors, zero type errors, all boundary checks PASS.
-- **Verdict:** `PROPOSED_SPRINT_3_VERDICT = PASS`, `PROMOTION_TO_SPRINT_4_GATE = YES`.
+- **Verification:** 91% combined coverage on backtesting kernel (1,325 statements, 86 missed, 598 branches, 57 missed/partial; 118 passed S3 tests), zero lint errors, zero type errors, all boundary checks PASS.
+- **Verdict:** `PROPOSED_SPRINT_3_VERDICT = PROPOSED_PASS`, `SPRINT_3_LIFECYCLE = CLOSURE_CANDIDATE`, `MERGE_AUTHORIZED = NO`, `PROMOTION_TO_SPRINT_4_GATE = NO_UNTIL_INDEPENDENT_REAUDIT`.
 
 ## Sprint 2 exclusions
 
