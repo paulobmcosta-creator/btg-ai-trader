@@ -5,11 +5,15 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from decimal import Decimal
+from typing import Any
 
 from btg_ai_trader.statistical_baselines.domain import (
     CandidateIdentity,
     EvaluationRole,
+    ParityViolationError,
+    ProtectedEvidenceReuseError,
     TargetSemantics,
+    _freeze_mapping,
 )
 from btg_ai_trader.statistical_baselines.evaluation import (
     AggregateEvaluationResult,
@@ -18,12 +22,17 @@ from btg_ai_trader.statistical_baselines.evaluation import (
 
 @dataclass(frozen=True, slots=True)
 class SearchFamily:
-    """A collection of candidate models belonging to the same architectural or baseline family."""
+    """A collection of candidate models with complete search lineage and provenance."""
 
     family_name: str
     target_semantics: TargetSemantics
     candidates: tuple[CandidateIdentity, ...]
     description: str = ""
+    candidate_ids_considered: tuple[str, ...] = ()
+    configurations_considered: tuple[Mapping[str, Any], ...] = ()
+    selection_domain: str = ""
+    selection_metric: str = ""
+    baseline_ids: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.family_name:
@@ -36,6 +45,117 @@ class SearchFamily:
                     f"Candidate {c.candidate_id} semantics {c.target_semantics} does not match "
                     f"family target semantics {self.target_semantics}"
                 )
+
+        if not self.candidate_ids_considered:
+            object.__setattr__(
+                self, "candidate_ids_considered", tuple(c.candidate_id for c in self.candidates)
+            )
+        if not self.configurations_considered:
+            object.__setattr__(
+                self,
+                "configurations_considered",
+                tuple(c.parameters for c in self.candidates),
+            )
+        else:
+            object.__setattr__(
+                self,
+                "configurations_considered",
+                tuple(_freeze_mapping(cfg) for cfg in self.configurations_considered),
+            )
+        if not self.baseline_ids:
+            object.__setattr__(
+                self,
+                "baseline_ids",
+                tuple(sorted({c.baseline_type for c in self.candidates})),
+            )
+
+    def to_canonical_dict(self) -> dict[str, Any]:
+        """Convert SearchFamily to canonical dictionary representation for manifests."""
+        return {
+            "family_name": self.family_name,
+            "target_semantics": self.target_semantics.value,
+            "description": self.description,
+            "candidate_ids_considered": list(self.candidate_ids_considered),
+            "configurations_considered": [
+                dict(cfg) for cfg in self.configurations_considered
+            ],
+            "selection_domain": self.selection_domain,
+            "selection_metric": self.selection_metric,
+            "baseline_ids": list(self.baseline_ids),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ProtectedEvidenceUse:
+    """Record of an evaluation of a candidate on a protected boundary."""
+
+    candidate_id: str
+    protected_boundary_id: str
+    evaluation_role: EvaluationRole
+    informed_adaptation: bool = False
+    parent_candidate_ids: tuple[str, ...] = ()
+
+
+class EvaluationHistory:
+    """Tracks consumption of evaluation evidence to prevent protected test leakage across
+    candidate adaptations.
+    """
+
+    def __init__(self, records: Sequence[ProtectedEvidenceUse] = ()) -> None:
+        self._records: list[ProtectedEvidenceUse] = list(records)
+
+    @property
+    def records(self) -> tuple[ProtectedEvidenceUse, ...]:
+        return tuple(self._records)
+
+    def record_evaluation(
+        self,
+        candidate_id: str,
+        protected_boundary_id: str,
+        role: EvaluationRole,
+        informed_adaptation: bool = False,
+        parent_candidate_ids: tuple[str, ...] = (),
+    ) -> None:
+        """Record an evaluation event in historical provenance."""
+        record = ProtectedEvidenceUse(
+            candidate_id=candidate_id,
+            protected_boundary_id=protected_boundary_id,
+            evaluation_role=role,
+            informed_adaptation=informed_adaptation,
+            parent_candidate_ids=tuple(parent_candidate_ids),
+        )
+        self._records.append(record)
+
+    def check_admissibility(
+        self,
+        candidate_id: str,
+        protected_boundary_id: str,
+        role: EvaluationRole,
+        parent_candidate_ids: tuple[str, ...] = (),
+    ) -> None:
+        """Validate that candidate is epistemologically admissible on protected boundary."""
+        if role is not EvaluationRole.PROTECTED_TEST:
+            return
+
+        # Check if any parent/ancestor candidate evaluated on this boundary informed adaptation
+        for rec in self._records:
+            if (
+                rec.protected_boundary_id == protected_boundary_id
+                and rec.evaluation_role is EvaluationRole.PROTECTED_TEST
+            ):
+                # Direct repeat evaluation after adaptation
+                if rec.candidate_id == candidate_id and rec.informed_adaptation:
+                    raise ProtectedEvidenceReuseError(
+                        f"Protected evidence reuse violation: candidate {candidate_id} was already "
+                        f"evaluated on boundary {protected_boundary_id} and informed adaptation"
+                    )
+                # Parent evaluated on this boundary and informed adaptation of current candidate
+                if rec.informed_adaptation and rec.candidate_id in parent_candidate_ids:
+                    raise ProtectedEvidenceReuseError(
+                        f"Protected evidence reuse violation: candidate {candidate_id} was adapted "
+                        f"from parent {rec.candidate_id} which consumed protected boundary "
+                        f"{protected_boundary_id} (Protocol 0E-C, C-HQI-08, S4-NC-17)"
+                    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,10 +181,13 @@ class ModelComparisonResult:
                 "winner_candidate_id must be None for PROTECTED_TEST evaluation role "
                 "(Protocol 0E-C, C-HQI-08, S4-NC-17)"
             )
+        object.__setattr__(self, "metadata", _freeze_mapping(self.metadata))
 
 
 class Comparator:
-    """Comparator ranking candidate models with strict protected test safety guarantees."""
+    """Comparator ranking candidate models with strict protected test safety guarantees and full
+    parity checks.
+    """
 
     @classmethod
     def compare_candidates(
@@ -73,24 +196,47 @@ class Comparator:
         metric_name: str,
         higher_is_better: bool = False,
     ) -> ModelComparisonResult:
-        """Rank candidates based on aggregate metric, enforcing role invariants and parity."""
+        """Rank candidates based on aggregate metric, enforcing role invariants and full parity."""
         if not results:
             raise ValueError("Cannot compare empty results sequence")
 
-        first_role = results[0].evaluation_role
-        first_fold_ids = [f.fold_id for f in results[0].fold_results]
+        first = results[0]
+        first_role = first.evaluation_role
+        first_fold_ids = [f.fold_id for f in first.fold_results]
+        first_fp = first.evaluation_context_fingerprint
+        first_agg_policy = first.aggregation_policy
+        first_numeric_policy = first.numeric_policy
 
-        # Verify experimental parity: all candidates must be evaluated on the same folds & role
+        # Verify experimental parity: all candidates must have identical experimental context
         for r in results:
             if r.evaluation_role != first_role:
-                raise ValueError(
+                raise ParityViolationError(
                     f"Mixed evaluation roles in comparison: {r.evaluation_role} != {first_role}"
                 )
             r_fold_ids = [f.fold_id for f in r.fold_results]
             if r_fold_ids != first_fold_ids:
-                raise ValueError(
+                raise ParityViolationError(
                     f"Experimental parity violation: candidate {r.candidate_id} evaluated on folds "
                     f"{r_fold_ids}, expected {first_fold_ids}"
+                )
+            if r.aggregation_policy != first_agg_policy:
+                raise ParityViolationError(
+                    f"Experimental parity violation: aggregation policies differ "
+                    f"({r.aggregation_policy} != {first_agg_policy})"
+                )
+            if r.numeric_policy != first_numeric_policy:
+                raise ParityViolationError(
+                    f"Experimental parity violation: numeric policies differ "
+                    f"({r.numeric_policy} != {first_numeric_policy})"
+                )
+            if (
+                first_fp
+                and r.evaluation_context_fingerprint
+                and r.evaluation_context_fingerprint != first_fp
+            ):
+                raise ParityViolationError(
+                    f"NOT_COMPARABLE: Evaluation context parity mismatch between {r.candidate_id} "
+                    f"and {first.candidate_id}"
                 )
             if metric_name not in r.aggregate_metrics:
                 raise ValueError(

@@ -218,6 +218,7 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                 local_name = alias.asname or alias.name
                 canonical_symbol = f"{mod}.{imported_symbol}" if mod else imported_symbol
                 symbol_aliases[local_name] = canonical_symbol
+                module_aliases[local_name] = canonical_symbol
 
                 if imported_symbol == "uuid4":
                     findings.append(
@@ -243,6 +244,35 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                             f"forbidden stochastic import: {canonical_symbol}",
                         )
                     )
+                elif _is_forbidden_import(canonical_symbol):
+                    findings.append(
+                        Finding(str_path, node.lineno, f"forbidden import: {canonical_symbol}")
+                    )
+                elif canonical_symbol in FORBIDDEN_PROCESS_CALLS:
+                    findings.append(
+                        Finding(
+                            str_path,
+                            node.lineno,
+                            f"forbidden process import: {canonical_symbol}",
+                        )
+                    )
+                elif canonical_symbol in WALL_CLOCK_CALLS:
+                    findings.append(
+                        Finding(
+                            str_path,
+                            node.lineno,
+                            f"forbidden wall-clock import: {canonical_symbol}",
+                        )
+                    )
+                elif imported_symbol in FORBIDDEN_OPERATIONAL_NAMES:
+                    findings.append(
+                        Finding(
+                            str_path,
+                            node.lineno,
+                            f"forbidden operational import: {imported_symbol}",
+                        )
+                    )
+
             imp = _import_name(node)
             if _is_forbidden_import(imp):
                 findings.append(Finding(str_path, node.lineno, f"forbidden import: {imp}"))
@@ -294,6 +324,10 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
             elif cname in FORBIDDEN_PROCESS_CALLS:
                 findings.append(
                     Finding(str_path, node.lineno, f"forbidden process call: {cname}")
+                )
+            elif _is_forbidden_import(cname):
+                findings.append(
+                    Finding(str_path, node.lineno, f"forbidden call to external module: {cname}")
                 )
             elif _is_forbidden_stochastic_call(cname):
                 findings.append(

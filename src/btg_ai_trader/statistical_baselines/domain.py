@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import types
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -29,10 +30,66 @@ class EvaluationRole(str, Enum):
     PROTECTED_TEST = "PROTECTED_TEST"
 
 
+class CausalLeakageError(ValueError):
+    """Raised when look-ahead or causal ordering violation is detected."""
+
+
+class ParityViolationError(ValueError):
+    """Raised when candidate evaluation contexts differ in model comparison."""
+
+
+class ProtectedEvidenceReuseError(ValueError):
+    """Raised when protected test evidence is reused after candidate adaptation."""
+
+
 def _validate_timezone_aware(dt: datetime, field_name: str) -> None:
     """Ensure datetime is timezone-aware to prevent local/system time ambiguity."""
     if dt.tzinfo is None or dt.tzinfo.utcoffset(dt) is None:
         raise ValueError(f"{field_name} must be a timezone-aware datetime, got naive {dt!r}")
+
+
+def _deep_freeze_value(val: Any) -> Any:
+    """Recursively freeze mapping and sequence structures into immutable proxies."""
+    if isinstance(val, Mapping):
+        return types.MappingProxyType({k: _deep_freeze_value(v) for k, v in val.items()})
+    if isinstance(val, list | tuple):
+        return tuple(_deep_freeze_value(x) for x in val)
+    return val
+
+
+def _freeze_mapping(mapping: Mapping[str, Any]) -> Mapping[str, Any]:
+    """Return deeply immutable mapping proxy."""
+    return types.MappingProxyType({k: _deep_freeze_value(v) for k, v in mapping.items()})
+
+
+@dataclass(frozen=True, slots=True)
+class PredictionInput:
+    """Causally safe prediction input surface strictly omitting target fields."""
+
+    sample_id: str
+    feature_knowledge_time: datetime
+    target_semantics: TargetSemantics
+    reference_value: Decimal | None = None
+    information_interval: tuple[datetime, datetime] | None = None
+    source_lineage: str = ""
+    metadata: Mapping[str, str] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if not self.sample_id or not isinstance(self.sample_id, str):
+            raise ValueError("sample_id must be a non-empty string")
+
+        _validate_timezone_aware(self.feature_knowledge_time, "feature_knowledge_time")
+
+        if self.information_interval is not None:
+            start, end = self.information_interval
+            _validate_timezone_aware(start, "information_interval.start")
+            _validate_timezone_aware(end, "information_interval.end")
+            if start > end:
+                raise ValueError(
+                    f"information_interval start ({start}) cannot be after end ({end})"
+                )
+
+        object.__setattr__(self, "metadata", _freeze_mapping(self.metadata))
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,7 +114,7 @@ class StatisticalSample:
         _validate_timezone_aware(self.target_knowledge_time, "target_knowledge_time")
 
         if self.feature_knowledge_time > self.target_knowledge_time:
-            raise ValueError(
+            raise CausalLeakageError(
                 f"feature_knowledge_time ({self.feature_knowledge_time}) cannot be later than "
                 f"target_knowledge_time ({self.target_knowledge_time})"
             )
@@ -71,7 +128,7 @@ class StatisticalSample:
                     f"information_interval start ({start}) cannot be after end ({end})"
                 )
 
-        # Validate target value consistency with target semantics
+        # Validate and canonicalize target value consistency with target semantics
         if self.target_semantics is TargetSemantics.CONTINUOUS:
             if not isinstance(self.target_value, Decimal):
                 val_type = type(self.target_value).__name__
@@ -79,6 +136,10 @@ class StatisticalSample:
                     f"target_value for CONTINUOUS semantics must be Decimal, got {val_type}"
                 )
         elif self.target_semantics is TargetSemantics.BINARY_PROBABILITY:
+            if isinstance(self.target_value, bool):
+                raise TypeError(
+                    "target_value for BINARY_PROBABILITY must be int or Decimal, got bool"
+                )
             if isinstance(self.target_value, Decimal):
                 if self.target_value not in (Decimal(0), Decimal(1)):
                     raise ValueError(
@@ -91,6 +152,8 @@ class StatisticalSample:
                         f"target_value for BINARY_PROBABILITY must be 0 or 1, "
                         f"got {self.target_value}"
                     )
+                # Canonicalize int to Decimal internally
+                object.__setattr__(self, "target_value", Decimal(self.target_value))
             else:
                 val_type = type(self.target_value).__name__
                 raise TypeError(
@@ -105,10 +168,24 @@ class StatisticalSample:
         else:
             raise ValueError(f"Unsupported target_semantics: {self.target_semantics}")
 
+        object.__setattr__(self, "metadata", _freeze_mapping(self.metadata))
+
     def is_causally_admissible_for_fit(self, knowledge_cutoff: datetime) -> bool:
         """Check whether the sample's target was causally available at knowledge_cutoff."""
         _validate_timezone_aware(knowledge_cutoff, "knowledge_cutoff")
         return self.target_knowledge_time <= knowledge_cutoff
+
+    def to_prediction_input(self) -> PredictionInput:
+        """Convert sample into a causally safe prediction input surface without target fields."""
+        return PredictionInput(
+            sample_id=self.sample_id,
+            feature_knowledge_time=self.feature_knowledge_time,
+            target_semantics=self.target_semantics,
+            reference_value=self.reference_value,
+            information_interval=self.information_interval,
+            source_lineage=self.source_lineage,
+            metadata=self.metadata,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,6 +207,7 @@ class PredictionResult:
                 raise ValueError(
                     f"predicted_probability must be in [0, 1], got {self.predicted_probability}"
                 )
+        object.__setattr__(self, "metadata", _freeze_mapping(self.metadata))
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,15 +226,18 @@ class CandidateIdentity:
         if not self.code_revision:
             raise ValueError("code_revision must be a non-empty string")
 
+        canonical_params = self._canonicalize_params(self.parameters)
         canonical_dict = {
             "baseline_type": self.baseline_type,
             "code_revision": self.code_revision,
-            "parameters": self._canonicalize_params(self.parameters),
+            "parameters": canonical_params,
             "target_semantics": self.target_semantics.value,
         }
         serialized = json.dumps(canonical_dict, sort_keys=True, separators=(",", ":"))
         digest = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
         object.__setattr__(self, "identity_hash", digest)
+        # Deeply freeze parameters so external mutation does not affect state
+        object.__setattr__(self, "parameters", _freeze_mapping(canonical_params))
 
     @property
     def candidate_id(self) -> str:

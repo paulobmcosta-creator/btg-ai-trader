@@ -61,8 +61,8 @@ def _build_plan() -> WalkForwardPlan:
 def test_100_repetition_determinism() -> None:
     samples = _build_dataset()
     plan = _build_plan()
-    purge_pol = PurgePolicy()
-    embargo_pol = EmbargoPolicy()
+    purge_pol = PurgePolicy(default_horizon=timedelta(minutes=5))
+    embargo_pol = EmbargoPolicy(duration=timedelta(0))
     ref_timestamp = datetime(2026, 9, 1, 15, 0, tzinfo=UTC)
 
     first_manifest_digest: str | None = None

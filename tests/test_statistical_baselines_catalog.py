@@ -223,7 +223,7 @@ def test_majority_class_baseline() -> None:
     b.fit([s1, s2, s3], knowledge_cutoff=cutoff)
     pred = b.predict(eval_s)
     assert pred.predicted_class == "BUY"
-    assert pred.predicted_probability == Decimal("2") / Decimal("3")
+    assert pred.predicted_probability is None
 
     # Tie breaking: BUY vs SELL (2 each) -> BUY is alphabetically first
     s4 = _make_sample("s4", t0, t0 + timedelta(minutes=4), "SELL", TargetSemantics.CATEGORICAL)

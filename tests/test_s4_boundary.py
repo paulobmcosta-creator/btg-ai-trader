@@ -286,6 +286,22 @@ def test_symlink_under_s4_root_fails(tmp_path: Path, monkeypatch: pytest.MonkeyP
             "from random import SystemRandom\nsr = SystemRandom()\n",
             "forbidden stochastic import: SystemRandom",
         ),
+        (
+            "from urllib import request\nrequest.urlopen('http://example.com')\n",
+            "forbidden import: urllib.request",
+        ),
+        (
+            "from os import system\nsystem('ls')\n",
+            "forbidden process import: os.system",
+        ),
+        (
+            "from subprocess import Popen\nPopen(['ls'])\n",
+            "forbidden process import: subprocess.Popen",
+        ),
+        (
+            "from time import sleep\nsleep(1)\n",
+            "forbidden wall-clock import: time.sleep",
+        ),
     ],
 )
 def test_prohibited_constructs_detected(

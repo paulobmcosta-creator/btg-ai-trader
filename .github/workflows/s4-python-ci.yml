@@ -83,7 +83,9 @@ jobs:
 
       - name: Verify Sprint 4 capability boundary
         if: matrix.check == 's4-boundary'
-        run: python scripts/check_s4_boundary.py
+        run: |
+          python scripts/check_s4_boundary.py
+          python scripts/verify_s4_acceptance_symbols.py
 
       - name: Check diff against recorded base
         if: matrix.check == 'diff'

@@ -99,7 +99,10 @@ def test_embargo_policy() -> None:
     with pytest.raises(ValueError, match="cannot be negative"):
         EmbargoPolicy(duration=timedelta(minutes=-5))
 
-    zero_embargo = EmbargoPolicy()
+    with pytest.raises(TypeError):
+        EmbargoPolicy()  # type: ignore[call-arg]
+
+    zero_embargo = EmbargoPolicy(duration=timedelta(0))
     t0 = datetime(2026, 9, 1, 10, 0, tzinfo=UTC)
     assert zero_embargo.is_in_embargo(t0, t0) is False
 
@@ -276,7 +279,7 @@ def test_partition_samples() -> None:
     )
 
     purge_pol = PurgePolicy(purge_overlapping=True)
-    embargo_pol = EmbargoPolicy()
+    embargo_pol = EmbargoPolicy(duration=timedelta(0))
 
     train_set, val_set, test_set = WalkForwardPlanner.partition_samples(
         [s1, s2_future, s3_purged, s4_test, s5_outside],
@@ -339,7 +342,9 @@ def test_partition_samples_duplicate_id_rejected() -> None:
         target_semantics=TargetSemantics.CONTINUOUS,
     )
     with pytest.raises(ValueError, match="Duplicate sample_id"):
-        WalkForwardPlanner.partition_samples([s1, s1], fold, PurgePolicy(), EmbargoPolicy())
+        WalkForwardPlanner.partition_samples(
+            [s1, s1], fold, PurgePolicy(), EmbargoPolicy(duration=timedelta(0))
+        )
 
 
 def test_partition_samples_with_validation_and_embargo() -> None:

@@ -400,8 +400,8 @@ def test_evaluate_candidate_on_plan_walk_forward() -> None:
         ),
     ]
 
-    purge_pol = PurgePolicy()
-    embargo_pol = EmbargoPolicy()
+    purge_pol = PurgePolicy(default_horizon=timedelta(minutes=10))
+    embargo_pol = EmbargoPolicy(duration=timedelta(0))
 
     # VALIDATION_SELECTION role error when no validation boundary
     with pytest.raises(ValueError, match="Cannot evaluate on VALIDATION_SELECTION"):

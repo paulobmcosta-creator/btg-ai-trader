@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
+from typing import TYPE_CHECKING, Any
 
 from btg_ai_trader.statistical_baselines.domain import (
     StatisticalSample,
     _validate_timezone_aware,
 )
+
+if TYPE_CHECKING:
+    pass
 
 
 @dataclass(frozen=True, slots=True)
@@ -115,11 +119,18 @@ class TemporalFold:
 
 @dataclass(frozen=True, slots=True)
 class WalkForwardPlan:
-    """Ordered sequence of temporal folds defining an evaluation plan."""
+    """Ordered sequence of temporal folds defining an evaluation plan binding split policies."""
 
     plan_id: str
     window_policy_name: str
     folds: tuple[TemporalFold, ...]
+    train_duration: timedelta | None = None
+    test_duration: timedelta | None = None
+    step_duration: timedelta | None = None
+    validation_duration: timedelta | None = None
+    purge_policy: Any = None
+    embargo_policy: Any = None
+    window_policy: Any = None
 
     def __post_init__(self) -> None:
         if not self.plan_id or not isinstance(self.plan_id, str):
@@ -144,3 +155,25 @@ class WalkForwardPlan:
                         f"Folds must be in chronological order: fold {fold.fold_id} has start "
                         f"{cur_start} < previous fold start {prev_start}"
                     )
+
+    def with_policies(
+        self,
+        purge_policy: Any | None = None,
+        embargo_policy: Any | None = None,
+    ) -> WalkForwardPlan:
+        """Create a new plan instance with overridden policies, generating a new plan identity."""
+        new_purge = purge_policy if purge_policy is not None else self.purge_policy
+        new_embargo = embargo_policy if embargo_policy is not None else self.embargo_policy
+        new_plan_id = f"{self.plan_id}:override"
+        return WalkForwardPlan(
+            plan_id=new_plan_id,
+            window_policy_name=self.window_policy_name,
+            folds=self.folds,
+            train_duration=self.train_duration,
+            test_duration=self.test_duration,
+            step_duration=self.step_duration,
+            validation_duration=self.validation_duration,
+            purge_policy=new_purge,
+            embargo_policy=new_embargo,
+            window_policy=self.window_policy,
+        )

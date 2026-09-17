@@ -73,12 +73,15 @@ def test_input_boundary_sorting_and_digest() -> None:
     s1 = _make_sample("s1", t0, t1, Decimal("10"), info_interval=(t0, t1))
     s2 = _make_sample("s2", t1, t2, Decimal("20"))
 
-    # Passing out-of-order samples sorts canonically
-    sorted_samples = StatisticalEvaluationInputBoundary.validate_dataset([s2, s1])
-    assert sorted_samples[0].sample_id == "s1"
-    assert sorted_samples[1].sample_id == "s2"
+    # Passing out-of-order samples fails closed
+    with pytest.raises(ValueError, match="out of chronological order"):
+        StatisticalEvaluationInputBoundary.validate_dataset([s2, s1])
 
-    digest1 = StatisticalEvaluationInputBoundary.compute_dataset_digest(sorted_samples)
+    valid_samples = StatisticalEvaluationInputBoundary.validate_dataset([s1, s2])
+    assert valid_samples[0].sample_id == "s1"
+    assert valid_samples[1].sample_id == "s2"
+
+    digest1 = StatisticalEvaluationInputBoundary.compute_dataset_digest(valid_samples)
     assert len(digest1) == 64
 
 

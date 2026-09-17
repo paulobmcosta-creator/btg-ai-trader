@@ -65,15 +65,15 @@ All entry preconditions (`S4-EG-01..10`) were verified and satisfied:
 Sprint 4 implemented the **Prospective Temporal Evaluation & Deterministic Statistical Baselines Catalog** in `src/btg_ai_trader/statistical_baselines/` with 100% statement coverage (1,110/1,110 statements) and 100% branch coverage (440/440 branches) across all 10 modules and the S4 boundary checker, comprising 134 passed tests (80 statistical baselines unit/adversarial tests, 54 S4 boundary and security tests):
 
 1. **Domain & Types (`domain.py`):**
-   - `TargetSemantics` (`CONTINUOUS_VALUE`, `BINARY_PROBABILITY`, `CATEGORICAL_CLASS`): Explicit semantic typing for model targets.
-   - `EvaluationRole` (`FIT_DEVELOPMENT`, `SELECTION_VALIDATION`, `PROTECTED_TEST`): Protocol 0E-C evaluation partitions.
+   - `TargetSemantics` (`CONTINUOUS`, `BINARY_PROBABILITY`, `CATEGORICAL`): Explicit semantic typing for model targets.
+   - `EvaluationRole` (`TRAINING_FIT`, `VALIDATION_SELECTION`, `PROTECTED_TEST`, `DEVELOPMENT`): Protocol 0E-C evaluation partitions.
    - `StatisticalSample`: Immutable temporal sample with explicit `feature_time`, `target_availability_time`, `information_interval_start`, `information_interval_end`, payload dictionary, target value, and strict causal ordering (`feature_time <= target_availability_time`, `information_interval_start <= information_interval_end <= target_availability_time`).
    - `CandidateIdentity`: Deterministic identifier binding `model_family`, `version`, and hyperparameter dictionary.
-   - `PredictionResult`: Continuous, probability (bounded [0.0, 1.0]), or class predictions with confidence metrics.
+   - `PredictionResult`: Immutable prediction container for point predictions, predicted probability (bounded [0.0, 1.0]), and predicted class.
 
 2. **Evaluation Boundaries & Folds (`boundaries.py`):**
    - `EvaluationBoundary`: Immutable closed temporal interval `[start_time, end_time]` with sample containment validation.
-   - `TemporalFold`: Discrete fold pairing a `fit_boundary`, `eval_boundary`, explicit `role` (`SELECTION_VALIDATION` or `PROTECTED_TEST`), `fold_index`, and optional embargo.
+   - `TemporalFold`: Discrete fold pairing a `fit_boundary`, `eval_boundary`, explicit `role` (`VALIDATION_SELECTION` or `PROTECTED_TEST`), `fold_index`, and optional embargo.
    - `WalkForwardPlan`: Immutable plan orchestrating ordered `TemporalFold` instances with monotonic time validation and zero look-ahead leakage.
 
 3. **Walk-Forward Splitting, Purging & Embargo (`splits.py`):**
@@ -81,7 +81,7 @@ Sprint 4 implemented the **Prospective Temporal Evaluation & Deterministic Stati
    - `PurgePolicy`: Purges samples whose information intervals overlap across fold boundaries (Protocol 0E-C, DD-87, C-HQI-10).
    - `EmbargoPolicy`: Enforces mandatory post-evaluation temporal buffer to prevent label contamination from serial correlation / auto-correlation (Protocol 0E-C, DD-88).
    - `SplitPlanConfig`: Configuration defining train/val/test window sizing, step sizes, purging, embargo, and window policy.
-   - `WalkForwardPlanner`: Deterministic generator creating causal walk-forward plans, strictly prohibiting random shuffling (`forbid_random_shuffle`, S4-NC-17).
+   - `WalkForwardPlanner`: Deterministic generator creating causal walk-forward plans, strictly prohibiting random shuffling (`WalkForwardPlanner.forbid_random_shuffle()`, S4-NC-17).
 
 4. **Deterministic Statistical Baseline Catalog (`baselines.py`):**
    - Seven deterministic baselines with zero PRNG and zero third-party ML runtime dependencies:
@@ -92,10 +92,10 @@ Sprint 4 implemented the **Prospective Temporal Evaluation & Deterministic Stati
      5. `HistoricalPriorProbabilityBaseline`: Empirical probability of positive binary class.
      6. `MajorityClassBaseline`: Most frequent class in historical observations.
      7. `LastKnownClassBaseline`: Most recent class observation at causal query time.
-   - Explicit cold-start policy (`RAISE`, `FALLBACK_VALUE`, `PREDICT_NONE`), fail-closed validation, and strict causal target access.
+   - Explicit fallback value handling, fail-closed validation on empty history, and strict causal target access.
 
 5. **Deterministic Metrics (`metrics.py`):**
-   - Continuous metrics: `compute_continuous_metrics()` -> MSE, RMSE, MAE, MedAE, R-squared, Pearson correlation, Spearman rank correlation, Directional Accuracy, Max Error.
+   - Continuous metrics: `compute_continuous_metrics()` -> MSE, RMSE, MAE, Mean Bias.
    - Binary/probabilistic metrics: `brier_score()`, `base_rate()`.
    - Classification metrics: `accuracy_score()`, `class_prevalence()`, `confusion_matrix_counts()`.
    - Zero promotional claims or significance testing without stated methods (S4-NC-22).
@@ -103,17 +103,17 @@ Sprint 4 implemented the **Prospective Temporal Evaluation & Deterministic Stati
 6. **Probability Calibration Diagnostics (`calibration.py`):**
    - `CalibrationBin`: Sample count, mean predicted probability, observed fraction of positives, bin interval `[bin_lower, bin_upper]`.
    - `CalibrationReport`: Bin distribution, Brier score, Expected Calibration Error (ECE), Maximum Calibration Error (MCE).
-   - Deterministic equal-width probability binning with fail-closed validation.
+   - Deterministic equal-width probability binning with fail-closed validation via `compute_calibration()`.
 
 7. **Evaluation Orchestration (`evaluation.py`):**
    - `FoldEvaluationResult`: Per-fold metrics, sample counts, cold starts, and fold metadata.
    - `AggregateEvaluationResult`: Multi-fold aggregation preserving fold distribution visibility (`folds`), explicit sample-count weighting (`aggregation_method="SAMPLE_WEIGHTED"`), stability diagnostics (cross-fold mean, std, min, max, median, IQR), without arbitrary universal pass/fail thresholds (DD-91).
-   - `evaluate_candidate_on_fold()`, `evaluate_candidate_on_plan()`: Deterministic evaluation orchestration over walk-forward plans.
+   - `StatisticalEvaluationEngine.evaluate_candidate_on_fold()`, `StatisticalEvaluationEngine.evaluate_candidate_on_plan()`: Deterministic evaluation orchestration over walk-forward plans.
 
 8. **Model Comparison & Selection Invariants (`comparison.py`):**
    - `SearchFamily`: Durable registry tracking candidates, search history, baseline references, and population boundaries.
    - `ModelComparisonResult`: Ranked candidates, delta metrics, winner ID, selection rule, and non-protected verification.
-   - `Comparator`: Rigorous selection logic that strictly rejects winner selection on `PROTECTED_TEST` folds (Protocol 0E-C, C-HQI-26, S4-D-12, S4-NC-18), raising `ValueError("Winner selection on PROTECTED_TEST is strictly prohibited...")`.
+   - `Comparator`: Rigorous selection logic that strictly rejects winner selection on `PROTECTED_TEST` folds (`Comparator.compare_candidates()`, Protocol 0E-C, C-HQI-26, S4-D-12, S4-NC-18), raising `ValueError`.
 
 9. **Evaluation Provenance, Manifest & Boundary Integrity (`provenance.py`):**
    - `StatisticalEvaluationInputBoundary`: Deterministic canonical digest binding sample IDs, fold boundaries, candidate identities, split configs, and environment signature.
@@ -129,24 +129,24 @@ Every capability from `docs/program/S4_CAPABILITY_MATRIX.md` is adjudicated belo
 | ID | Contractual Capability | Applicability / Trigger Status | Canonical Implementation / Evidence | Specific Tests or Checks | Verdict |
 |---|---|---|---|---|---|
 | **S4-AC-01** | Exact Sprint 3 lineage and Entry Gate valid | REQUIRED | Verification against canonical base SHA `922adee625029c0cbd6c665f8906e7fd99cf71cb` and `docs/program/S4_ENTRY_GATE.md`. | Base commit check; boundary runner | **PASS** |
-| **S4-AC-02** | Evaluation roles Development/Fit/Validation/Protected explicit | REQUIRED | `EvaluationRole` enum (`domain.py`) defines `FIT_DEVELOPMENT`, `SELECTION_VALIDATION`, `PROTECTED_TEST`. | `test_evaluation_role_enum`, `test_temporal_fold_valid` | **PASS** |
-| **S4-AC-03** | Protected evaluation data cannot enter fit or selection | REQUIRED | `evaluate_candidate_on_fold` (`evaluation.py`) strictly segregates fit samples from evaluation samples; `Comparator` (`comparison.py`) forbids selection on `PROTECTED_TEST`. | `test_evaluate_candidate_on_fold_continuous`, `test_comparator_protected_test_invariant`, `test_adversarial_winner_selection_on_protected_test_strictly_blocked` | **PASS** |
+| **S4-AC-02** | Evaluation roles Development/Fit/Validation/Protected explicit | REQUIRED | `EvaluationRole` enum (`domain.py`) defines `TRAINING_FIT`, `VALIDATION_SELECTION`, `PROTECTED_TEST`, `DEVELOPMENT`. | `test_evaluation_role_enum`, `test_temporal_fold_valid` | **PASS** |
+| **S4-AC-03** | Protected evaluation data cannot enter fit or selection | REQUIRED | `StatisticalEvaluationEngine.evaluate_candidate_on_fold()` (`evaluation.py`) strictly segregates fit samples from evaluation samples; `Comparator.compare_candidates()` (`comparison.py`) forbids selection on `PROTECTED_TEST`. | `test_evaluate_candidate_on_fold_continuous`, `test_comparator_protected_test_invariant`, `test_adversarial_winner_selection_on_protected_test_strictly_blocked` | **PASS** |
 | **S4-AC-04** | Label availability / target knowledge causally enforced | REQUIRED | `StatisticalSample` (`domain.py`) validates `feature_time <= target_availability_time`. Baselines filter observations by `target_availability_time <= cutoff`. | `test_statistical_sample_feature_after_target_rejected`, `test_causal_admissibility_naive_cutoff_rejected`, `test_adversarial_future_target_injection_rejected` | **PASS** |
 | **S4-AC-05** | Walk-forward ordering strictly causal | REQUIRED | `WalkForwardPlan` (`boundaries.py`) and `WalkForwardPlanner` (`splits.py`) strictly enforce monotonic fold ordering (`fold[i].start >= fold[i-1].start`). | `test_walk_forward_plan`, `test_walk_forward_plan_validation`, `test_generate_plan_expanding_and_rolling` | **PASS** |
 | **S4-AC-06** | Rolling and expanding modes deterministic and explicit | REQUIRED | `WindowPolicy` (`splits.py`) supports `EXPANDING` and `ROLLING`. | `test_window_policy_enum`, `test_generate_plan_expanding_and_rolling` | **PASS** |
 | **S4-AC-07** | Purging correctly removes overlapping-information samples | REQUIRED | `PurgePolicy` (`splits.py`) purges samples whose `[information_interval_start, information_interval_end]` overlaps with the evaluation interval. | `test_purge_policy_validation`, `test_purge_policy_behavior`, `test_adversarial_overlapping_information_interval_purged` | **PASS** |
 | **S4-AC-08** | Embargo semantics explicit and tested | REQUIRED | `EmbargoPolicy` (`splits.py`) enforces mandatory temporal buffer following evaluation boundaries. | `test_embargo_policy`, `test_generate_plan_with_validation_and_embargo`, `test_adversarial_embargo_violation_blocked` | **PASS** |
-| **S4-AC-09** | No random-shuffle validation path can masquerade as OOS | REQUIRED | `forbid_random_shuffle()` (`splits.py`) and AST checks in `scripts/check_s4_boundary.py` reject shuffle-based splits. | `test_forbid_random_shuffle`, `test_prohibited_constructs_detected` | **PASS** |
+| **S4-AC-09** | No random-shuffle validation path can masquerade as OOS | REQUIRED | `WalkForwardPlanner.forbid_random_shuffle()` (`splits.py`) and AST checks in `scripts/check_s4_boundary.py` reject shuffle-based splits. | `test_forbid_random_shuffle`, `test_prohibited_constructs_detected` | **PASS** |
 | **S4-AC-10** | Deterministic simple baseline catalog exists | REQUIRED | 7 deterministic baselines implemented in `btg_ai_trader.statistical_baselines.baselines`. | `test_constant_baseline`, `test_persistence_baseline`, `test_historical_mean_baseline`, `test_historical_median_baseline`, `test_historical_prior_probability_baseline`, `test_majority_class_baseline`, `test_last_known_class_baseline` | **PASS** |
 | **S4-AC-11** | Baselines never consume future labels | REQUIRED | Causal filtering ensures samples with `target_availability_time > knowledge_cutoff` are invisible to baselines. | `test_baseline_causal_and_semantic_enforcement`, `test_adversarial_future_target_injection_rejected` | **PASS** |
-| **S4-AC-12** | Cold-start/missingness is fail-closed or explicit | REQUIRED | `ColdStartPolicy` (`RAISE`, `FALLBACK_VALUE`, `PREDICT_NONE`) with fail-closed default. | `test_constant_baseline`, `test_persistence_baseline`, `test_evaluate_candidate_on_fold_cold_starts` | **PASS** |
-| **S4-AC-13** | Continuous baseline metrics are deterministic and tested | REQUIRED | `compute_continuous_metrics()` (`metrics.py`) computes MSE, RMSE, MAE, MedAE, R2, Pearson, Spearman, DA, Max Error. | `test_continuous_metrics_valid`, `test_continuous_metrics_empty_and_mismatched` | **PASS** |
-| **S4-AC-14** | Probability calibration diagnostics are deterministic and tested | REQUIRED | `compute_calibration_report()` (`calibration.py`) produces equal-width binning, ECE, MCE, and Brier score. | `test_calibration_bin_validation`, `test_calibration_report_validation`, `test_compute_calibration_validation_errors`, `test_compute_calibration_perfect`, `test_compute_calibration_with_empty_bins` | **PASS** |
+| **S4-AC-12** | Cold-start/missingness is fail-closed or explicit | REQUIRED | Explicit fallback value handling (`fallback_value` or fail closed with `ValueError` on empty history). | `test_constant_baseline`, `test_persistence_baseline`, `test_evaluate_candidate_on_fold_cold_starts` | **PASS** |
+| **S4-AC-13** | Continuous baseline metrics are deterministic and tested | REQUIRED | `compute_continuous_metrics()` (`metrics.py`) computes MSE, RMSE, MAE, Mean Bias. | `test_continuous_metrics_valid`, `test_continuous_metrics_empty_and_mismatched` | **PASS** |
+| **S4-AC-14** | Probability calibration diagnostics are deterministic and tested | REQUIRED | `compute_calibration()` (`calibration.py`) produces equal-width binning, ECE, MCE, and Brier score. | `test_calibration_bin_validation`, `test_calibration_report_validation`, `test_compute_calibration_validation_errors`, `test_compute_calibration_perfect`, `test_compute_calibration_with_empty_bins` | **PASS** |
 | **S4-AC-15** | Per-fold distributions remain visible | REQUIRED | `AggregateEvaluationResult` (`evaluation.py`) preserves individual `folds` list without discarding fold variances. | `test_aggregate_evaluation_result_validation`, `test_evaluate_candidate_on_plan_walk_forward` | **PASS** |
-| **S4-AC-16** | Fold aggregation weighting is explicit | REQUIRED | `evaluate_candidate_on_plan()` (`evaluation.py`) supports explicit sample-weighted aggregation (`SAMPLE_WEIGHTED`). | `test_aggregate_evaluation_result_validation`, `test_evaluate_candidate_on_plan_walk_forward` | **PASS** |
+| **S4-AC-16** | Fold aggregation weighting is explicit | REQUIRED | `StatisticalEvaluationEngine.evaluate_candidate_on_plan()` (`evaluation.py`) supports explicit sample-weighted aggregation (`SAMPLE_WEIGHTED`). | `test_aggregate_evaluation_result_validation`, `test_evaluate_candidate_on_plan_walk_forward` | **PASS** |
 | **S4-AC-17** | Stability diagnostics do not fabricate universal pass/fail thresholds | REQUIRED | Aggregate metrics report distribution statistics (mean, std, min, max, median, IQR) without arbitrary magic cutoffs. | `test_aggregate_evaluation_result_validation`, `test_evaluate_candidate_on_plan_walk_forward` | **PASS** |
-| **S4-AC-18** | Comparisons reject incompatible evaluation populations/boundaries | REQUIRED | `Comparator.compare()` (`comparison.py`) checks that input boundaries and candidate fold sets match exactly. | `test_comparator_validation_errors`, `test_comparator_validation_selection` | **PASS** |
-| **S4-AC-19** | Protected-test result cannot be used to choose a winner | REQUIRED | `Comparator.compare()` strictly raises `ValueError` if any fold in `fold_results` has `role == EvaluationRole.PROTECTED_TEST`. | `test_comparator_protected_test_invariant`, `test_adversarial_winner_selection_on_protected_test_strictly_blocked` | **PASS** |
+| **S4-AC-18** | Comparisons reject incompatible evaluation populations/boundaries | REQUIRED | `Comparator.compare_candidates()` (`comparison.py`) checks that input boundaries and candidate fold sets match exactly. | `test_comparator_validation_errors`, `test_comparator_validation_selection` | **PASS** |
+| **S4-AC-19** | Protected-test result cannot be used to choose a winner | REQUIRED | `Comparator.compare_candidates()` strictly raises `ValueError` if any fold in `fold_results` has `role == EvaluationRole.PROTECTED_TEST`. | `test_comparator_protected_test_invariant`, `test_adversarial_winner_selection_on_protected_test_strictly_blocked` | **PASS** |
 | **S4-AC-20** | Candidate identity is version-specific and deterministic | REQUIRED | `CandidateIdentity` (`domain.py`) computes deterministic SHA-256 fingerprint from `(model_family, version, sorted_params)`. | `test_candidate_identity_deterministic_and_parameters`, `test_candidate_identity_validation`, `test_candidate_identity_custom_param_types` | **PASS** |
 | **S4-AC-21** | Evaluation provenance binds material inputs/config/results | REQUIRED | `StatisticalEvaluationInputBoundary`, `EvaluationProvenanceRecord`, `StatisticalEvaluationManifest` (`provenance.py`). | `test_input_boundary_validation`, `test_input_boundary_sorting_and_digest`, `test_provenance_record_validation`, `test_manifest_creation_and_integrity` | **PASS** |
 | **S4-AC-22** | Search-family history is preserved | REQUIRED | `SearchFamily` (`comparison.py`) records all tested candidates, search family name, and baseline reference. | `test_search_family_validation`, `test_model_comparison_result_validation` | **PASS** |
@@ -184,9 +184,9 @@ Every negative prohibition from `docs/program/S4_CAPABILITY_MATRIX.md` and `docs
 | **S4-NC-15** | Model registry absent | Namespace segregation | `ModelRegistry` prohibited in AST scanner and absent from all modules. | **VERIFIED** |
 | **S4-NC-16** | Hyperparameter search engine absent | Namespace segregation | `GridSearchCV`, `Optuna`, `RandomizedSearchCV` prohibited and absent. | **VERIFIED** |
 | **S4-NC-17** | Random temporal shuffle validation forbidden | AST & domain check | `random.shuffle`, `sklearn.model_selection` forbidden; `forbid_random_shuffle()` tested. | **VERIFIED** |
-| **S4-NC-18** | Protected-test candidate selection forbidden | Domain invariant | `Comparator.compare()` strictly rejects `PROTECTED_TEST` winner selection. | **VERIFIED** |
+| **S4-NC-18** | Protected-test candidate selection forbidden | Domain invariant | `Comparator.compare_candidates()` strictly rejects `PROTECTED_TEST` winner selection. | **VERIFIED** |
 | **S4-NC-19** | Future-label leakage forbidden | Causal knowledge cutoff check | `StatisticalSample` and baselines strictly filter by `target_availability_time <= cutoff`. | **VERIFIED** |
-| **S4-NC-20** | Silent missing-data imputation forbidden | Cold start / fail-closed logic | Baselines use explicit `ColdStartPolicy` without silent interpolation or imputation. | **VERIFIED** |
+| **S4-NC-20** | Silent missing-data imputation forbidden | Cold start / fail-closed logic | Baselines use explicit fallback value without silent interpolation or imputation. | **VERIFIED** |
 | **S4-NC-21** | Silent OOS reuse after adaptation forbidden | Versioned candidate identity | `CandidateIdentity` deterministically hashes all parameters and family version. | **VERIFIED** |
 | **S4-NC-22** | Statistical significance claim without method forbidden | Descriptive reporting only | Metric suite reports descriptive statistics; inferential p-values deferred. | **VERIFIED** |
 | **S4-NC-23** | Automatic promotion from S4 forbidden | Governance invariant | S4 closure candidate status requires explicit human review and audit before promotion. | **VERIFIED** |
@@ -224,14 +224,14 @@ In accordance with `docs/program/S4_DECISION_REGISTER.md`, Foundation decisions 
 | **S4-D-02** | Explicit causal label availability timing | **DECIDED_AND_SATISFIED** | `StatisticalSample` requires `feature_time <= target_availability_time`. Verified by `test_statistical_sample_feature_after_target_rejected`. |
 | **S4-D-03** | Information interval tracking for purging | **DECIDED_AND_SATISFIED** | Explicit `information_interval_start <= information_interval_end <= target_availability_time`. Verified by `test_statistical_sample_information_interval_validation`. |
 | **S4-D-04** | Walk-forward window policy and shuffle ban | **DECIDED_AND_SATISFIED** | Expanding and rolling walk-forward plans; strict prohibition of random shuffles. Verified by `test_forbid_random_shuffle`. |
-| **S4-D-05** | Cold start and missingness policy | **DECIDED_AND_SATISFIED** | Explicit handling: `RAISE`, `FALLBACK_VALUE`, or `PREDICT_NONE` without silent imputation. Verified by `test_constant_baseline`. |
+| **S4-D-05** | Cold start and missingness policy | **DECIDED_AND_SATISFIED** | Explicit fallback value handling or fail closed without silent imputation. Verified by `test_constant_baseline`. |
 | **S4-D-06** | Deterministic baseline catalog implementation | **DECIDED_AND_SATISFIED** | 7 simple deterministic baselines without PRNG or ML frameworks. Verified by `test_statistical_baselines_catalog.py`. |
 | **S4-D-07** | Deterministic continuous evaluation metrics | **DECIDED_AND_SATISFIED** | Standardized continuous metrics with mathematical edge case safety. Verified by `test_continuous_metrics_valid`. |
 | **S4-D-08** | Deterministic categorical evaluation metrics | **DECIDED_AND_SATISFIED** | Exact accuracy, base rates, class prevalence, and confusion matrices. Verified by `test_statistical_baselines_metrics.py`. |
 | **S4-D-09** | Probability calibration diagnostics | **DECIDED_AND_SATISFIED** | Equal-width binning, ECE, MCE, and Brier score. Verified by `test_compute_calibration_perfect`. |
 | **S4-D-10** | Fold distribution visibility and aggregation | **DECIDED_AND_SATISFIED** | Preserves per-fold results; explicit sample-count weighted aggregation. Verified by `test_aggregate_evaluation_result_validation`. |
-| **S4-D-11** | Population comparability in candidate selection | **DECIDED_AND_SATISFIED** | Comparator enforces identical input boundaries and fold configurations across candidates. Verified by `test_comparator_validation_errors`. |
-| **S4-D-12** | Protected test rejection invariant | **DECIDED_AND_SATISFIED** | Comparator strictly rejects candidate selection if any fold is `PROTECTED_TEST`. Verified by `test_comparator_protected_test_invariant`. |
+| **S4-D-11** | Population comparability in candidate selection | **DECIDED_AND_SATISFIED** | `Comparator.compare_candidates()` enforces identical input boundaries and fold configurations across candidates. Verified by `test_comparator_validation_errors`. |
+| **S4-D-12** | Protected test rejection invariant | **DECIDED_AND_SATISFIED** | `Comparator.compare_candidates()` strictly rejects candidate selection if any fold is `PROTECTED_TEST`. Verified by `test_comparator_protected_test_invariant`. |
 | **S4-D-13** | Search-family tracking and candidate identity | **DECIDED_AND_SATISFIED** | Deterministic SHA-256 fingerprinting of model candidates and family tracking. Verified by `test_candidate_identity_deterministic_and_parameters`. |
 | **S4-D-14** | Cryptographic evaluation provenance and manifests | **DECIDED_AND_SATISFIED** | `StatisticalEvaluationManifest` binds all inputs, configurations, and outputs. Verified by `test_manifest_creation_and_integrity`. |
 | **S4-D-15** | Complete offline deterministic execution | **DECIDED_AND_SATISFIED** | Zero network dependencies, zero background timers, zero PRNG seeds. Verified by `scripts/check_s4_boundary.py`. |
@@ -251,7 +251,7 @@ In accordance with quantitative protocols defined in Foundation 0E:
 
 2. **Protocol 0E-C (Model Development & Out-of-Sample Integrity):**
    - Prospective walk-forward evaluation strictly preserves time ordering; random shuffling is prohibited and checked (`test_forbid_random_shuffle`).
-   - Candidate selection strictly operates on `SELECTION_VALIDATION` folds; evaluating winner selection on `PROTECTED_TEST` raises a fatal `ValueError` (`test_adversarial_winner_selection_on_protected_test_strictly_blocked`).
+   - Candidate selection strictly operates on `VALIDATION_SELECTION` folds; evaluating winner selection on `PROTECTED_TEST` raises a fatal `ValueError` (`test_adversarial_winner_selection_on_protected_test_strictly_blocked`).
    - Multiple comparisons and search family history are preserved in `SearchFamily` to avoid p-hacking and survivorship bias.
 
 3. **Protocol 0E-E (Quantitative Metrics & Diagnostics):**
@@ -384,16 +384,50 @@ DRIFT_OR_PHANTOM_CITATIONS = 0
   - `test_partition_samples`
   - `test_partition_samples_duplicate_id_rejected`
   - `test_partition_samples_with_validation_and_embargo`
+- `tests/test_s4_acceptance_symbols.py`:
+  - `test_phantom_class_negative`
+  - `test_phantom_function_negative`
+  - `test_phantom_method_negative`
+  - `test_phantom_enum_negative`
+  - `test_phantom_test_negative`
+  - `test_phantom_path_negative`
+  - `test_banned_phantom_symbol_negative`
+  - `test_real_acceptance_passes`
+- `tests/test_statistical_baselines_remediation.py`:
+  - `test_purge_policy_fail_closed_on_unknown`
+  - `test_purge_policy_default_horizon_fallback`
+  - `test_embargo_policy_duration`
+  - `test_walk_forward_plan_with_policies`
+  - `test_sample_deep_immutability_and_prediction_input`
+  - `test_binary_target_canonicalization`
+  - `test_sample_information_interval_invariants`
+  - `test_constant_baseline_configuration_validation`
+  - `test_majority_class_baseline_semantics_restriction`
+  - `test_numeric_policy_and_continuous_metrics`
+  - `test_fold_stability_diagnostics_and_aggregation_policy`
+  - `test_evaluation_engine_role_enforcement`
+  - `test_comparator_strict_parity_enforcement`
+  - `test_evaluation_history_protected_evidence_reuse`
+  - `test_dataset_hashing_order_sensitivity`
+  - `test_plan_digest_policy_sensitivity`
+  - `test_manifest_scientific_hash_excludes_wall_clock`
+  - `test_numeric_policy_validation`
+  - `test_evaluation_provenance_record_validation`
+  - `test_domain_prediction_input_and_sample_validation`
+  - `test_baselines_configuration_validation`
+  - `test_comparison_search_family_and_evaluation_history`
+  - `test_comparison_parity_violations`
+  - `test_evaluation_policy_overrides_and_sample_weighted_and_stability`
 
 ---
 
 ## 9. Test Coverage & Determinism Evidence
 
-- **Statement Coverage:** 1,110 / 1,110 statements (100%)
-- **Branch Coverage:** 440 / 440 branches (100%)
-- **Total S4 Test Count:** 134 passed tests (80 domain/kernel/adversarial tests + 54 boundary scanner tests)
+- **Statement Coverage:** 1,252 / 1,252 statements (100%)
+- **Branch Coverage:** 424 / 424 branches (100%)
+- **Total S4 Test Count:** 177 passed tests (100 domain/kernel/adversarial/remediation tests + 62 boundary scanner tests + 15 acceptance symbol verifier tests)
 - **Determinism:** 100 consecutive executions produce exact byte-for-byte identical SHA-256 manifests (`test_100_repetition_determinism`).
-- **Adversarial Invariance:** Explicit tests verify that future target tampering, interval overlap leaks, embargo bypasses, and protected-test winner selections are strictly blocked fail-closed.
+- **Adversarial Invariance:** Explicit tests verify that future target tampering, interval overlap leaks, embargo bypasses, protected-test winner selections, and adaptation reuse on protected boundaries are strictly blocked fail-closed.
 
 ---
 

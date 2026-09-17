@@ -31,7 +31,7 @@ class PurgePolicy:
 
     purge_overlapping: bool = True
     default_horizon: timedelta | None = None
-    fail_closed_on_unknown: bool = True
+    fail_closed_on_unknown: bool = False
 
     def __post_init__(self) -> None:
         if self.default_horizon is not None and self.default_horizon < timedelta(0):
@@ -56,6 +56,10 @@ class PurgePolicy:
             effective_end = sample.feature_knowledge_time + self.default_horizon
             return effective_end > eval_start_time
 
+        # Fail-closed on unknown horizon / information interval
+        if self.fail_closed_on_unknown:
+            return True
+
         return False
 
 
@@ -63,7 +67,7 @@ class PurgePolicy:
 class EmbargoPolicy:
     """Embargo policy specifying a safety buffer immediately following training."""
 
-    duration: timedelta = field(default_factory=lambda: timedelta(0))
+    duration: timedelta
 
     def __post_init__(self) -> None:
         if self.duration < timedelta(0):
@@ -88,7 +92,9 @@ class SplitPlanConfig:
     step_duration: timedelta
     validation_duration: timedelta | None = None
     purge_policy: PurgePolicy = field(default_factory=PurgePolicy)
-    embargo_policy: EmbargoPolicy = field(default_factory=EmbargoPolicy)
+    embargo_policy: EmbargoPolicy = field(
+        default_factory=lambda: EmbargoPolicy(duration=timedelta(0))
+    )
 
     def __post_init__(self) -> None:
         if self.train_duration <= timedelta(0):
@@ -218,6 +224,13 @@ class WalkForwardPlanner:
             plan_id=plan_id,
             window_policy_name=config.window_policy.value,
             folds=tuple(folds),
+            train_duration=config.train_duration,
+            test_duration=config.test_duration,
+            step_duration=config.step_duration,
+            validation_duration=config.validation_duration,
+            purge_policy=config.purge_policy,
+            embargo_policy=config.embargo_policy,
+            window_policy=config.window_policy,
         )
 
     @classmethod
