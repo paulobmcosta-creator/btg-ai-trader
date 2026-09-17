@@ -71,6 +71,61 @@ def test_banned_phantom_symbol_negative(tmp_path: Path, banned: str) -> None:
     assert code == 1
 
 
+def test_inconsistent_statement_coverage_negative(tmp_path: Path) -> None:
+    doc = tmp_path / "acceptance.md"
+    doc.write_text(
+        "First mention 100/100 statements. Later mention 120/120 statements.",
+        encoding="utf-8",
+    )
+    code, _ = run_symbol_verification(doc_path=doc)
+    assert code == 1
+
+
+def test_inconsistent_branch_coverage_negative(tmp_path: Path) -> None:
+    doc = tmp_path / "acceptance.md"
+    doc.write_text("First mention 50/50 branches. Later mention 60/60 branches.", encoding="utf-8")
+    code, _ = run_symbol_verification(doc_path=doc)
+    assert code == 1
+
+
+def test_inconsistent_test_count_negative(tmp_path: Path) -> None:
+    doc = tmp_path / "acceptance.md"
+    doc.write_text(
+        "First mention 150 passed tests. Later mention 180 passed tests.",
+        encoding="utf-8",
+    )
+    code, _ = run_symbol_verification(doc_path=doc)
+    assert code == 1
+
+
+def test_invalid_sha_negative(tmp_path: Path) -> None:
+    doc = tmp_path / "acceptance.md"
+    doc.write_text("CANONICAL_BASE_SHA = not_a_real_40_hex_sha_123", encoding="utf-8")
+    code, _ = run_symbol_verification(doc_path=doc)
+    assert code == 1
+
+
+def test_invalid_dd_format_negative(tmp_path: Path) -> None:
+    doc = tmp_path / "acceptance.md"
+    doc.write_text("Decision DD-INVALID cited in text.", encoding="utf-8")
+    code, _ = run_symbol_verification(doc_path=doc)
+    assert code == 1
+
+
+def test_out_of_range_ac_negative(tmp_path: Path) -> None:
+    doc = tmp_path / "acceptance.md"
+    doc.write_text("Capability S4-AC-99 cited in text.", encoding="utf-8")
+    code, _ = run_symbol_verification(doc_path=doc)
+    assert code == 1
+
+
+def test_out_of_range_nc_negative(tmp_path: Path) -> None:
+    doc = tmp_path / "acceptance.md"
+    doc.write_text("Negative capability S4-NC-99 cited in text.", encoding="utf-8")
+    code, _ = run_symbol_verification(doc_path=doc)
+    assert code == 1
+
+
 def test_real_acceptance_passes() -> None:
     assert ACCEPTANCE_DOC.is_file()
     assert verify_acceptance_symbols(doc_path=ACCEPTANCE_DOC) == 0

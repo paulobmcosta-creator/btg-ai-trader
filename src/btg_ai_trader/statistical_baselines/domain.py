@@ -72,7 +72,8 @@ class PredictionInput:
     reference_value: Decimal | None = None
     information_interval: tuple[datetime, datetime] | None = None
     source_lineage: str = ""
-    metadata: Mapping[str, str] = field(default_factory=dict)
+    feature_metadata: Mapping[str, str] = field(default_factory=dict)
+    audit_metadata: Mapping[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not self.sample_id or not isinstance(self.sample_id, str):
@@ -89,7 +90,13 @@ class PredictionInput:
                     f"information_interval start ({start}) cannot be after end ({end})"
                 )
 
-        object.__setattr__(self, "metadata", _freeze_mapping(self.metadata))
+        object.__setattr__(self, "feature_metadata", _freeze_mapping(self.feature_metadata))
+        object.__setattr__(self, "audit_metadata", _freeze_mapping(self.audit_metadata))
+
+    @property
+    def metadata(self) -> Mapping[str, str]:
+        """Expose feature-safe metadata under generic metadata attribute for compatibility."""
+        return self.feature_metadata
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,6 +112,8 @@ class StatisticalSample:
     information_interval: tuple[datetime, datetime] | None = None
     source_lineage: str = ""
     metadata: Mapping[str, str] = field(default_factory=dict)
+    feature_metadata: Mapping[str, str] = field(default_factory=dict)
+    audit_metadata: Mapping[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not self.sample_id or not isinstance(self.sample_id, str):
@@ -126,6 +135,11 @@ class StatisticalSample:
             if start > end:
                 raise ValueError(
                     f"information_interval start ({start}) cannot be after end ({end})"
+                )
+            if end > self.target_knowledge_time:
+                raise CausalLeakageError(
+                    f"information_interval end ({end}) cannot be later than "
+                    f"target_knowledge_time ({self.target_knowledge_time})"
                 )
 
         # Validate and canonicalize target value consistency with target semantics
@@ -168,7 +182,19 @@ class StatisticalSample:
         else:
             raise ValueError(f"Unsupported target_semantics: {self.target_semantics}")
 
+        eff_feature_meta = dict(self.feature_metadata)
+        eff_audit_meta = dict(self.audit_metadata)
+        if self.metadata and not eff_feature_meta and not eff_audit_meta:
+            eff_audit_meta = dict(self.metadata)
+            eff_feature_meta = {
+                k: v
+                for k, v in self.metadata.items()
+                if not any(banned in k.lower() for banned in ("target", "label", "future"))
+            }
+
         object.__setattr__(self, "metadata", _freeze_mapping(self.metadata))
+        object.__setattr__(self, "feature_metadata", _freeze_mapping(eff_feature_meta))
+        object.__setattr__(self, "audit_metadata", _freeze_mapping(eff_audit_meta))
 
     def is_causally_admissible_for_fit(self, knowledge_cutoff: datetime) -> bool:
         """Check whether the sample's target was causally available at knowledge_cutoff."""
@@ -184,7 +210,8 @@ class StatisticalSample:
             reference_value=self.reference_value,
             information_interval=self.information_interval,
             source_lineage=self.source_lineage,
-            metadata=self.metadata,
+            feature_metadata=self.feature_metadata,
+            audit_metadata=self.audit_metadata,
         )
 
 

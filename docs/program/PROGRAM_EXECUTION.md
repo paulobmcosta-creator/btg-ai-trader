@@ -159,7 +159,7 @@ Sprint 4 has been fully implemented and verified under single-batch autonomous e
   - Temporal fold evaluation and distribution-preserving aggregation (`evaluation.py`)
   - Candidate comparison with strict protected-test rejection invariant (`comparison.py`)
   - Cryptographic input boundaries, manifests, and evaluation provenance (`provenance.py`)
-- **Verification:** 100% statement (1,110/1,110) and branch (440/440) coverage across all modules and boundary scanner, 134 passed tests, 100-repetition byte-identical determinism, adversarial leakage detection, zero lint errors, zero type errors.
+- **Verification:** 100% statement (1,348/1,348) and branch (456/456) coverage across all modules and boundary scanner, 195 passed tests, 100-repetition byte-identical determinism, adversarial leakage detection, zero lint errors, zero type errors.
 - **Verdict:** `PROPOSED_SPRINT_4_VERDICT = PASS`, `MERGE_RECOMMENDATION = NO (AWAITING INDEPENDENT AUDIT)`.
 
 ## Promotion boundary — Sprint 5

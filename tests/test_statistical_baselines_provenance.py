@@ -26,6 +26,10 @@ from btg_ai_trader.statistical_baselines.provenance import (
     StatisticalEvaluationInputBoundary,
     StatisticalEvaluationManifest,
 )
+from btg_ai_trader.statistical_baselines.splits import (
+    EmbargoPolicy,
+    PurgePolicy,
+)
 
 
 def _make_sample(
@@ -171,12 +175,19 @@ def test_manifest_creation_and_integrity() -> None:
         knowledge_cutoff=t1,
         window_policy_name="EXPANDING",
     )
-    plan = WalkForwardPlan(plan_id="wf_1", window_policy_name="EXPANDING", folds=(fold,))
+    plan = WalkForwardPlan(
+        plan_id="wf_1",
+        window_policy_name="EXPANDING",
+        folds=(fold,),
+        purge_policy=PurgePolicy(purge_overlapping=True, fail_closed_on_unknown=False),
+        embargo_policy=EmbargoPolicy(duration=timedelta(0)),
+    )
 
     s1 = _make_sample("s1", t0, t0 + timedelta(minutes=30), Decimal("10"))
     samples = [s1]
 
-    cid = CandidateIdentity("HistoricalMeanBaseline", {}, TargetSemantics.CONTINUOUS, "v1.0.0")
+    revision = "git:s4_commit"
+    cid = CandidateIdentity("HistoricalMeanBaseline", {}, TargetSemantics.CONTINUOUS, revision)
     f_res = FoldEvaluationResult(
         fold_id="f1",
         candidate_id=cid.candidate_id,
@@ -207,7 +218,7 @@ def test_manifest_creation_and_integrity() -> None:
         candidate_identities=[cid],
         aggregate_results=[agg_res],
         comparison_results=[comp_res],
-        code_revision="git:s4_commit",
+        code_revision=revision,
         execution_timestamp=t0,
     )
 

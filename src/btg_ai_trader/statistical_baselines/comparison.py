@@ -229,11 +229,7 @@ class Comparator:
                     f"Experimental parity violation: numeric policies differ "
                     f"({r.numeric_policy} != {first_numeric_policy})"
                 )
-            if (
-                first_fp
-                and r.evaluation_context_fingerprint
-                and r.evaluation_context_fingerprint != first_fp
-            ):
+            if r.evaluation_context_fingerprint != first_fp:
                 raise ParityViolationError(
                     f"NOT_COMPARABLE: Evaluation context parity mismatch between {r.candidate_id} "
                     f"and {first.candidate_id}"

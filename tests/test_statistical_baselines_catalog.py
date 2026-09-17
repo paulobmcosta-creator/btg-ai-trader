@@ -40,7 +40,7 @@ def test_constant_baseline() -> None:
     t0 = datetime(2026, 9, 1, 10, 0, tzinfo=UTC)
     t1 = datetime(2026, 9, 1, 11, 0, tzinfo=UTC)
 
-    b = ConstantBaseline(constant_value=Decimal("42.0"))
+    b = ConstantBaseline(constant_value=Decimal("42.0"), code_revision="v1.0.0")
     assert b.identity.baseline_type == "ConstantBaseline"
     assert b.is_fitted is False
     assert TargetSemantics.CONTINUOUS in b.supported_semantics
@@ -70,6 +70,7 @@ def test_constant_baseline() -> None:
         constant_class="UP",
         constant_probability=Decimal("0.7"),
         semantics=TargetSemantics.CATEGORICAL,
+        code_revision="v1.0.0",
     )
     b_prob.fit([], knowledge_cutoff=t0)
     eval_cat = _make_sample(
@@ -84,7 +85,7 @@ def test_persistence_baseline() -> None:
     t0 = datetime(2026, 9, 1, 10, 0, tzinfo=UTC)
     cutoff = datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
 
-    b = PersistenceBaseline()
+    b = PersistenceBaseline(code_revision="v1.0.0")
     assert b.supported_semantics == frozenset([TargetSemantics.CONTINUOUS])
 
     # Empty fit
@@ -113,7 +114,7 @@ def test_historical_mean_baseline() -> None:
     t0 = datetime(2026, 9, 1, 10, 0, tzinfo=UTC)
     cutoff = datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
 
-    b = HistoricalMeanBaseline()
+    b = HistoricalMeanBaseline(code_revision="v1.0.0")
     b.fit([], knowledge_cutoff=cutoff)
     eval_s = _make_sample(
         "s_eval", cutoff + timedelta(hours=1), cutoff + timedelta(hours=2), Decimal("0")
@@ -133,7 +134,7 @@ def test_historical_median_baseline() -> None:
     t0 = datetime(2026, 9, 1, 10, 0, tzinfo=UTC)
     cutoff = datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
 
-    b = HistoricalMedianBaseline()
+    b = HistoricalMedianBaseline(code_revision="v1.0.0")
     b.fit([], knowledge_cutoff=cutoff)
     eval_s = _make_sample(
         "s_eval", cutoff + timedelta(hours=1), cutoff + timedelta(hours=2), Decimal("0")
@@ -159,7 +160,7 @@ def test_historical_prior_probability_baseline() -> None:
     t0 = datetime(2026, 9, 1, 10, 0, tzinfo=UTC)
     cutoff = datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
 
-    b = HistoricalPriorProbabilityBaseline()
+    b = HistoricalPriorProbabilityBaseline(code_revision="v1.0.0")
     b.fit([], knowledge_cutoff=cutoff)
     eval_s = _make_sample(
         "s_eval",
@@ -204,7 +205,7 @@ def test_majority_class_baseline() -> None:
     t0 = datetime(2026, 9, 1, 10, 0, tzinfo=UTC)
     cutoff = datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
 
-    b = MajorityClassBaseline()
+    b = MajorityClassBaseline(code_revision="v1.0.0")
     b.fit([], knowledge_cutoff=cutoff)
     eval_s = _make_sample(
         "s_eval",
@@ -236,7 +237,7 @@ def test_last_known_class_baseline() -> None:
     t0 = datetime(2026, 9, 1, 10, 0, tzinfo=UTC)
     cutoff = datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
 
-    b = LastKnownClassBaseline()
+    b = LastKnownClassBaseline(code_revision="v1.0.0")
     b.fit([], knowledge_cutoff=cutoff)
     eval_s = _make_sample(
         "s_eval",
@@ -260,7 +261,7 @@ def test_baseline_causal_and_semantic_enforcement() -> None:
     t0 = datetime(2026, 9, 1, 10, 0, tzinfo=UTC)
     cutoff = datetime(2026, 9, 1, 11, 0, tzinfo=UTC)
 
-    b = PersistenceBaseline()
+    b = PersistenceBaseline(code_revision="v1.0.0")
 
     # Naive knowledge_cutoff rejected
     with pytest.raises(ValueError, match="timezone-aware"):

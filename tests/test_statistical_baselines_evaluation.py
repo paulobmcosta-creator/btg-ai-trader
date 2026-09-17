@@ -126,7 +126,7 @@ def test_evaluate_candidate_on_fold_empty_eval() -> None:
         knowledge_cutoff=t1,
         window_policy_name="EXPANDING",
     )
-    b = HistoricalMeanBaseline()
+    b = HistoricalMeanBaseline(code_revision="v1.0.0")
     res = StatisticalEvaluationEngine.evaluate_candidate_on_fold(
         baseline=b,
         fold=fold,
@@ -168,7 +168,7 @@ def test_evaluate_candidate_on_fold_continuous() -> None:
     s_te1 = _make_sample("te1", t1 + timedelta(minutes=5), t_te1, Decimal("12"))
     s_te2 = _make_sample("te2", t1 + timedelta(minutes=15), t_te2, Decimal("18"))
 
-    b = HistoricalMeanBaseline()
+    b = HistoricalMeanBaseline(code_revision="v1.0.0")
     res = StatisticalEvaluationEngine.evaluate_candidate_on_fold(
         baseline=b,
         fold=fold,
@@ -229,7 +229,7 @@ def test_evaluate_candidate_on_fold_binary_probability() -> None:
         TargetSemantics.BINARY_PROBABILITY,
     )
 
-    b = HistoricalPriorProbabilityBaseline()
+    b = HistoricalPriorProbabilityBaseline(code_revision="v1.0.0")
     res = StatisticalEvaluationEngine.evaluate_candidate_on_fold(
         baseline=b,
         fold=fold,
@@ -281,7 +281,7 @@ def test_evaluate_candidate_on_fold_categorical() -> None:
         TargetSemantics.CATEGORICAL,
     )
 
-    b = MajorityClassBaseline()
+    b = MajorityClassBaseline(code_revision="v1.0.0")
     res = StatisticalEvaluationEngine.evaluate_candidate_on_fold(
         baseline=b,
         fold=fold,
@@ -312,7 +312,7 @@ def test_evaluate_candidate_on_fold_cold_starts() -> None:
     s_te_cont = _make_sample(
         "te_c", t1 + timedelta(minutes=5), t1 + timedelta(minutes=10), Decimal("10")
     )
-    b_cont = HistoricalMeanBaseline()
+    b_cont = HistoricalMeanBaseline(code_revision="v1.0.0")
     res_cont = StatisticalEvaluationEngine.evaluate_candidate_on_fold(
         baseline=b_cont,
         fold=fold,
@@ -331,7 +331,7 @@ def test_evaluate_candidate_on_fold_cold_starts() -> None:
         Decimal("1"),
         TargetSemantics.BINARY_PROBABILITY,
     )
-    b_bin = HistoricalPriorProbabilityBaseline()
+    b_bin = HistoricalPriorProbabilityBaseline(code_revision="v1.0.0")
     res_bin = StatisticalEvaluationEngine.evaluate_candidate_on_fold(
         baseline=b_bin,
         fold=fold,
@@ -350,7 +350,7 @@ def test_evaluate_candidate_on_fold_cold_starts() -> None:
         "BUY",
         TargetSemantics.CATEGORICAL,
     )
-    b_cat = MajorityClassBaseline()
+    b_cat = MajorityClassBaseline(code_revision="v1.0.0")
     res_cat = StatisticalEvaluationEngine.evaluate_candidate_on_fold(
         baseline=b_cat,
         fold=fold,
@@ -366,11 +366,20 @@ def test_evaluate_candidate_on_plan_walk_forward() -> None:
     t_start = datetime(2026, 9, 1, 9, 0, tzinfo=UTC)
     t_end = datetime(2026, 9, 1, 13, 0, tzinfo=UTC)
 
+    purge_pol = PurgePolicy(
+        default_horizon=timedelta(minutes=10),
+        purge_overlapping=True,
+        fail_closed_on_unknown=False,
+    )
+    embargo_pol = EmbargoPolicy(duration=timedelta(0))
+
     cfg = SplitPlanConfig(
         window_policy=WindowPolicy.EXPANDING,
         train_duration=timedelta(hours=2),
         test_duration=timedelta(hours=1),
         step_duration=timedelta(hours=1),
+        purge_policy=purge_pol,
+        embargo_policy=embargo_pol,
     )
     plan = WalkForwardPlanner.generate_plan(t_start, t_end, cfg, plan_id="wf_plan")
     assert len(plan.folds) == 2
@@ -400,28 +409,23 @@ def test_evaluate_candidate_on_plan_walk_forward() -> None:
         ),
     ]
 
-    purge_pol = PurgePolicy(default_horizon=timedelta(minutes=10))
-    embargo_pol = EmbargoPolicy(duration=timedelta(0))
-
     # VALIDATION_SELECTION role error when no validation boundary
     with pytest.raises(ValueError, match="Cannot evaluate on VALIDATION_SELECTION"):
         StatisticalEvaluationEngine.evaluate_candidate_on_plan(
-            baseline_factory=HistoricalMeanBaseline,
+            baseline_factory=lambda: HistoricalMeanBaseline(code_revision="v1.0.0"),
             plan=plan,
             samples=samples,
             role=EvaluationRole.VALIDATION_SELECTION,
-            purge_policy=purge_pol,
-            embargo_policy=embargo_pol,
+            code_revision="v1.0.0",
         )
 
     # PROTECTED_TEST role
     agg_res = StatisticalEvaluationEngine.evaluate_candidate_on_plan(
-        baseline_factory=HistoricalMeanBaseline,
+        baseline_factory=lambda: HistoricalMeanBaseline(code_revision="v1.0.0"),
         plan=plan,
         samples=samples,
         role=EvaluationRole.PROTECTED_TEST,
-        purge_policy=purge_pol,
-        embargo_policy=embargo_pol,
+        code_revision="v1.0.0",
     )
 
     assert len(agg_res.fold_results) == 2
@@ -435,15 +439,16 @@ def test_evaluate_candidate_on_plan_walk_forward() -> None:
         validation_duration=timedelta(hours=1),
         test_duration=timedelta(hours=1),
         step_duration=timedelta(hours=1),
+        purge_policy=purge_pol,
+        embargo_policy=embargo_pol,
     )
     plan_val = WalkForwardPlanner.generate_plan(t_start, t_end, cfg_val, plan_id="wf_val_plan")
     agg_val = StatisticalEvaluationEngine.evaluate_candidate_on_plan(
-        baseline_factory=HistoricalMeanBaseline,
+        baseline_factory=lambda: HistoricalMeanBaseline(code_revision="v1.0.0"),
         plan=plan_val,
         samples=samples,
         role=EvaluationRole.VALIDATION_SELECTION,
-        purge_policy=purge_pol,
-        embargo_policy=embargo_pol,
+        code_revision="v1.0.0",
     )
     assert len(agg_val.fold_results) > 0
     assert agg_val.evaluation_role == EvaluationRole.VALIDATION_SELECTION

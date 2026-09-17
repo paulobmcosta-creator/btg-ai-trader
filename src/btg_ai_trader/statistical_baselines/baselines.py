@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, localcontext
 from typing import Any, Protocol, runtime_checkable
 
 from btg_ai_trader.statistical_baselines.domain import (
@@ -16,6 +16,10 @@ from btg_ai_trader.statistical_baselines.domain import (
     StatisticalSample,
     TargetSemantics,
     _validate_timezone_aware,
+)
+from btg_ai_trader.statistical_baselines.metrics import (
+    DEFAULT_NUMERIC_POLICY,
+    NumericPolicy,
 )
 
 
@@ -38,7 +42,12 @@ class StatisticalBaseline(Protocol):
         """Set of target semantics supported by this baseline."""
         ...
 
-    def fit(self, samples: Sequence[StatisticalSample], knowledge_cutoff: datetime) -> None:
+    def fit(
+        self,
+        samples: Sequence[StatisticalSample],
+        knowledge_cutoff: datetime,
+        numeric_policy: NumericPolicy | None = None,
+    ) -> None:
         """Fit the baseline model up to knowledge_cutoff using causally admissible samples."""
         ...
 
@@ -53,16 +62,20 @@ class BaseStatisticalBaseline(ABC):
     def __init__(
         self,
         baseline_type: str,
+        code_revision: str,
         parameters: Mapping[str, Any] | None = None,
         target_semantics: TargetSemantics = TargetSemantics.CONTINUOUS,
-        code_revision: str = "v1.0.0",
+        numeric_policy: NumericPolicy = DEFAULT_NUMERIC_POLICY,
     ) -> None:
         if not code_revision or not isinstance(code_revision, str):
             raise ValueError("code_revision must be a non-empty string explicitly provided")
         self._code_revision = code_revision
+        self._numeric_policy = numeric_policy
+        eff_params = dict(parameters or {})
+        eff_params["numeric_policy"] = numeric_policy.to_canonical_dict()
         self._identity = CandidateIdentity(
             baseline_type=baseline_type,
-            parameters=parameters or {},
+            parameters=eff_params,
             target_semantics=target_semantics,
             code_revision=code_revision,
         )
@@ -87,30 +100,33 @@ class BaseStatisticalBaseline(ABC):
         self,
         samples: Sequence[StatisticalSample],
         knowledge_cutoff: datetime,
+        numeric_policy: NumericPolicy | None = None,
     ) -> None:
         """Fit baseline on causal samples available up to knowledge_cutoff."""
-        _validate_timezone_aware(knowledge_cutoff, "knowledge_cutoff")
-        for s in samples:
-            if not s.is_causally_admissible_for_fit(knowledge_cutoff):
-                raise ValueError(
-                    f"Sample {s.sample_id} is not causally admissible at cutoff "
-                    f"{knowledge_cutoff}: target_knowledge_time={s.target_knowledge_time}"
-                )
-            if s.target_semantics not in self.supported_semantics:
-                raise ValueError(
-                    f"Sample {s.sample_id} semantics {s.target_semantics} not supported by "
-                    f"{self.identity.baseline_type}; supported: {self.supported_semantics}"
-                )
-        self._knowledge_cutoff = knowledge_cutoff
+        policy = numeric_policy or self._numeric_policy
+        with localcontext(policy.get_context()):
+            _validate_timezone_aware(knowledge_cutoff, "knowledge_cutoff")
+            for s in samples:
+                if not s.is_causally_admissible_for_fit(knowledge_cutoff):
+                    raise ValueError(
+                        f"Sample {s.sample_id} is not causally admissible at cutoff "
+                        f"{knowledge_cutoff}: target_knowledge_time={s.target_knowledge_time}"
+                    )
+                if s.target_semantics not in self.supported_semantics:
+                    raise ValueError(
+                        f"Sample {s.sample_id} semantics {s.target_semantics} not supported by "
+                        f"{self.identity.baseline_type}; supported: {self.supported_semantics}"
+                    )
+            self._knowledge_cutoff = knowledge_cutoff
 
-        if not samples:
-            self._is_cold_start = True
-            self._fit_empty()
-        else:
-            self._is_cold_start = False
-            self._fit_samples(samples)
+            if not samples:
+                self._is_cold_start = True
+                self._fit_empty()
+            else:
+                self._is_cold_start = False
+                self._fit_samples(samples)
 
-        self._is_fitted = True
+            self._is_fitted = True
 
     @abstractmethod
     def _fit_empty(self) -> None:
@@ -124,21 +140,23 @@ class BaseStatisticalBaseline(ABC):
 
     def predict(self, sample: StatisticalSample | PredictionInput) -> PredictionResult:
         """Generate prediction for sample, checking state and semantics."""
-        if not self._is_fitted:
-            raise RuntimeError(
-                f"Baseline {self.identity.baseline_type} must be fitted before predict"
+        with localcontext(self._numeric_policy.get_context()):
+            if not self._is_fitted:
+                raise RuntimeError(
+                    f"Baseline {self.identity.baseline_type} must be fitted before predict"
+                )
+            pred_input = (
+                sample if isinstance(sample, PredictionInput) else sample.to_prediction_input()
             )
-        pred_input = (
-            sample if isinstance(sample, PredictionInput) else sample.to_prediction_input()
-        )
-        if pred_input.target_semantics not in self.supported_semantics:
-            raise ValueError(
-                f"Sample {pred_input.sample_id} semantics {pred_input.target_semantics} "
-                f"not supported by {self.identity.baseline_type}"
-            )
+            if pred_input.target_semantics not in self.supported_semantics:
+                raise ValueError(
+                    f"Sample {pred_input.sample_id} semantics {pred_input.target_semantics} "
+                    f"not supported by {self.identity.baseline_type}"
+                )
 
-        assert self._knowledge_cutoff is not None
-        return self._predict_sample(pred_input)
+            assert self._knowledge_cutoff is not None
+            return self._predict_sample(pred_input)
+
 
     @abstractmethod
     def _predict_sample(self, sample: PredictionInput) -> PredictionResult:
@@ -151,11 +169,12 @@ class ConstantBaseline(BaseStatisticalBaseline):
 
     def __init__(
         self,
+        code_revision: str,
         constant_value: Decimal | None = None,
         constant_probability: Decimal | None = None,
         constant_class: str | None = None,
         semantics: TargetSemantics = TargetSemantics.CONTINUOUS,
-        code_revision: str = "v1.0.0",
+        numeric_policy: NumericPolicy = DEFAULT_NUMERIC_POLICY,
     ) -> None:
         if semantics is TargetSemantics.CONTINUOUS:
             if constant_value is None:
@@ -220,9 +239,10 @@ class ConstantBaseline(BaseStatisticalBaseline):
 
         super().__init__(
             baseline_type="ConstantBaseline",
+            code_revision=code_revision,
             parameters=params,
             target_semantics=semantics,
-            code_revision=code_revision,
+            numeric_policy=numeric_policy,
         )
         self._constant_value = constant_value
         self._constant_probability = constant_probability
@@ -252,13 +272,15 @@ class PersistenceBaseline(BaseStatisticalBaseline):
 
     def __init__(
         self,
-        code_revision: str = "v1.0.0",
+        code_revision: str,
+        numeric_policy: NumericPolicy = DEFAULT_NUMERIC_POLICY,
     ) -> None:
         super().__init__(
             baseline_type="PersistenceBaseline",
+            code_revision=code_revision,
             parameters={},
             target_semantics=TargetSemantics.CONTINUOUS,
-            code_revision=code_revision,
+            numeric_policy=numeric_policy,
         )
         self._last_value: Decimal | None = None
 
@@ -288,13 +310,15 @@ class HistoricalMeanBaseline(BaseStatisticalBaseline):
 
     def __init__(
         self,
-        code_revision: str = "v1.0.0",
+        code_revision: str,
+        numeric_policy: NumericPolicy = DEFAULT_NUMERIC_POLICY,
     ) -> None:
         super().__init__(
             baseline_type="HistoricalMeanBaseline",
+            code_revision=code_revision,
             parameters={},
             target_semantics=TargetSemantics.CONTINUOUS,
-            code_revision=code_revision,
+            numeric_policy=numeric_policy,
         )
         self._mean_value: Decimal | None = None
 
@@ -302,10 +326,11 @@ class HistoricalMeanBaseline(BaseStatisticalBaseline):
         self._mean_value = None
 
     def _fit_samples(self, samples: Sequence[StatisticalSample]) -> None:
-        total = sum(
-            s.target_value for s in samples if isinstance(s.target_value, Decimal)
-        )
-        self._mean_value = total / Decimal(len(samples))
+        with localcontext(self._numeric_policy.get_context()):
+            total = sum(
+                s.target_value for s in samples if isinstance(s.target_value, Decimal)
+            )
+            self._mean_value = total / Decimal(len(samples))
 
     def _predict_sample(self, sample: PredictionInput) -> PredictionResult:
         assert self._knowledge_cutoff is not None
@@ -325,13 +350,15 @@ class HistoricalMedianBaseline(BaseStatisticalBaseline):
 
     def __init__(
         self,
-        code_revision: str = "v1.0.0",
+        code_revision: str,
+        numeric_policy: NumericPolicy = DEFAULT_NUMERIC_POLICY,
     ) -> None:
         super().__init__(
             baseline_type="HistoricalMedianBaseline",
+            code_revision=code_revision,
             parameters={},
             target_semantics=TargetSemantics.CONTINUOUS,
-            code_revision=code_revision,
+            numeric_policy=numeric_policy,
         )
         self._median_value: Decimal | None = None
 
@@ -339,15 +366,16 @@ class HistoricalMedianBaseline(BaseStatisticalBaseline):
         self._median_value = None
 
     def _fit_samples(self, samples: Sequence[StatisticalSample]) -> None:
-        sorted_vals = sorted(
-            s.target_value for s in samples if isinstance(s.target_value, Decimal)
-        )
-        n = len(sorted_vals)
-        if n % 2 == 1:
-            self._median_value = sorted_vals[n // 2]
-        else:
-            mid = n // 2
-            self._median_value = (sorted_vals[mid - 1] + sorted_vals[mid]) / Decimal(2)
+        with localcontext(self._numeric_policy.get_context()):
+            sorted_vals = sorted(
+                s.target_value for s in samples if isinstance(s.target_value, Decimal)
+            )
+            n = len(sorted_vals)
+            if n % 2 == 1:
+                self._median_value = sorted_vals[n // 2]
+            else:
+                mid = n // 2
+                self._median_value = (sorted_vals[mid - 1] + sorted_vals[mid]) / Decimal(2)
 
     def _predict_sample(self, sample: PredictionInput) -> PredictionResult:
         assert self._knowledge_cutoff is not None
@@ -367,13 +395,15 @@ class HistoricalPriorProbabilityBaseline(BaseStatisticalBaseline):
 
     def __init__(
         self,
-        code_revision: str = "v1.0.0",
+        code_revision: str,
+        numeric_policy: NumericPolicy = DEFAULT_NUMERIC_POLICY,
     ) -> None:
         super().__init__(
             baseline_type="HistoricalPriorProbabilityBaseline",
+            code_revision=code_revision,
             parameters={},
             target_semantics=TargetSemantics.BINARY_PROBABILITY,
-            code_revision=code_revision,
+            numeric_policy=numeric_policy,
         )
         self._prior_probability: Decimal | None = None
 
@@ -381,10 +411,11 @@ class HistoricalPriorProbabilityBaseline(BaseStatisticalBaseline):
         self._prior_probability = None
 
     def _fit_samples(self, samples: Sequence[StatisticalSample]) -> None:
-        total_ones = sum(
-            Decimal(1) for s in samples if s.target_value == Decimal(1)
-        )
-        self._prior_probability = total_ones / Decimal(len(samples))
+        with localcontext(self._numeric_policy.get_context()):
+            total_ones = sum(
+                Decimal(1) for s in samples if s.target_value == Decimal(1)
+            )
+            self._prior_probability = total_ones / Decimal(len(samples))
 
     def _predict_sample(self, sample: PredictionInput) -> PredictionResult:
         assert self._knowledge_cutoff is not None
@@ -412,8 +443,9 @@ class MajorityClassBaseline(BaseStatisticalBaseline):
 
     def __init__(
         self,
+        code_revision: str,
         target_semantics: TargetSemantics = TargetSemantics.CATEGORICAL,
-        code_revision: str = "v1.0.0",
+        numeric_policy: NumericPolicy = DEFAULT_NUMERIC_POLICY,
     ) -> None:
         if target_semantics is not TargetSemantics.CATEGORICAL:
             raise ValueError(
@@ -422,9 +454,10 @@ class MajorityClassBaseline(BaseStatisticalBaseline):
             )
         super().__init__(
             baseline_type="MajorityClassBaseline",
+            code_revision=code_revision,
             parameters={},
             target_semantics=TargetSemantics.CATEGORICAL,
-            code_revision=code_revision,
+            numeric_policy=numeric_policy,
         )
         self._majority_class: str | None = None
         self._prevalence: Decimal | None = None
@@ -434,12 +467,13 @@ class MajorityClassBaseline(BaseStatisticalBaseline):
         self._prevalence = None
 
     def _fit_samples(self, samples: Sequence[StatisticalSample]) -> None:
-        counts = Counter(str(s.target_value) for s in samples)
-        # Lexical order tie breaking: sort keys then max by count
-        sorted_classes = sorted(counts.keys())
-        winner = max(sorted_classes, key=lambda c: counts[c])
-        self._majority_class = winner
-        self._prevalence = Decimal(counts[winner]) / Decimal(len(samples))
+        with localcontext(self._numeric_policy.get_context()):
+            counts = Counter(str(s.target_value) for s in samples)
+            # Lexical order tie breaking: sort keys then max by count
+            sorted_classes = sorted(counts.keys())
+            winner = max(sorted_classes, key=lambda c: counts[c])
+            self._majority_class = winner
+            self._prevalence = Decimal(counts[winner]) / Decimal(len(samples))
 
     def _predict_sample(self, sample: PredictionInput) -> PredictionResult:
         assert self._knowledge_cutoff is not None
@@ -459,14 +493,16 @@ class LastKnownClassBaseline(BaseStatisticalBaseline):
 
     def __init__(
         self,
+        code_revision: str,
         target_semantics: TargetSemantics = TargetSemantics.CATEGORICAL,
-        code_revision: str = "v1.0.0",
+        numeric_policy: NumericPolicy = DEFAULT_NUMERIC_POLICY,
     ) -> None:
         super().__init__(
             baseline_type="LastKnownClassBaseline",
+            code_revision=code_revision,
             parameters={},
             target_semantics=target_semantics,
-            code_revision=code_revision,
+            numeric_policy=numeric_policy,
         )
         self._last_class: str | None = None
 

@@ -228,6 +228,78 @@ def extract_markdown_candidates(
     }
 
 
+def check_structural_consistency(content: str) -> list[str]:
+    """Check structural consistency of citations in the acceptance document.
+
+    Asserts:
+    1. Single authoritative statement coverage count.
+    2. Single authoritative branch coverage count.
+    3. Single authoritative S4 test count.
+    4. Valid commit SHAs in evidence and configuration blocks (40 hex chars).
+    5. All DD citations follow the format 'DD-\\d+'.
+    6. All S4-AC citations fall within S4-AC-01..30.
+    7. All S4-NC citations fall within S4-NC-01..25.
+    """
+    findings: list[str] = []
+
+    # 1. Authoritative statement coverage counts
+    stmt_matches = re.findall(r"(\d[\d,]*)\s*/\s*(\d[\d,]*)\s*statements", content)
+    stmt_set = {f"{c}/{t}" for c, t in stmt_matches}
+    if len(stmt_set) > 1:
+        findings.append(
+            f"Conflicting statement coverage counts found in acceptance document: "
+            f"{sorted(stmt_set)}"
+        )
+
+    # 2. Authoritative branch coverage counts
+    branch_matches = re.findall(r"(\d[\d,]*)\s*/\s*(\d[\d,]*)\s*branches", content)
+    branch_set = {f"{c}/{t}" for c, t in branch_matches}
+    if len(branch_set) > 1:
+        findings.append(
+            f"Conflicting branch coverage counts found in acceptance document: {sorted(branch_set)}"
+        )
+
+    # 3. Authoritative test counts
+    test_matches = re.findall(r"(\d+)\s*passed tests", content)
+    test_set = set(test_matches)
+    if len(test_set) > 1:
+        findings.append(
+            f"Conflicting S4 passed test counts found in acceptance document: {sorted(test_set)}"
+        )
+
+    # 4. Valid commit SHAs (40 hex chars) in key metadata lines
+    sha_assignments = re.findall(
+        r"(?:BASE_SHA|CANONICAL_BASE_SHA|AUDITED_HEAD|PRE_REMEDIATION_HEAD|CANONICAL_HEAD)\s*=\s*([^\s\n]+)",
+        content,
+    )
+    for sha in sha_assignments:
+        clean_sha = sha.strip("`'\"")
+        if not re.match(r"^[0-9a-fA-F]{40}$", clean_sha):
+            findings.append(
+                f"Cited commit SHA is not a valid 40-character hex string: '{clean_sha}'"
+            )
+
+    # 5. All DD citations follow format DD-\d+
+    dd_matches = re.findall(r"\bDD-[A-Za-z0-9_]+", content)
+    invalid_dds = sorted({d for d in dd_matches if not re.match(r"^DD-\d+$", d)})
+    if invalid_dds:
+        findings.append(f"Invalid DD citation format found (must be DD-\\d+): {invalid_dds}")
+
+    # 6. S4-AC range: S4-AC-01..30
+    ac_matches = re.findall(r"S4-AC-(\d+)", content)
+    invalid_acs = sorted({f"S4-AC-{m}" for m in ac_matches if not (1 <= int(m) <= 30)})
+    if invalid_acs:
+        findings.append(f"S4-AC citations outside authorized range S4-AC-01..30: {invalid_acs}")
+
+    # 7. S4-NC range: S4-NC-01..25
+    nc_matches = re.findall(r"S4-NC-(\d+)", content)
+    invalid_ncs = sorted({f"S4-NC-{m}" for m in nc_matches if not (1 <= int(m) <= 25)})
+    if invalid_ncs:
+        findings.append(f"S4-NC citations outside authorized range S4-NC-01..25: {invalid_ncs}")
+
+    return findings
+
+
 def run_symbol_verification(
     doc_path: Path | str = ACCEPTANCE_DOC,
     content: str | None = None,
@@ -306,6 +378,9 @@ def run_symbol_verification(
     print(f"CITED_METHODS - REAL_METHODS = {diff_methods}")
     print(f"CITED_ENUM_MEMBERS - REAL_ENUM_MEMBERS = {diff_enum_members}")
     print(f"CITED_TESTS - REAL_TESTS = {diff_tests}")
+
+    # 5. Check structural consistency of acceptance citations
+    findings.extend(check_structural_consistency(content))
 
     if findings:
         print(

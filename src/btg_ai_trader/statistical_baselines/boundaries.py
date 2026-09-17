@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
@@ -164,7 +165,20 @@ class WalkForwardPlan:
         """Create a new plan instance with overridden policies, generating a new plan identity."""
         new_purge = purge_policy if purge_policy is not None else self.purge_policy
         new_embargo = embargo_policy if embargo_policy is not None else self.embargo_policy
-        new_plan_id = f"{self.plan_id}:override"
+        p_sig = (
+            f"purge_ovl={getattr(new_purge, 'purge_overlapping', True)}_"
+            f"fc={getattr(new_purge, 'fail_closed_on_unknown', False)}_"
+            f"h={getattr(new_purge, 'default_horizon', None)}"
+            if new_purge is not None
+            else "none"
+        )
+        e_sig = (
+            f"embargo_dur={getattr(new_embargo, 'duration', None)}"
+            if new_embargo is not None
+            else "none"
+        )
+        sig = hashlib.sha256(f"{p_sig}|{e_sig}".encode()).hexdigest()[:12]
+        new_plan_id = f"{self.plan_id}:policy_{sig}"
         return WalkForwardPlan(
             plan_id=new_plan_id,
             window_policy_name=self.window_policy_name,

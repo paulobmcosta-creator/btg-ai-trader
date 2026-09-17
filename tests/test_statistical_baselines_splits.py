@@ -61,7 +61,7 @@ def test_purge_policy_behavior() -> None:
     sample_with_info = StatisticalSample(
         sample_id="s2",
         feature_knowledge_time=t0,
-        target_knowledge_time=t0,
+        target_knowledge_time=t0 + timedelta(hours=2),
         target_value=Decimal("100"),
         target_semantics=TargetSemantics.CONTINUOUS,
         information_interval=(t0, t0 + timedelta(hours=2)),
@@ -83,7 +83,7 @@ def test_purge_policy_behavior() -> None:
     sample_info_ok = StatisticalSample(
         sample_id="s4",
         feature_knowledge_time=t0,
-        target_knowledge_time=t0,
+        target_knowledge_time=eval_start,
         target_value=Decimal("100"),
         target_semantics=TargetSemantics.CONTINUOUS,
         information_interval=(t0, eval_start),
@@ -113,12 +113,17 @@ def test_embargo_policy() -> None:
 
 
 def test_split_plan_config_validation() -> None:
+    valid_purge = PurgePolicy(purge_overlapping=True, fail_closed_on_unknown=False)
+    valid_embargo = EmbargoPolicy(duration=timedelta(0))
+
     with pytest.raises(ValueError, match="train_duration must be positive"):
         SplitPlanConfig(
             window_policy=WindowPolicy.EXPANDING,
             train_duration=timedelta(0),
             test_duration=timedelta(hours=1),
             step_duration=timedelta(hours=1),
+            purge_policy=valid_purge,
+            embargo_policy=valid_embargo,
         )
 
     with pytest.raises(ValueError, match="test_duration must be positive"):
@@ -127,6 +132,8 @@ def test_split_plan_config_validation() -> None:
             train_duration=timedelta(hours=1),
             test_duration=timedelta(0),
             step_duration=timedelta(hours=1),
+            purge_policy=valid_purge,
+            embargo_policy=valid_embargo,
         )
 
     with pytest.raises(ValueError, match="step_duration must be positive"):
@@ -135,6 +142,8 @@ def test_split_plan_config_validation() -> None:
             train_duration=timedelta(hours=1),
             test_duration=timedelta(hours=1),
             step_duration=timedelta(0),
+            purge_policy=valid_purge,
+            embargo_policy=valid_embargo,
         )
 
     with pytest.raises(ValueError, match="validation_duration must be positive"):
@@ -144,6 +153,8 @@ def test_split_plan_config_validation() -> None:
             test_duration=timedelta(hours=1),
             step_duration=timedelta(hours=1),
             validation_duration=timedelta(0),
+            purge_policy=valid_purge,
+            embargo_policy=valid_embargo,
         )
 
 
@@ -161,6 +172,8 @@ def test_generate_plan_expanding_and_rolling() -> None:
         train_duration=timedelta(hours=2),
         test_duration=timedelta(hours=1),
         step_duration=timedelta(hours=1),
+        purge_policy=PurgePolicy(purge_overlapping=True, fail_closed_on_unknown=False),
+        embargo_policy=EmbargoPolicy(duration=timedelta(0)),
     )
     plan_exp = WalkForwardPlanner.generate_plan(t_start, t_end, cfg_exp, plan_id="exp_plan")
     assert len(plan_exp.folds) == 4
@@ -173,6 +186,8 @@ def test_generate_plan_expanding_and_rolling() -> None:
         train_duration=timedelta(hours=2),
         test_duration=timedelta(hours=1),
         step_duration=timedelta(hours=1),
+        purge_policy=PurgePolicy(purge_overlapping=True, fail_closed_on_unknown=False),
+        embargo_policy=EmbargoPolicy(duration=timedelta(0)),
     )
     plan_roll = WalkForwardPlanner.generate_plan(t_start, t_end, cfg_roll, plan_id="roll_plan")
     assert len(plan_roll.folds) == 4
@@ -191,6 +206,7 @@ def test_generate_plan_with_validation_and_embargo() -> None:
         validation_duration=timedelta(hours=1),
         test_duration=timedelta(hours=1),
         step_duration=timedelta(hours=1),
+        purge_policy=PurgePolicy(purge_overlapping=True, fail_closed_on_unknown=False),
         embargo_policy=EmbargoPolicy(duration=timedelta(minutes=15)),
     )
     plan = WalkForwardPlanner.generate_plan(t_start, t_end, cfg, plan_id="val_emb_plan")
@@ -208,6 +224,8 @@ def test_generate_plan_validation_errors() -> None:
         train_duration=timedelta(hours=2),
         test_duration=timedelta(hours=1),
         step_duration=timedelta(hours=1),
+        purge_policy=PurgePolicy(purge_overlapping=True, fail_closed_on_unknown=False),
+        embargo_policy=EmbargoPolicy(duration=timedelta(0)),
     )
     # Start >= end
     with pytest.raises(ValueError, match="earlier than end_time"):
@@ -256,7 +274,7 @@ def test_partition_samples() -> None:
     s3_purged = StatisticalSample(
         sample_id="s3_purge",
         feature_knowledge_time=t0 + timedelta(minutes=50),
-        target_knowledge_time=t_train_end - timedelta(minutes=5),
+        target_knowledge_time=t_train_end + timedelta(minutes=20),
         target_value=Decimal("30"),
         target_semantics=TargetSemantics.CONTINUOUS,
         information_interval=(t0 + timedelta(minutes=50), t_train_end + timedelta(minutes=15)),

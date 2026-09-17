@@ -6,7 +6,7 @@ import hashlib
 import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 
 from btg_ai_trader.statistical_baselines.boundaries import WalkForwardPlan
@@ -47,7 +47,7 @@ class StatisticalEvaluationInputBoundary:
     candidate_identities: tuple[CandidateIdentity, ...]
     search_family: SearchFamily | None
     plan_digest: str
-    fold_definitions: tuple[dict[str, Any], ...]
+    fold_definitions: tuple[Mapping[str, Any], ...]
     purge_policy: PurgePolicy
     embargo_policy: EmbargoPolicy
     metric_names: tuple[str, ...]
@@ -56,6 +56,40 @@ class StatisticalEvaluationInputBoundary:
     numeric_policy: NumericPolicy
     code_revision: str
     logical_evaluation_digest: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "sample_ids", tuple(self.sample_ids))
+        object.__setattr__(self, "candidate_identities", tuple(self.candidate_identities))
+        object.__setattr__(self, "metric_names", tuple(sorted(self.metric_names)))
+        object.__setattr__(
+            self, "calibration_config", _freeze_mapping(dict(self.calibration_config))
+        )
+        object.__setattr__(
+            self,
+            "fold_definitions",
+            tuple(_freeze_mapping(dict(d)) for d in self.fold_definitions),
+        )
+
+        logical_payload = {
+            "dataset_digest": self.dataset_digest,
+            "source_lineage_digest": self.source_lineage_digest,
+            "target_contract_id": self.target_contract_id,
+            "plan_digest": self.plan_digest,
+            "candidate_ids": [c.candidate_id for c in self.candidate_identities],
+            "search_family": self.search_family.to_canonical_dict() if self.search_family else None,
+            "metric_names": sorted(self.metric_names),
+            "calibration_config": dict(self.calibration_config),
+            "aggregation_policy": self.aggregation_policy.value,
+            "numeric_policy": self.numeric_policy.to_canonical_dict(),
+            "code_revision": self.code_revision,
+        }
+        logical_ser = json.dumps(logical_payload, sort_keys=True, separators=(",", ":"))
+        expected_digest = hashlib.sha256(logical_ser.encode("utf-8")).hexdigest()
+        if self.logical_evaluation_digest != expected_digest:
+            raise ValueError(
+                f"logical_evaluation_digest mismatch: expected {expected_digest}, "
+                f"got {self.logical_evaluation_digest}"
+            )
 
     @classmethod
     def compute_dataset_digest(cls, samples: Sequence[StatisticalSample]) -> str:
@@ -78,6 +112,8 @@ class StatisticalEvaluationInputBoundary:
                 ),
                 "source_lineage": s.source_lineage,
                 "metadata": {k: str(v) for k, v in sorted(s.metadata.items())},
+                "feature_metadata": {k: str(v) for k, v in sorted(s.feature_metadata.items())},
+                "audit_metadata": {k: str(v) for k, v in sorted(s.audit_metadata.items())},
             }
             for idx, s in enumerate(samples)
         ]
@@ -156,8 +192,10 @@ class StatisticalEvaluationInputBoundary:
             for f in plan.folds
         )
 
-        purge_pol = plan.purge_policy or PurgePolicy(purge_overlapping=True)
-        embargo_pol = plan.embargo_policy or EmbargoPolicy(duration=timedelta(0))
+        assert plan.purge_policy is not None
+        assert plan.embargo_policy is not None
+        purge_pol = plan.purge_policy
+        embargo_pol = plan.embargo_policy
 
         logical_payload = {
             "dataset_digest": dataset_digest,
@@ -273,6 +311,10 @@ class StatisticalEvaluationManifest:
         """Compute comprehensive SHA-256 digest for a walk forward plan closing over all boundaries
         and policies.
         """
+        if plan.purge_policy is None:
+            raise ValueError(f"Plan {plan.plan_id} must have purge_policy bound")
+        if plan.embargo_policy is None:
+            raise ValueError(f"Plan {plan.plan_id} must have embargo_policy bound")
         plan_dict = {
             "plan_id": plan.plan_id,
             "window_policy": plan.window_policy_name,
@@ -283,20 +325,16 @@ class StatisticalEvaluationManifest:
                 str(plan.validation_duration) if plan.validation_duration else None
             ),
             "purge_policy": {
-                "purge_overlapping": (
-                    plan.purge_policy.purge_overlapping if plan.purge_policy else True
-                ),
+                "purge_overlapping": plan.purge_policy.purge_overlapping,
                 "default_horizon": (
                     str(plan.purge_policy.default_horizon)
-                    if plan.purge_policy and plan.purge_policy.default_horizon
+                    if plan.purge_policy.default_horizon is not None
                     else None
                 ),
-                "fail_closed_on_unknown": (
-                    plan.purge_policy.fail_closed_on_unknown if plan.purge_policy else True
-                ),
+                "fail_closed_on_unknown": plan.purge_policy.fail_closed_on_unknown,
             },
             "embargo_policy": {
-                "duration": str(plan.embargo_policy.duration) if plan.embargo_policy else "0",
+                "duration": str(plan.embargo_policy.duration),
             },
             "folds": [
                 {
@@ -374,13 +412,71 @@ class StatisticalEvaluationManifest:
             StatisticalEvaluationInputBoundary.compute_source_lineage_digest(valid_samples)
         )
 
-        if input_boundary is None:
+        if input_boundary is not None:
+            if input_boundary.dataset_digest != dataset_digest:
+                raise ValueError(
+                    f"input_boundary dataset_digest ({input_boundary.dataset_digest}) "
+                    f"does not match dataset_digest of samples ({dataset_digest})"
+                )
+            if input_boundary.plan_digest != plan_digest:
+                raise ValueError(
+                    f"input_boundary plan_digest ({input_boundary.plan_digest}) does not match "
+                    f"plan_digest ({plan_digest})"
+                )
+            if input_boundary.code_revision != code_revision:
+                raise ValueError(
+                    f"input_boundary code_revision ({input_boundary.code_revision}) does not match "
+                    f"code_revision ({code_revision})"
+                )
+            expected_cand_ids = tuple(c.candidate_id for c in candidate_identities)
+            actual_cand_ids = tuple(c.candidate_id for c in input_boundary.candidate_identities)
+            if actual_cand_ids != expected_cand_ids:
+                raise ValueError(
+                    f"input_boundary candidate_identities ({actual_cand_ids}) does not match "
+                    f"expected candidate_identities ({expected_cand_ids})"
+                )
+            if aggregate_results:
+                first_agg_policy = aggregate_results[0].aggregation_policy
+                if input_boundary.aggregation_policy != first_agg_policy:
+                    raise ValueError(
+                        f"input_boundary aggregation_policy ({input_boundary.aggregation_policy}) "
+                        f"does not match aggregate_results aggregation_policy ({first_agg_policy})"
+                    )
+        else:
+            first_res = aggregate_results[0] if aggregate_results else None
+            eff_agg_policy = (
+                first_res.aggregation_policy if first_res else FoldAggregationPolicy.EQUAL_FOLD
+            )
+            eff_num_policy = first_res.numeric_policy if first_res else DEFAULT_NUMERIC_POLICY
+            eff_target_contract = (
+                first_res.target_contract_id
+                if (
+                    first_res
+                    and hasattr(first_res, "target_contract_id")
+                    and first_res.target_contract_id
+                )
+                else "generic_target_contract_s4"
+            )
+            eff_metric_names = (
+                tuple(sorted(first_res.aggregate_metrics.keys())) if first_res else ()
+            )
+            eff_cal_cfg: dict[str, Any] = {}
+            if first_res and first_res.fold_results:
+                for fr in first_res.fold_results:
+                    if fr.calibration_report:
+                        eff_cal_cfg = {"bins": fr.calibration_report.num_bins}
+                        break
             input_boundary = StatisticalEvaluationInputBoundary.create(
                 samples=valid_samples,
                 plan=plan,
                 candidate_identities=candidate_identities,
                 code_revision=code_revision,
+                target_contract_id=eff_target_contract,
                 search_family=search_family,
+                metric_names=eff_metric_names,
+                calibration_config=eff_cal_cfg,
+                aggregation_policy=eff_agg_policy,
+                numeric_policy=eff_num_policy,
             )
 
         # Build scientific payload for root hashing (strictly excluding execution timestamp)

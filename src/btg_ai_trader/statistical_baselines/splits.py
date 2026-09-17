@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 
@@ -90,11 +90,9 @@ class SplitPlanConfig:
     train_duration: timedelta
     test_duration: timedelta
     step_duration: timedelta
+    purge_policy: PurgePolicy
+    embargo_policy: EmbargoPolicy
     validation_duration: timedelta | None = None
-    purge_policy: PurgePolicy = field(default_factory=PurgePolicy)
-    embargo_policy: EmbargoPolicy = field(
-        default_factory=lambda: EmbargoPolicy(duration=timedelta(0))
-    )
 
     def __post_init__(self) -> None:
         if self.train_duration <= timedelta(0):
@@ -105,6 +103,10 @@ class SplitPlanConfig:
             raise ValueError("step_duration must be positive")
         if self.validation_duration is not None and self.validation_duration <= timedelta(0):
             raise ValueError("validation_duration must be positive when specified")
+        if self.purge_policy is None:
+            raise ValueError("purge_policy is required")
+        if self.embargo_policy is None:
+            raise ValueError("embargo_policy is required")
 
 
 class WalkForwardPlanner:

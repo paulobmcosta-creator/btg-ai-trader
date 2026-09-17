@@ -54,6 +54,12 @@ def _build_plan() -> WalkForwardPlan:
         validation_duration=timedelta(minutes=30),
         test_duration=timedelta(minutes=30),
         step_duration=timedelta(minutes=30),
+        purge_policy=PurgePolicy(
+            default_horizon=timedelta(minutes=5),
+            purge_overlapping=True,
+            fail_closed_on_unknown=False,
+        ),
+        embargo_policy=EmbargoPolicy(duration=timedelta(0)),
     )
     return WalkForwardPlanner.generate_plan(t0, t_end, cfg, plan_id="plan_det_100")
 
@@ -61,9 +67,8 @@ def _build_plan() -> WalkForwardPlan:
 def test_100_repetition_determinism() -> None:
     samples = _build_dataset()
     plan = _build_plan()
-    purge_pol = PurgePolicy(default_horizon=timedelta(minutes=5))
-    embargo_pol = EmbargoPolicy(duration=timedelta(0))
     ref_timestamp = datetime(2026, 9, 1, 15, 0, tzinfo=UTC)
+    revision = "git:s4_det_test"
 
     first_manifest_digest: str | None = None
     first_mean_mae: Decimal | None = None
@@ -72,22 +77,20 @@ def test_100_repetition_determinism() -> None:
     for _iteration in range(100):
         # Evaluate Mean baseline
         agg_mean = StatisticalEvaluationEngine.evaluate_candidate_on_plan(
-            baseline_factory=HistoricalMeanBaseline,
+            baseline_factory=lambda: HistoricalMeanBaseline(code_revision=revision),
             plan=plan,
             samples=samples,
             role=EvaluationRole.VALIDATION_SELECTION,
-            purge_policy=purge_pol,
-            embargo_policy=embargo_pol,
+            code_revision=revision,
         )
 
         # Evaluate Persistence baseline
         agg_pers = StatisticalEvaluationEngine.evaluate_candidate_on_plan(
-            baseline_factory=PersistenceBaseline,
+            baseline_factory=lambda: PersistenceBaseline(code_revision=revision),
             plan=plan,
             samples=samples,
             role=EvaluationRole.VALIDATION_SELECTION,
-            purge_policy=purge_pol,
-            embargo_policy=embargo_pol,
+            code_revision=revision,
         )
 
         # Compare candidates
@@ -95,8 +98,8 @@ def test_100_repetition_determinism() -> None:
             [agg_mean, agg_pers], metric_name="mean_mae", higher_is_better=False
         )
 
-        mean_inst = HistoricalMeanBaseline()
-        pers_inst = PersistenceBaseline()
+        mean_inst = HistoricalMeanBaseline(code_revision=revision)
+        pers_inst = PersistenceBaseline(code_revision=revision)
 
         manifest = StatisticalEvaluationManifest.create(
             plan=plan,
@@ -104,7 +107,7 @@ def test_100_repetition_determinism() -> None:
             candidate_identities=[mean_inst.identity, pers_inst.identity],
             aggregate_results=[agg_mean, agg_pers],
             comparison_results=[comp],
-            code_revision="git:s4_det_test",
+            code_revision=revision,
             execution_timestamp=ref_timestamp,
         )
 

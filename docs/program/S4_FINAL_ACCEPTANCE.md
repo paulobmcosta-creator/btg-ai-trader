@@ -62,7 +62,7 @@ All entry preconditions (`S4-EG-01..10`) were verified and satisfied:
 
 ## 3. Implementation Overview & Architectural Scope
 
-Sprint 4 implemented the **Prospective Temporal Evaluation & Deterministic Statistical Baselines Catalog** in `src/btg_ai_trader/statistical_baselines/` with 100% statement coverage (1,110/1,110 statements) and 100% branch coverage (440/440 branches) across all 10 modules and the S4 boundary checker, comprising 134 passed tests (80 statistical baselines unit/adversarial tests, 54 S4 boundary and security tests):
+Sprint 4 implemented the **Prospective Temporal Evaluation & Deterministic Statistical Baselines Catalog** in `src/btg_ai_trader/statistical_baselines/` with 100% statement coverage (1,348/1,348 statements) and 100% branch coverage (456/456 branches) across all 10 modules and the S4 boundary checker, comprising 195 passed tests (115 statistical baselines unit/adversarial/remediation tests, 58 S4 boundary and security tests, 22 acceptance symbol verifier tests):
 
 1. **Domain & Types (`domain.py`):**
    - `TargetSemantics` (`CONTINUOUS`, `BINARY_PROBABILITY`, `CATEGORICAL`): Explicit semantic typing for model targets.
@@ -423,9 +423,9 @@ DRIFT_OR_PHANTOM_CITATIONS = 0
 
 ## 9. Test Coverage & Determinism Evidence
 
-- **Statement Coverage:** 1,252 / 1,252 statements (100%)
-- **Branch Coverage:** 424 / 424 branches (100%)
-- **Total S4 Test Count:** 177 passed tests (100 domain/kernel/adversarial/remediation tests + 62 boundary scanner tests + 15 acceptance symbol verifier tests)
+- **Statement Coverage:** 1,348 / 1,348 statements (100%)
+- **Branch Coverage:** 456 / 456 branches (100%)
+- **Total S4 Test Count:** 195 passed tests (115 domain/kernel/adversarial/remediation tests + 58 boundary scanner tests + 22 acceptance symbol verifier tests)
 - **Determinism:** 100 consecutive executions produce exact byte-for-byte identical SHA-256 manifests (`test_100_repetition_determinism`).
 - **Adversarial Invariance:** Explicit tests verify that future target tampering, interval overlap leaks, embargo bypasses, protected-test winner selections, and adaptation reuse on protected boundaries are strictly blocked fail-closed.
 

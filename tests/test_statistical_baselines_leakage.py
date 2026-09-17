@@ -76,7 +76,7 @@ def test_adversarial_future_target_injection_rejected() -> None:
     assert train_set[0].sample_id == "s_legit"
 
     # 2. If directly forced into baseline.fit, fit must raise ValueError and reject it
-    baseline = HistoricalMeanBaseline()
+    baseline = HistoricalMeanBaseline(code_revision="v1.0.0")
     with pytest.raises(ValueError, match="not causally admissible at cutoff"):
         baseline.fit([s_legit, s_future_leak], knowledge_cutoff=cutoff)
 
@@ -95,11 +95,11 @@ def test_adversarial_overlapping_information_interval_purged() -> None:
         window_policy_name="EXPANDING",
     )
 
-    # Target knowledge time is before cutoff, but information interval crosses into eval
+    # Target knowledge time is at information interval end, crossing into eval
     s_overlapping = _make_sample(
         "s_overlapping",
         cutoff - timedelta(minutes=30),
-        cutoff - timedelta(minutes=5),
+        cutoff + timedelta(minutes=20),
         Decimal("50"),
         info_interval=(cutoff - timedelta(minutes=30), cutoff + timedelta(minutes=15)),
     )
