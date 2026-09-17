@@ -33,6 +33,7 @@ from btg_ai_trader.observer.identity import (
     TradableInstrumentId,
 )
 from btg_ai_trader.observer.market import Tick
+from btg_ai_trader.observer.provenance import CodeRevision
 from btg_ai_trader.observer.temporal import EventTime, ObservationTimes
 
 
@@ -104,10 +105,12 @@ def test_100_runs_exact_byte_determinism() -> None:
         latency_model=LatencyModel(decision_latency_us=50, transit_latency_us=100),
         execution_policy=ExecutionPolicy(),
     )
+    code_rev = CodeRevision("a" * 40)
     engine = DeterministicEconomicBacktester(
         instrument_economics=econ,
         assumptions=assumptions,
-        end_of_window_policy=EndOfWindowPolicy.CLOSE_AT_LAST_VALID_QUOTE,
+        code_revision=code_rev,
+        end_of_window_policy=EndOfWindowPolicy.KEEP_OPEN,
     )
 
     t0 = datetime(2026, 9, 16, 10, 0, 0, tzinfo=UTC)
@@ -128,21 +131,17 @@ def test_100_runs_exact_byte_determinism() -> None:
         make_tick_event(3, t2, iid, bid=Decimal("107.0"), ask=Decimal("108.0")),
     ]
 
-    baseline_res = engine.run(actions, events, session_id="fixed-session-seed-100")
-    baseline_json = baseline_res.manifest.to_json()
-    baseline_hash = baseline_res.manifest.manifest_hash.value
+    full_result_canonical_bytes: list[bytes] = []
 
     for i in range(100):
         # Vary external Python random state to verify zero dependence on RNG
         random.seed(i * 1337)
         res = engine.run(actions, events, session_id="fixed-session-seed-100")
-        assert res.manifest.manifest_hash.value == baseline_hash
-        assert res.manifest.to_json() == baseline_json
-        assert res.metrics == baseline_res.metrics
-        assert res.economic_state.pnl == baseline_res.economic_state.pnl
-        assert len(res.fills) == len(baseline_res.fills)
-        for f1, f2 in zip(res.fills, baseline_res.fills, strict=True):
-            assert f1.fill_price == f2.fill_price
-            assert f1.slippage == f2.slippage
-            assert f1.explicit_fee == f2.explicit_fee
-            assert f1.outcome == f2.outcome
+        manifest_bytes = res.manifest.to_json().encode("utf-8")
+        full_result_canonical_bytes.append(manifest_bytes)
+        assert res.manifest.verify_integrity()
+        assert res.economic_state.positions[0].is_flat
+
+    # Assert exactly 1 unique canonical byte representation across all 100 runs
+    assert len(full_result_canonical_bytes) == 100
+    assert len(set(full_result_canonical_bytes)) == 1

@@ -13,17 +13,27 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
+from btg_ai_trader.backtesting.accounting import (
+    BacktestEconomicState,
+    EndOfWindowPolicy,
+)
 from btg_ai_trader.backtesting.assumptions import EconomicAssumptions
-from btg_ai_trader.backtesting.domain import ActionIdentity, BacktestAction
+from btg_ai_trader.backtesting.domain import (
+    ActionIdentity,
+    BacktestAction,
+    InstrumentEconomics,
+    SimulatedFill,
+)
 from btg_ai_trader.backtesting.metrics import DescriptiveBacktestMetrics
 from btg_ai_trader.observer.envelope import EventEnvelope
-from btg_ai_trader.observer.identity import TradableInstrumentId
+from btg_ai_trader.observer.identity import EventId, RunId, TradableInstrumentId
 from btg_ai_trader.observer.market import Tick
-from btg_ai_trader.observer.provenance import CodeRevision, ContentHash
+from btg_ai_trader.observer.provenance import CodeRevision, ConfigHash, ContentHash
 from btg_ai_trader.observer.temporal import require_utc
 from btg_ai_trader.observer.values import require_text
+from btg_ai_trader.replay.core import CausalMarketReplaySchedule, ReplayInputBoundary
 
 
 def sha256_canonical_json(payload: Any) -> ContentHash:
@@ -92,19 +102,26 @@ def compute_actions_hash(actions: Sequence[BacktestAction]) -> ContentHash:
     return sha256_canonical_json(records)
 
 
-def compute_assumptions_hash(assumptions: EconomicAssumptions) -> ContentHash:
-    """Compute deterministic SHA-256 digest over the economic assumptions."""
-    data = {
+def compute_assumptions_hash(
+    assumptions: EconomicAssumptions,
+    instrument_economics: InstrumentEconomics | None = None,
+    end_of_window_policy: EndOfWindowPolicy | None = None,
+) -> ContentHash:
+    """Compute deterministic SHA-256 digest over the complete economic assumptions."""
+    data: dict[str, Any] = {
         "assumptions_id": assumptions.assumptions_id,
         "spread_model": {
-            "max_spread": str(assumptions.spread_model.max_spread)
-            if assumptions.spread_model.max_spread is not None
-            else None,
+            "require_positive_spread": assumptions.spread_model.require_positive_spread,
+            "max_spread": (
+                str(assumptions.spread_model.max_spread)
+                if assumptions.spread_model.max_spread is not None
+                else None
+            ),
         },
         "slippage_model": {
             "type": assumptions.slippage_model.__class__.__name__,
             "points": str(getattr(assumptions.slippage_model, "adverse_points", "0")),
-            "bps": str(getattr(assumptions.slippage_model, "adverse_bps", "0")),
+            "bps": str(getattr(assumptions.slippage_model, "bps", "0")),
         },
         "fee_schedule": {
             "schedule_id": assumptions.fee_schedule.schedule_id,
@@ -112,6 +129,16 @@ def compute_assumptions_hash(assumptions: EconomicAssumptions) -> ContentHash:
             "per_unit": str(assumptions.fee_schedule.per_unit),
             "bps_rate": str(assumptions.fee_schedule.bps_rate),
             "currency": assumptions.fee_schedule.currency,
+            "effective_from": (
+                assumptions.fee_schedule.effective_from.isoformat()
+                if assumptions.fee_schedule.effective_from is not None
+                else None
+            ),
+            "effective_until": (
+                assumptions.fee_schedule.effective_until.isoformat()
+                if assumptions.fee_schedule.effective_until is not None
+                else None
+            ),
         },
         "latency_model": {
             "decision_latency_us": assumptions.latency_model.decision_latency_us,
@@ -120,60 +147,362 @@ def compute_assumptions_hash(assumptions: EconomicAssumptions) -> ContentHash:
         "execution_policy": {
             "small_lot_max_quantity": str(assumptions.execution_policy.small_lot_max_quantity),
             "allow_candle_fills": assumptions.execution_policy.allow_candle_fills,
-            "max_quote_age_us": assumptions.execution_policy.max_quote_age_us,
+            "max_execution_evidence_wait_us": (
+                assumptions.execution_policy.max_execution_evidence_wait_us
+            ),
         },
     }
+    if instrument_economics is not None:
+        data["instrument_economics"] = {
+            "instrument_id": instrument_economics.instrument_id.value,
+            "currency": instrument_economics.currency,
+            "money_per_price_unit": str(instrument_economics.money_per_price_unit),
+            "tick_size": str(instrument_economics.tick_size),
+            "quantity_step": str(instrument_economics.quantity_step),
+        }
+    if end_of_window_policy is not None:
+        data["end_of_window_policy"] = end_of_window_policy.value
+
     return sha256_canonical_json(data)
+
+
+def compute_instrument_economics_hash(econ: InstrumentEconomics) -> ContentHash:
+    """Compute deterministic SHA-256 digest over the InstrumentEconomics configuration."""
+    data = {
+        "instrument_id": econ.instrument_id.value,
+        "currency": econ.currency,
+        "money_per_price_unit": str(econ.money_per_price_unit),
+        "tick_size": str(econ.tick_size),
+        "quantity_step": str(econ.quantity_step),
+    }
+    return sha256_canonical_json(data)
+
+
+def compute_fills_hash(fills: Sequence[SimulatedFill]) -> ContentHash:
+    """Compute deterministic SHA-256 digest over simulated fill executions."""
+    records = []
+    for f in fills:
+        records.append(
+            {
+                "fill_id": f.fill_id.value,
+                "action_id": f.action_id.value,
+                "instrument_id": f.instrument_id.value,
+                "side": f.side.value,
+                "quantity": str(f.quantity),
+                "raw_price": str(f.raw_price),
+                "fill_price": str(f.fill_price),
+                "slippage": str(f.slippage),
+                "explicit_fee": str(f.explicit_fee),
+                "outcome": f.outcome.value,
+                "source_event_id": f.source_event_id.value if f.source_event_id else None,
+                "diagnostic_spread_burden": str(f.diagnostic_spread_burden),
+                "fill_opportunity_time": (
+                    f.timing.fill_opportunity_time.isoformat()
+                    if f.timing.fill_opportunity_time
+                    else None
+                ),
+            }
+        )
+    return sha256_canonical_json(records)
+
+
+def compute_economic_state_hash(state: BacktestEconomicState) -> ContentHash:
+    """Compute deterministic SHA-256 digest over the final BacktestEconomicState."""
+    positions_data = []
+    for p in state.positions:
+        positions_data.append(
+            {
+                "instrument_id": p.instrument_id.value,
+                "quantity": str(p.quantity),
+                "weighted_cost_basis": str(p.weighted_cost_basis),
+                "is_flat": p.is_flat,
+                "is_long": p.is_long,
+                "is_short": p.is_short,
+            }
+        )
+    mark_data = None
+    if state.mark_evidence is not None:
+        mark_data = {
+            "instrument_id": state.mark_evidence.instrument_id.value,
+            "mark_price": str(state.mark_evidence.mark_price),
+            "mark_time": state.mark_evidence.mark_time.isoformat(),
+            "knowledge_time": state.mark_evidence.knowledge_time.isoformat(),
+            "source_event_id": state.mark_evidence.source_event_id.value,
+            "valuation_method": state.mark_evidence.valuation_method,
+        }
+    data = {
+        "gross_realized_pnl": str(state.pnl.gross_realized_pnl),
+        "explicit_fees": str(state.pnl.explicit_fees),
+        "net_realized_pnl": str(state.pnl.net_realized_pnl),
+        "unrealized_pnl": (
+            str(state.pnl.unrealized_pnl) if state.pnl.unrealized_pnl is not None else None
+        ),
+        "total_net_pnl": (
+            str(state.pnl.total_net_pnl) if state.pnl.total_net_pnl is not None else None
+        ),
+        "diagnostic_slippage_burden": str(state.pnl.diagnostic_slippage_burden),
+        "diagnostic_spread_burden": str(state.pnl.diagnostic_spread_burden),
+        "positions": positions_data,
+        "mark_evidence": mark_data,
+    }
+    return sha256_canonical_json(data)
+
+
+def compute_metrics_hash(metrics: DescriptiveBacktestMetrics) -> ContentHash:
+    """Compute deterministic SHA-256 digest over descriptive backtest metrics."""
+    data = {
+        "gross_realized_pnl": str(metrics.gross_realized_pnl),
+        "net_realized_pnl": str(metrics.net_realized_pnl),
+        "total_explicit_fees": str(metrics.total_explicit_fees),
+        "diagnostic_slippage_burden": str(metrics.diagnostic_slippage_burden),
+        "diagnostic_spread_burden": str(metrics.diagnostic_spread_burden),
+        "turnover": str(metrics.turnover),
+        "total_actions": metrics.total_actions,
+        "fill_count": metrics.fill_count,
+        "no_fill_count": metrics.no_fill_count,
+        "indeterminate_count": metrics.indeterminate_count,
+        "rejected_count": metrics.rejected_count,
+        "fill_rate": str(metrics.fill_rate),
+        "closed_trade_count": metrics.closed_trade_count,
+        "winning_trade_count": metrics.winning_trade_count,
+        "losing_trade_count": metrics.losing_trade_count,
+        "breakeven_trade_count": metrics.breakeven_trade_count,
+        "hit_rate": str(metrics.hit_rate),
+        "average_win": str(metrics.average_win),
+        "average_loss": str(metrics.average_loss),
+        "gross_profit_factor": str(metrics.gross_profit_factor),
+        "gross_expectancy": str(metrics.gross_expectancy),
+        "max_drawdown_amount": str(metrics.max_drawdown_amount),
+        "max_drawdown_ratio": (
+            str(metrics.max_drawdown_ratio) if metrics.max_drawdown_ratio is not None else None
+        ),
+    }
+    return sha256_canonical_json(data)
+
+
+def _replay_boundary_to_dict(rb: ReplayInputBoundary) -> dict[str, Any]:
+    return {
+        "run_id": rb.run_id.value,
+        "code_revision": rb.code_revision.value,
+        "config_hash": rb.config_hash.value,
+        "provider_id": rb.provider_id,
+        "capture_scope": rb.capture_scope,
+        "event_ids": [eid.value for eid in rb.event_ids],
+        "content_hashes": [h.value if h is not None else None for h in rb.content_hashes],
+        "temporal_semantics": rb.temporal_semantics,
+    }
+
+
+def _replay_boundary_from_dict(d: dict[str, Any]) -> ReplayInputBoundary:
+    return ReplayInputBoundary(
+        run_id=RunId(d["run_id"]),
+        code_revision=CodeRevision(d["code_revision"]),
+        config_hash=ConfigHash(d["config_hash"]),
+        provider_id=d["provider_id"],
+        capture_scope=d["capture_scope"],
+        event_ids=tuple(EventId(eid) for eid in d["event_ids"]),
+        content_hashes=tuple(
+            ContentHash(h) if h is not None else None for h in d.get("content_hashes", ())
+        ),
+        temporal_semantics=d.get("temporal_semantics", "knowledge_time_v1"),
+    )
 
 
 @dataclass(frozen=True, slots=True)
 class BacktestInputBoundary:
     """Cryptographic provenance of the input data and environment for a backtest run."""
 
-    dataset_hash: ContentHash
+    replay_boundary: ReplayInputBoundary
     actions_hash: ContentHash
     code_revision: CodeRevision
     environment_signature: str
+    derived_input_digest: ContentHash | None = None
 
     def __post_init__(self) -> None:
-        if not isinstance(self.dataset_hash, ContentHash):
-            raise ValueError("dataset_hash must be ContentHash")
+        if not isinstance(self.replay_boundary, ReplayInputBoundary):
+            raise ValueError("replay_boundary must be ReplayInputBoundary")
         if not isinstance(self.actions_hash, ContentHash):
             raise ValueError("actions_hash must be ContentHash")
         if not isinstance(self.code_revision, CodeRevision):
             raise ValueError("code_revision must be CodeRevision")
         require_text(self.environment_signature, "environment_signature")
+        if self.derived_input_digest is not None and not isinstance(
+            self.derived_input_digest, ContentHash
+        ):
+            raise ValueError("derived_input_digest must be ContentHash or None")
+
+    @property
+    def dataset_hash(self) -> ContentHash:
+        """Derived dataset hash for compatibility."""
+        if self.derived_input_digest is not None:
+            return self.derived_input_digest
+        return sha256_canonical_json([eid.value for eid in self.replay_boundary.event_ids])
 
     @classmethod
     def create(
         cls,
-        events: Sequence[EventEnvelope],
-        actions: Sequence[BacktestAction],
-        code_revision_str: str = "ba6c0c41988fc9fefbdff13b0daedf96301dd74c",
+        first_arg: Sequence[EventEnvelope] | Sequence[BacktestAction] | None = None,
+        second_arg: (
+            Sequence[BacktestAction] | Sequence[EventEnvelope] | CodeRevision | str | None
+        ) = None,
+        code_revision: CodeRevision | str | None = None,
+        *,
+        events: Sequence[EventEnvelope] | None = None,
+        actions: Sequence[BacktestAction] | None = None,
+        replay_schedule: CausalMarketReplaySchedule | None = None,
+        replay_boundary: ReplayInputBoundary | None = None,
+        run_id: RunId | str | None = None,
+        config_hash: ConfigHash | str | None = None,
+        provider_id: str | None = None,
+        capture_scope: str | None = None,
     ) -> BacktestInputBoundary:
+        resolved_events: Sequence[EventEnvelope] | None = events
+        resolved_actions: Sequence[BacktestAction] | None = actions
+        resolved_code_raw: CodeRevision | str | None = code_revision
+
+        if first_arg is not None:
+            if (
+                isinstance(first_arg, Sequence)
+                and len(first_arg) > 0
+                and isinstance(first_arg[0], EventEnvelope)
+            ):
+                resolved_events = cast(Sequence[EventEnvelope], first_arg)
+                if isinstance(second_arg, Sequence):
+                    resolved_actions = cast(Sequence[BacktestAction], second_arg)
+                elif second_arg is not None and resolved_code_raw is None:
+                    resolved_code_raw = second_arg
+            elif (
+                isinstance(first_arg, Sequence)
+                and len(first_arg) > 0
+                and isinstance(first_arg[0], BacktestAction)
+            ):
+                resolved_actions = cast(Sequence[BacktestAction], first_arg)
+                if isinstance(second_arg, CodeRevision | str):
+                    resolved_code_raw = second_arg
+                elif isinstance(second_arg, Sequence):
+                    resolved_events = cast(Sequence[EventEnvelope], second_arg)
+            elif isinstance(first_arg, Sequence) and len(first_arg) == 0:
+                if isinstance(second_arg, Sequence):
+                    resolved_events = cast(Sequence[EventEnvelope], first_arg)
+                    resolved_actions = cast(Sequence[BacktestAction], second_arg)
+                else:
+                    resolved_actions = cast(Sequence[BacktestAction], first_arg)
+                    if isinstance(second_arg, CodeRevision | str):
+                        resolved_code_raw = second_arg
+
+        if resolved_code_raw is None:
+            raise ValueError("code_revision must be explicitly provided")
+
+        resolved_revision = (
+            resolved_code_raw
+            if isinstance(resolved_code_raw, CodeRevision)
+            else CodeRevision(str(resolved_code_raw))
+        )
+        act_seq = resolved_actions if resolved_actions is not None else ()
+        resolved_actions_hash = compute_actions_hash(act_seq)
         env_sig = f"python={platform.python_version()};os={sys.platform}"
-        return cls(
-            dataset_hash=compute_dataset_hash(events),
-            actions_hash=compute_actions_hash(actions),
-            code_revision=CodeRevision(code_revision_str),
-            environment_signature=env_sig,
+
+        resolved_derived_digest: ContentHash | None = None
+        if resolved_events is not None:
+            resolved_derived_digest = compute_dataset_hash(resolved_events)
+
+        if replay_boundary is not None:
+            return cls(
+                replay_boundary=replay_boundary,
+                actions_hash=resolved_actions_hash,
+                code_revision=resolved_revision,
+                environment_signature=env_sig,
+                derived_input_digest=resolved_derived_digest,
+            )
+
+        if replay_schedule is not None:
+            return cls(
+                replay_boundary=replay_schedule.boundary,
+                actions_hash=resolved_actions_hash,
+                code_revision=resolved_revision,
+                environment_signature=env_sig,
+                derived_input_digest=resolved_derived_digest,
+            )
+
+        ev_list = tuple(resolved_events) if resolved_events is not None else ()
+        resolved_run_id = (
+            run_id
+            if isinstance(run_id, RunId)
+            else (
+                RunId(str(run_id))
+                if run_id is not None
+                else RunId("00000000-0000-0000-0000-000000000001")
+            )
+        )
+        resolved_cfg_hash = (
+            config_hash
+            if isinstance(config_hash, ConfigHash)
+            else (
+                ConfigHash(str(config_hash))
+                if config_hash is not None
+                else ConfigHash("0" * 64)
+            )
         )
 
-    def to_dict(self) -> dict[str, str]:
-        return {
-            "dataset_hash": self.dataset_hash.value,
+        resolved_prov = provider_id
+        resolved_scope = capture_scope
+        if ev_list:
+            if resolved_prov is None:
+                resolved_prov = ev_list[0].source.provider
+            if resolved_scope is None:
+                resolved_scope = ev_list[0].source.scope
+        else:
+            if resolved_prov is None:
+                resolved_prov = "synthetic"
+            if resolved_scope is None:
+                resolved_scope = "backtest"
+
+        rb = ReplayInputBoundary.from_events(
+            ev_list,
+            run_id=resolved_run_id,
+            code_revision=resolved_revision,
+            config_hash=resolved_cfg_hash,
+            provider_id=resolved_prov,
+            capture_scope=resolved_scope,
+        )
+
+        return cls(
+            replay_boundary=rb,
+            actions_hash=resolved_actions_hash,
+            code_revision=resolved_revision,
+            environment_signature=env_sig,
+            derived_input_digest=resolved_derived_digest,
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {
+            "replay_boundary": _replay_boundary_to_dict(self.replay_boundary),
             "actions_hash": self.actions_hash.value,
             "code_revision": self.code_revision.value,
             "environment_signature": self.environment_signature,
+            "dataset_hash": self.dataset_hash.value,
         }
+        if self.derived_input_digest is not None:
+            d["derived_input_digest"] = self.derived_input_digest.value
+        return d
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> BacktestInputBoundary:
+        rb = _replay_boundary_from_dict(data["replay_boundary"])
+        actions_hash = ContentHash(data["actions_hash"])
+        code_revision = CodeRevision(data["code_revision"])
+        env_sig = data["environment_signature"]
+        derived_digest = (
+            ContentHash(data["derived_input_digest"])
+            if data.get("derived_input_digest")
+            else (ContentHash(data["dataset_hash"]) if data.get("dataset_hash") else None)
+        )
         return cls(
-            dataset_hash=ContentHash(data["dataset_hash"]),
-            actions_hash=ContentHash(data["actions_hash"]),
-            code_revision=CodeRevision(data["code_revision"]),
-            environment_signature=data["environment_signature"],
+            replay_boundary=rb,
+            actions_hash=actions_hash,
+            code_revision=code_revision,
+            environment_signature=env_sig,
+            derived_input_digest=derived_digest,
         )
 
 
@@ -186,6 +515,10 @@ class BacktestRunManifest:
     input_boundary: BacktestInputBoundary
     assumptions_hash: ContentHash
     instrument_id: TradableInstrumentId
+    instrument_economics_hash: ContentHash
+    fills_hash: ContentHash
+    economic_state_hash: ContentHash
+    metrics_hash: ContentHash
     metrics: DescriptiveBacktestMetrics
     manifest_hash: ContentHash
 
@@ -199,6 +532,14 @@ class BacktestRunManifest:
             raise ValueError("assumptions_hash must be ContentHash")
         if not isinstance(self.instrument_id, TradableInstrumentId):
             raise ValueError("instrument_id must be TradableInstrumentId")
+        if not isinstance(self.instrument_economics_hash, ContentHash):
+            raise ValueError("instrument_economics_hash must be ContentHash")
+        if not isinstance(self.fills_hash, ContentHash):
+            raise ValueError("fills_hash must be ContentHash")
+        if not isinstance(self.economic_state_hash, ContentHash):
+            raise ValueError("economic_state_hash must be ContentHash")
+        if not isinstance(self.metrics_hash, ContentHash):
+            raise ValueError("metrics_hash must be ContentHash")
         if not isinstance(self.metrics, DescriptiveBacktestMetrics):
             raise ValueError("metrics must be DescriptiveBacktestMetrics")
         if not isinstance(self.manifest_hash, ContentHash):
@@ -211,11 +552,16 @@ class BacktestRunManifest:
             "input_boundary": self.input_boundary.to_dict(),
             "assumptions_hash": self.assumptions_hash.value,
             "instrument_id": self.instrument_id.value,
+            "instrument_economics_hash": self.instrument_economics_hash.value,
+            "fills_hash": self.fills_hash.value,
+            "economic_state_hash": self.economic_state_hash.value,
+            "metrics_hash": self.metrics_hash.value,
             "metrics": {
                 "gross_realized_pnl": str(self.metrics.gross_realized_pnl),
                 "net_realized_pnl": str(self.metrics.net_realized_pnl),
                 "total_explicit_fees": str(self.metrics.total_explicit_fees),
                 "diagnostic_slippage_burden": str(self.metrics.diagnostic_slippage_burden),
+                "diagnostic_spread_burden": str(self.metrics.diagnostic_spread_burden),
                 "turnover": str(self.metrics.turnover),
                 "total_actions": self.metrics.total_actions,
                 "fill_count": self.metrics.fill_count,
@@ -233,7 +579,11 @@ class BacktestRunManifest:
                 "profit_factor": str(self.metrics.profit_factor),
                 "expectancy": str(self.metrics.expectancy),
                 "max_drawdown_amount": str(self.metrics.max_drawdown_amount),
-                "max_drawdown_ratio": str(self.metrics.max_drawdown_ratio),
+                "max_drawdown_ratio": (
+                    str(self.metrics.max_drawdown_ratio)
+                    if self.metrics.max_drawdown_ratio is not None
+                    else None
+                ),
             },
         }
 
@@ -258,16 +608,66 @@ class BacktestRunManifest:
         assumptions: EconomicAssumptions,
         instrument_id: TradableInstrumentId,
         metrics: DescriptiveBacktestMetrics,
+        instrument_economics: InstrumentEconomics | None = None,
+        fills: Sequence[SimulatedFill] | None = None,
+        economic_state: BacktestEconomicState | None = None,
+        end_of_window_policy: EndOfWindowPolicy | None = None,
         created_at: datetime | None = None,
+        fills_hash: ContentHash | None = None,
+        economic_state_hash: ContentHash | None = None,
+        instrument_economics_hash: ContentHash | None = None,
+        metrics_hash: ContentHash | None = None,
     ) -> BacktestRunManifest:
         ts = created_at or datetime(2026, 9, 16, 0, 0, 0, tzinfo=UTC)
-        assump_hash = compute_assumptions_hash(assumptions)
+        assump_hash = compute_assumptions_hash(
+            assumptions,
+            instrument_economics=instrument_economics,
+            end_of_window_policy=end_of_window_policy,
+        )
+
+        resolved_econ_hash = (
+            instrument_economics_hash
+            if instrument_economics_hash is not None
+            else (
+                compute_instrument_economics_hash(instrument_economics)
+                if instrument_economics is not None
+                else ContentHash("0" * 64)
+            )
+        )
+        resolved_fills_hash = (
+            fills_hash
+            if fills_hash is not None
+            else (
+                compute_fills_hash(fills)
+                if fills is not None
+                else ContentHash("0" * 64)
+            )
+        )
+        resolved_state_hash = (
+            economic_state_hash
+            if economic_state_hash is not None
+            else (
+                compute_economic_state_hash(economic_state)
+                if economic_state is not None
+                else ContentHash("0" * 64)
+            )
+        )
+        resolved_metrics_hash = (
+            metrics_hash
+            if metrics_hash is not None
+            else compute_metrics_hash(metrics)
+        )
+
         unhashed = cls(
             run_id=run_id,
             created_at=ts,
             input_boundary=input_boundary,
             assumptions_hash=assump_hash,
             instrument_id=instrument_id,
+            instrument_economics_hash=resolved_econ_hash,
+            fills_hash=resolved_fills_hash,
+            economic_state_hash=resolved_state_hash,
+            metrics_hash=resolved_metrics_hash,
             metrics=metrics,
             manifest_hash=ContentHash("0" * 64),
         )
@@ -278,6 +678,10 @@ class BacktestRunManifest:
             input_boundary=input_boundary,
             assumptions_hash=assump_hash,
             instrument_id=instrument_id,
+            instrument_economics_hash=resolved_econ_hash,
+            fills_hash=resolved_fills_hash,
+            economic_state_hash=resolved_state_hash,
+            metrics_hash=resolved_metrics_hash,
             metrics=metrics,
             manifest_hash=calculated_hash,
         )
@@ -307,7 +711,16 @@ class BacktestRunManifest:
             profit_factor=Decimal(metrics_dict["profit_factor"]),
             expectancy=Decimal(metrics_dict["expectancy"]),
             max_drawdown_amount=Decimal(metrics_dict["max_drawdown_amount"]),
-            max_drawdown_ratio=Decimal(metrics_dict["max_drawdown_ratio"]),
+            max_drawdown_ratio=(
+                Decimal(metrics_dict["max_drawdown_ratio"])
+                if metrics_dict.get("max_drawdown_ratio") is not None
+                else None
+            ),
+            diagnostic_spread_burden=(
+                Decimal(metrics_dict["diagnostic_spread_burden"])
+                if metrics_dict.get("diagnostic_spread_burden") is not None
+                else Decimal("0")
+            ),
         )
         return cls(
             run_id=ActionIdentity(data["run_id"]),
@@ -315,6 +728,12 @@ class BacktestRunManifest:
             input_boundary=BacktestInputBoundary.from_dict(data["input_boundary"]),
             assumptions_hash=ContentHash(data["assumptions_hash"]),
             instrument_id=TradableInstrumentId(data["instrument_id"]),
+            instrument_economics_hash=ContentHash(
+                data.get("instrument_economics_hash", "0" * 64)
+            ),
+            fills_hash=ContentHash(data.get("fills_hash", "0" * 64)),
+            economic_state_hash=ContentHash(data.get("economic_state_hash", "0" * 64)),
+            metrics_hash=ContentHash(data.get("metrics_hash", "0" * 64)),
             metrics=metrics,
             manifest_hash=ContentHash(data["manifest_hash"]),
         )
@@ -322,3 +741,4 @@ class BacktestRunManifest:
     @classmethod
     def from_json(cls, json_str: str) -> BacktestRunManifest:
         return cls.from_dict(json.loads(json_str))
+

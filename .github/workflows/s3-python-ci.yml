@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        check: [tests, lint, types, compile, dependencies, foundation, s2-boundary, s3-boundary, diff]
+        check: [tests, lint, types, compile, dependencies, foundation, s1-boundary, s2-boundary, s3-boundary, diff]
     steps:
       - name: Check out exact reviewed commit
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -68,6 +68,10 @@ jobs:
       - name: Verify frozen Foundation contracts
         if: matrix.check == 'foundation'
         run: python scripts/check_foundation_contract.py
+
+      - name: Verify Sprint 1 capability boundary
+        if: matrix.check == 's1-boundary'
+        run: python scripts/check_s1_boundary.py
 
       - name: Verify Sprint 2 capability boundary
         if: matrix.check == 's2-boundary'

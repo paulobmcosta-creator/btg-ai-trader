@@ -65,16 +65,24 @@ WALL_CLOCK_CALLS = {
     "time.time",
 }
 
-FORBIDDEN_STOCHASTIC_CALLS = {
-    "random.random",
-    "random.randint",
-    "random.choice",
-    "random.choices",
-    "random.shuffle",
-    "random.sample",
-    "random.uniform",
-    "random.gauss",
+FORBIDDEN_STOCHASTIC_EXACT = {
+    "uuid4",
+    "uuid.uuid4",
+    "os.urandom",
+    "urandom",
+    "SystemRandom",
+    "random.SystemRandom",
+    "secrets",
+    "random",
 }
+
+FORBIDDEN_STOCHASTIC_PREFIXES = (
+    "random.",
+    "secrets.",
+    "numpy.random.",
+)
+
+FORBIDDEN_STOCHASTIC_MODULES = {"random", "secrets"}
 
 SECRET_PATTERNS = {
     "private-key": re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
@@ -129,11 +137,54 @@ def _call_name(node: ast.Call) -> str:
     return ""
 
 
+def _is_forbidden_stochastic_call(cname: str) -> bool:
+    if cname in FORBIDDEN_STOCHASTIC_EXACT:
+        return True
+    return any(cname.startswith(p) for p in FORBIDDEN_STOCHASTIC_PREFIXES)
+
+
 def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
     findings: list[Finding] = []
     str_path = str(path).replace("\\", "/")
     for node in ast.walk(tree):
-        if isinstance(node, ast.Import | ast.ImportFrom):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if (
+                    alias.name in FORBIDDEN_STOCHASTIC_MODULES
+                    or alias.name.startswith("random.")
+                    or alias.name.startswith("secrets.")
+                    or alias.name.startswith("numpy.random")
+                ):
+                    findings.append(
+                        Finding(str_path, node.lineno, f"forbidden stochastic import: {alias.name}")
+                    )
+            imp = _import_name(node)
+            if _is_forbidden_import(imp):
+                findings.append(Finding(str_path, node.lineno, f"forbidden import: {imp}"))
+        elif isinstance(node, ast.ImportFrom):
+            mod = node.module or ""
+            if (
+                mod in FORBIDDEN_STOCHASTIC_MODULES
+                or mod.startswith("random.")
+                or mod.startswith("secrets.")
+                or mod.startswith("numpy.random")
+            ):
+                findings.append(
+                    Finding(str_path, node.lineno, f"forbidden stochastic import: {mod}")
+                )
+            for alias in node.names:
+                if alias.name == "uuid4":
+                    findings.append(
+                        Finding(str_path, node.lineno, "forbidden stochastic import: uuid4")
+                    )
+                elif alias.name == "urandom" and mod == "os":
+                    findings.append(
+                        Finding(str_path, node.lineno, "forbidden stochastic import: os.urandom")
+                    )
+                elif alias.name == "SystemRandom":
+                    findings.append(
+                        Finding(str_path, node.lineno, "forbidden stochastic import: SystemRandom")
+                    )
             imp = _import_name(node)
             if _is_forbidden_import(imp):
                 findings.append(Finding(str_path, node.lineno, f"forbidden import: {imp}"))
@@ -157,7 +208,7 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                 findings.append(
                     Finding(str_path, node.lineno, f"forbidden process call: {cname}")
                 )
-            elif cname in FORBIDDEN_STOCHASTIC_CALLS:
+            elif _is_forbidden_stochastic_call(cname):
                 findings.append(
                     Finding(
                         str_path,

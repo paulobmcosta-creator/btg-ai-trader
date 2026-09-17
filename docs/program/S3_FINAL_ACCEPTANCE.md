@@ -168,25 +168,52 @@ Every negative prohibition from `docs/program/S3_CAPABILITY_MATRIX.md` and `docs
 
 ## 6. Decision Register Reconciliation
 
-In accordance with `docs/program/S3_DECISION_REGISTER.md`, all fifteen active decisions are audited against the canonical implementation:
+In accordance with `docs/program/S3_DECISION_REGISTER.md`, Foundation decisions and local implementation decisions are audited against the canonical implementation:
+
+### Active Foundation Decisions
 
 | Decision | Topic | Status in S3 | Implementation & Verification Evidence |
 |---|---|---|---|
-| **DD-15** | RunInputBoundary / BacktestInputBoundary | **TRIGGERED_AND_SATISFIED** | Materialized as `BacktestInputBoundary` (`provenance.py:17-57`). Verified by `test_backtest_input_boundary_validation_and_codec`. |
-| **DD-22** | Financial recognition and ledger isolation | **TRIGGERED_AND_SATISFIED** | Simulated accounting isolated in `BacktestPositionState` (`accounting.py:25-96`). Canonical `FinancialLedger` untouched. |
-| **DD-79** | Execution price semantics | **TRIGGERED_AND_SATISFIED** | Aggressive BUY consumes Ask; SELL consumes Bid. Verified by `test_spread_model_valid`. Mid-price execution forbidden. |
-| **DD-80** | Missing-data treatment in execution | **TRIGGERED_AND_SATISFIED** | Missing, stale, or inverted quotes fail closed as `INDETERMINATE`. Verified by `test_missing_quote_or_spread_rejection`. |
-| **DD-84** | Backtest kernel classification | **TRIGGERED_AND_SATISFIED** | Formally classified as `DETERMINISTIC_EXECUTION_ECONOMICS_KERNEL`. No operational strategy claims. |
-| **DD-85** | Research execution action contract | **TRIGGERED_AND_SATISFIED** | Materialized as immutable `BacktestAction` (`domain.py:110-136`). Verified by `test_backtest_action_valid`. |
-| **DD-86** | Spread model | **TRIGGERED_AND_SATISFIED** | Materialized as `SpreadModel` (`assumptions.py:25-45`). Verified by `test_spread_model_valid`, `test_spread_model_edge_cases`. |
-| **DD-87** | Slippage model | **TRIGGERED_AND_SATISFIED** | Adverse models: `ZeroSlippageModel`, `FixedPointsSlippageModel`, `FixedBpsSlippageModel`. Verified by `test_fixed_points_slippage_model`, `test_fixed_bps_slippage_model`. |
-| **DD-88** | Fee/cost model | **TRIGGERED_AND_SATISFIED** | Materialized as `FeeSchedule` (`assumptions.py:84-114`). Verified by `test_fee_schedule`, `test_run_fee_sensitivity_sweep`. |
-| **DD-89** | Latency model | **TRIGGERED_AND_SATISFIED** | Materialized as `LatencyModel` (`assumptions.py:117-133`). Virtual microseconds without wall-clock sleep. Verified by `test_latency_model`. |
-| **DD-90** | Fill outcome semantics | **TRIGGERED_AND_SATISFIED** | Materialized as `ExecutionOutcome` enum with 4 states. Verified by `test_successful_market_tick_fill`, `test_no_fill_when_no_eligible_events`. |
-| **DD-91** | Position accounting and cost basis | **TRIGGERED_AND_SATISFIED** | Moving weighted average cost basis (WACB), realized P&L on closing fills, separate gross/net P&L in exact Decimal. Verified by `test_pnl_invariants_and_no_double_counting`. |
-| **DD-92** | End-of-window position policy | **TRIGGERED_AND_SATISFIED** | Materialized as `EndOfWindowPolicy.KEEP_OPEN` and `FORCE_CLOSE_AT_LAST_VALID_EVENT`. Verified by `test_engine_end_of_window_policy_close_long_and_short`. |
-| **DD-93** | Descriptive economic metrics | **TRIGGERED_AND_SATISFIED** | Materialized as `DescriptiveBacktestMetrics` (`metrics.py:11-31`). Verified by `test_compute_descriptive_metrics_full_trade_lifecycle`. Promotional metrics deferred. |
-| **DD-94** | Sensitivity and monotonicity invariants | **TRIGGERED_AND_SATISFIED** | Materialized in `sensitivity.py:20-80`. Verified by `test_run_fee_sensitivity_sweep`, `test_run_slippage_sensitivity_sweep`. |
+| **DD-13** | Algoritmo concreto de RNG para simulação | **DECIDED_AND_SATISFIED** | Baseline backtest kernel is strictly deterministic; RNG is absent and prohibited. Verified by `scripts/check_s3_boundary.py` and `test_determinism.py`. |
+| **DD-14** | Algoritmo de inicialização/derivação de seeds | **DECIDED_AND_SATISFIED** | Deterministic derivation via SHA-256 and UUID5; PRNG seeds not utilized. Verified by `test_criterion_28_run_id_deterministic_uuid5`. |
+| **DD-15** | RunInputBoundary / BacktestInputBoundary | **TRIGGERED_AND_SATISFIED** | Materialized as `BacktestInputBoundary` (`provenance.py`). Verified by `test_backtest_input_boundary_validation_and_codec`. |
+| **DD-16** | Critérios de determinismo e replay | **DECIDED_AND_SATISFIED** | Byte-for-byte reproducibility across 100 runs; AST-enforced ban on stochastic sources. Verified by `test_100_runs_exact_byte_determinism`. |
+| **DD-46** | Metodologia de cost basis (custo médio ponderado vs FIFO) | **DECIDED_AND_SATISFIED** | Moving weighted average cost basis (WACB) in exact `Decimal`. Verified by `test_position_state_validation`, `test_position_transitions_long_and_closed`. |
+| **DD-47** | Metodologia de P&L e Valuation intradiário (Mark-to-Market) | **DECIDED_AND_SATISFIED** | MTM valuation requires valid contemporary `BacktestMarkEvidence`; fails closed when quotes absent. Verified by `test_criterion_12_fail_closed_mark_evidence`. |
+| **DD-74** | Modelagem paramétrica de custos de transação e fricções | **DECIDED_AND_SATISFIED** | Configurable fee schedules, adverse slippage models, and diagnostic spread burden. Verified by `test_fee_schedule`, `test_criterion_17_diagnostic_spread_burden`. |
+| **DD-92** | Resolução temporal de simulação de backtest (ticks vs trades vs candles) | **DECIDED_AND_SATISFIED** | High-resolution tick simulation supported; candle execution deferred fail-closed. Verified by `test_candle_execution_handling`. |
+| **DD-93** | Tabela de taxas de negociação, registro e emolumentos B3 | **DECIDED_AND_SATISFIED** | Configurable `FeeSchedule` with temporal validity bounds (`effective_from`/`until`). Verified by `test_criterion_14_fee_schedule_effective_window`. |
+| **DD-94** | Modelo matemático de estimativa de slippage na simulação | **DECIDED_AND_SATISFIED** | Adverse deterministic slippage: `ZERO_SLIPPAGE`, `FIXED_POINTS`, `FIXED_BPS`. Favorable slippage rejected. Verified by `test_fixed_points_slippage_model`, `test_fixed_bps_slippage_model`. |
+| **DD-95** | Modelo de latência de transmissão e processamento em simulação | **DECIDED_AND_SATISFIED** | Virtual non-negative microseconds (`decision_latency_us`, `transit_latency_us`) without wall-clock sleep. Verified by `test_latency_model`, `test_run_latency_sensitivity_sweep`. |
+| **DD-96** | Algoritmo de prioridade de fila de ordens no book | **DEFERRED** | Order book queue priority models deferred beyond Sprint 3. Small-lot assumption applies. |
+| **DD-97** | Função de impacto de mercado para grandes volumes | **DEFERRED** | Market impact functions deferred beyond Sprint 3. Small-lot assumption applies. |
+| **DD-98** | Regras de liquidação mandatória no fim do pregão simulado | **DECIDED_AND_SATISFIED** | Default policy `KEEP_OPEN` supported; `CLOSE_AT_LAST_VALID_QUOTE` deferred with `NotImplementedError`. Verified by `test_criterion_11_close_at_last_valid_quote_deferred`. |
+| **DD-99** | Biblioteca ou engine físico de simulação causal de backtest | **DECIDED_AND_SATISFIED** | Materialized as `DeterministicEconomicBacktester` kernel in `btg_ai_trader.backtesting`. Verified by `test_engine_full_lifecycle_and_session_determinism`. |
+
+### Sprint 3 Local Implementation Decisions
+
+| Decision | Topic | Status in S3 | Implementation & Verification Evidence |
+|---|---|---|---|
+| **S3-D-01** | Kernel classification | **DECIDED_AND_SATISFIED** | Classified as `DETERMINISTIC_EXECUTION_ECONOMICS_KERNEL`. No operational strategy claims. |
+| **S3-D-02** | Research execution action contract | **DECIDED_AND_SATISFIED** | Immutable `BacktestAction` input with explicit cutoffs. Verified by `test_backtest_action_valid`. |
+| **S3-D-03** | Adverse price semantics & tick rounding | **DECIDED_AND_SATISFIED** | BUY consumes Ask (ROUND_CEILING); SELL consumes Bid (ROUND_FLOOR). Verified by `test_criterion_9_adverse_tick_rounding`. |
+| **S3-D-04** | Missing-data and quote timeout | **DECIDED_AND_SATISFIED** | Missing or stale quotes beyond timeout fail closed as `INDETERMINATE`. Verified by `test_criterion_15_execution_policy_timeout`. |
+| **S3-D-05** | Strict determinism and zero stochasticity | **DECIDED_AND_SATISFIED** | Zero PRNG / UUID4; byte-for-byte identical output manifests. Verified by `test_100_runs_exact_byte_determinism`. |
+| **S3-D-06** | Causal temporal timeline | **DECIDED_AND_SATISFIED** | Monotonic ordering: `knowledge_cutoff <= decision_time <= order_ready_time`. Verified by `test_criterion_3_action_sequence_validation`. |
+| **S3-D-07** | Deterministic adverse slippage models | **DECIDED_AND_SATISFIED** | Zero, fixed points, and fixed bps slippage models; non-positive fill prices rejected. Verified by `test_criterion_10_slippage_non_positive_price`. |
+| **S3-D-08** | Configurable fee schedules | **DECIDED_AND_SATISFIED** | Fixed per-order, per-unit, and bps rates in exact Decimal. Verified by `test_fee_schedule`. |
+| **S3-D-09** | Virtual latency simulation | **DECIDED_AND_SATISFIED** | Virtual microsecond offsets without wall-clock sleep. Verified by `test_latency_model`. |
+| **S3-D-10** | Execution outcome quartet | **DECIDED_AND_SATISFIED** | Partitioned into `FILL`, `NO_FILL`, `INDETERMINATE`, `REJECTED`. Invariants verified by `test_criterion_13_simulated_fill_invariants`. |
+| **S3-D-11** | Weighted cost basis accounting | **DECIDED_AND_SATISFIED** | Position accounting isolated in `BacktestPositionState`. Verified by `test_position_state_validation`. |
+| **S3-D-12** | Fail-closed mark-to-market | **DECIDED_AND_SATISFIED** | Unrealized P&L left as None if mark evidence absent. Verified by `test_criterion_12_fail_closed_mark_evidence`. |
+| **S3-D-13** | Non-negative slippage & fee burdens | **DECIDED_AND_SATISFIED** | Explicit fees and adverse slippage tracked as non-negative cost burdens. Verified by `test_pnl_invariants_and_no_double_counting`. |
+| **S3-D-14** | Diagnostic spread burden | **DECIDED_AND_SATISFIED** | Diagnostic spread burden tracked without altering gross P&L. Verified by `test_criterion_17_diagnostic_spread_burden`. |
+| **S3-D-15** | End-of-window position policy | **DECIDED_AND_SATISFIED** | Default `KEEP_OPEN`; close-at-quote deferred. Verified by `test_criterion_11_close_at_last_valid_quote_deferred`. |
+| **S3-D-16** | Descriptive economic metrics | **DECIDED_AND_SATISFIED** | Descriptive metrics only; inferential/promotional metrics deferred. Verified by `test_compute_descriptive_metrics_full_trade_lifecycle`. |
+| **S3-D-17** | Parameter sensitivity and monotonicity invariants | **DECIDED_AND_SATISFIED** | Friction increases monotonically degrade or preserve net P&L. Verified by `test_verify_pnl_monotonicity_direct`. |
+| **S3-D-18** | Cryptographic run manifest | **DECIDED_AND_SATISFIED** | `BacktestRunManifest` SHA-256 hash binds all inputs and results. Verified by `test_criterion_7_hash_includes_bps_and_economics`. |
+| **S3-D-19** | Segregated simulated accounting | **DECIDED_AND_SATISFIED** | Zero mutation of operational `FinancialLedger`. Verified by `scripts/check_s3_boundary.py`. |
+| **S3-D-20** | Dual schedule and event ingestion | **DECIDED_AND_SATISFIED** | Accepts either `CausalMarketReplaySchedule` or validated event sequences. Verified by `test_engine_missing_events_and_invalid_schedule`. |
 
 ---
 
@@ -221,8 +248,8 @@ In accordance with quantitative protocols defined in Foundation 0E:
 To prevent documentary drift and phantom citations, every test function cited in this document has been verified against the repository's Abstract Syntax Tree (AST):
 
 ```text
-TOTAL_CITED_TEST_NAMES = 48
-AST_VERIFIED_TEST_NAMES = 48
+TOTAL_CITED_TEST_NAMES = 90
+AST_VERIFIED_TEST_NAMES = 90
 CITED_TEST_NAMES - ACTUAL_TEST_FUNCTION_NAMES = set()
 DRIFT_OR_PHANTOM_CITATIONS = 0
 ```
@@ -301,8 +328,25 @@ DRIFT_OR_PHANTOM_CITATIONS = 0
   - `test_metrics_negative_equity_curve_drawdown`
   - `test_metrics_profit_factor_infinity_and_drawdown_ratio`
   - `test_metrics_short_accumulation_and_cover`
+- `tests/backtesting/test_section_z_regression.py`:
+  - `test_criterion_1_adr_exists_and_approved`
+  - `test_criterion_3_action_sequence_validation`
+  - `test_criterion_6_code_revision_strict`
+  - `test_criterion_7_hash_includes_bps_and_economics`
+  - `test_criterion_9_adverse_tick_rounding`
+  - `test_criterion_10_slippage_non_positive_price`
+  - `test_criterion_11_close_at_last_valid_quote_deferred`
+  - `test_criterion_12_fail_closed_mark_evidence`
+  - `test_criterion_13_simulated_fill_invariants`
+  - `test_criterion_14_fee_schedule_effective_window`
+  - `test_criterion_15_execution_policy_timeout`
+  - `test_criterion_16_quantity_step_validation`
+  - `test_criterion_17_diagnostic_spread_burden`
+  - `test_criterion_28_run_id_deterministic_uuid5`
+  - `test_engine_missing_events_and_invalid_schedule`
 - `tests/backtesting/test_sensitivity.py`:
   - `test_run_fee_sensitivity_sweep`
+  - `test_run_latency_sensitivity_sweep`
   - `test_run_slippage_sensitivity_sweep`
   - `test_verify_pnl_monotonicity_direct`
 - `tests/test_s3_boundary.py`:
@@ -363,12 +407,13 @@ The closure pull request must execute and pass the full suite of automated check
 
 ## 12. Proposed Sprint 3 Verdict
 
-Based on the conjunctive satisfaction of all required positive capabilities (`S3-AC-01..21`), the valid deferred status of untriggered capabilities (`S3-AC-22..25`), the complete satisfaction of all twenty-one negative capabilities (`S3-NC-01..21`), the trigger-based adjudication of all relevant decisions (`DD-15..94`), Protocol 0E-D compliance, Gate B satisfaction, and zero open blockers:
+Based on the conjunctive satisfaction of all required positive capabilities (`S3-AC-01..21`), the valid deferred status of untriggered capabilities (`S3-AC-22..25`), the complete satisfaction of all twenty-one negative capabilities (`S3-NC-01..21`), the trigger-based adjudication of all relevant decisions (Foundation DD-13..16, DD-46..47, DD-74, DD-92..99 and local decisions S3-D-01..20), Protocol 0E-D compliance, Gate B satisfaction, and zero open blockers:
 
 ```text
 PROPOSED_SPRINT_3_VERDICT = PASS
 PROPOSED_SPRINT_3_LIFECYCLE = CLOSURE_CANDIDATE
-PROMOTION_TO_SPRINT_4_GATE = YES
+MERGE_AUTHORIZED = NO
+PROMOTION_TO_SPRINT_4_GATE = NO_UNTIL_INDEPENDENT_REAUDIT
 MERGE_RECOMMENDATION = NO (AWAITING INDEPENDENT AUDIT AND EXACT-HEAD VALIDATION)
 ```
 
@@ -377,7 +422,7 @@ MERGE_RECOMMENDATION = NO (AWAITING INDEPENDENT AUDIT AND EXACT-HEAD VALIDATION)
 ## 13. Promotion Boundary to Sprint 4
 
 > [!IMPORTANT]
-> `PROMOTION_TO_SPRINT_4_GATE = YES` authorizes exclusively the preparation, drafting, and review of the **Sprint 4 Entry Gate**.
+> `PROMOTION_TO_SPRINT_4_GATE = NO_UNTIL_INDEPENDENT_REAUDIT` establishes that Sprint 4 cannot be opened until independent re-audit clearance is formally issued. Upon independent audit approval, it authorizes exclusively the preparation, drafting, and review of the **Sprint 4 Entry Gate**.
 
 It does **NOT** authorize immediate implementation of any Sprint 4 operational capabilities. The following remain strictly excluded until the Sprint 4 Entry Gate is formally materialized, reviewed, and approved:
 - Operational Strategy Engine or Signal Generator;

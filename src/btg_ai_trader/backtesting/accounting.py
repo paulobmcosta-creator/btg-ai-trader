@@ -12,6 +12,7 @@ from decimal import Decimal
 from enum import Enum
 
 from btg_ai_trader.backtesting.domain import (
+    BacktestMarkEvidence,
     ExecutionOutcome,
     InstrumentEconomics,
     Side,
@@ -156,6 +157,7 @@ class BacktestPnL:
     explicit_fees: Decimal
     net_realized_pnl: Decimal
     diagnostic_slippage_burden: Decimal
+    diagnostic_spread_burden: Decimal = Decimal("0")
     unrealized_pnl: Decimal | None = None
     total_net_pnl: Decimal | None = None
 
@@ -165,6 +167,7 @@ class BacktestPnL:
             "explicit_fees",
             "net_realized_pnl",
             "diagnostic_slippage_burden",
+            "diagnostic_spread_burden",
         )
         for f in required_fields:
             val = getattr(self, f)
@@ -174,6 +177,8 @@ class BacktestPnL:
             raise ValueError("explicit_fees cannot be negative")
         if self.diagnostic_slippage_burden < Decimal("0"):
             raise ValueError("diagnostic_slippage_burden cannot be negative")
+        if self.diagnostic_spread_burden < Decimal("0"):
+            raise ValueError("diagnostic_spread_burden cannot be negative")
         if self.net_realized_pnl != (self.gross_realized_pnl - self.explicit_fees):
             raise ValueError("net_realized_pnl must equal gross_realized_pnl - explicit_fees")
         if self.unrealized_pnl is not None:
@@ -194,6 +199,7 @@ class BacktestEconomicState:
     pnl: BacktestPnL
     realized_equity_curve: tuple[Decimal, ...]
     fills: tuple[SimulatedFill, ...]
+    mark_evidence: BacktestMarkEvidence | None = None
 
     def __post_init__(self) -> None:
         if type(self.positions) is not tuple:
@@ -204,6 +210,10 @@ class BacktestEconomicState:
             raise ValueError("realized_equity_curve must be a tuple")
         if type(self.fills) is not tuple:
             raise ValueError("fills must be a tuple")
+        if self.mark_evidence is not None and not isinstance(
+            self.mark_evidence, BacktestMarkEvidence
+        ):
+            raise ValueError("mark_evidence must be BacktestMarkEvidence or None")
 
     @classmethod
     def initial(cls, instrument_economics: InstrumentEconomics) -> BacktestEconomicState:
@@ -220,12 +230,14 @@ class BacktestEconomicState:
             explicit_fees=Decimal("0"),
             net_realized_pnl=Decimal("0"),
             diagnostic_slippage_burden=Decimal("0"),
+            diagnostic_spread_burden=Decimal("0"),
         )
         return cls(
             positions=(init_pos,),
             pnl=init_pnl,
             realized_equity_curve=(Decimal("0"),),
             fills=(),
+            mark_evidence=None,
         )
 
     def apply_fills(
@@ -237,6 +249,7 @@ class BacktestEconomicState:
         cum_gross = self.pnl.gross_realized_pnl
         cum_fees = self.pnl.explicit_fees
         cum_slippage = self.pnl.diagnostic_slippage_burden
+        cum_spread = self.pnl.diagnostic_spread_burden
         equity_curve = list(self.realized_equity_curve)
         all_fills = list(self.fills)
 
@@ -256,6 +269,7 @@ class BacktestEconomicState:
             cum_gross += gross_pnl
             cum_fees += fee
             cum_slippage += slippage_burden
+            cum_spread += fill.diagnostic_spread_burden
             net_cum = cum_gross - cum_fees
             equity_curve.append(net_cum)
 
@@ -264,6 +278,7 @@ class BacktestEconomicState:
             explicit_fees=cum_fees,
             net_realized_pnl=cum_gross - cum_fees,
             diagnostic_slippage_burden=cum_slippage,
+            diagnostic_spread_burden=cum_spread,
         )
 
         return BacktestEconomicState(
@@ -271,17 +286,43 @@ class BacktestEconomicState:
             pnl=updated_pnl,
             realized_equity_curve=tuple(equity_curve),
             fills=tuple(all_fills),
+            mark_evidence=self.mark_evidence,
         )
 
     def compute_mark_to_market(
         self,
         mark_prices: dict[TradableInstrumentId, Decimal],
+        mark_evidence: BacktestMarkEvidence | None = None,
     ) -> BacktestEconomicState:
         """Compute unrealized P&L and total net P&L given explicit mark prices.
 
         If an open position lacks a valid mark price, unrealized P&L cannot be computed.
         """
         unrealized_sum = Decimal("0")
+        has_open = any(not p.is_flat for p in self.positions)
+
+        if has_open and mark_evidence is None:
+            # Missing mark evidence for open positions: fails closed
+            return self
+
+        if not has_open:
+            new_pnl = BacktestPnL(
+                gross_realized_pnl=self.pnl.gross_realized_pnl,
+                explicit_fees=self.pnl.explicit_fees,
+                net_realized_pnl=self.pnl.net_realized_pnl,
+                diagnostic_slippage_burden=self.pnl.diagnostic_slippage_burden,
+                diagnostic_spread_burden=self.pnl.diagnostic_spread_burden,
+                unrealized_pnl=Decimal("0"),
+                total_net_pnl=self.pnl.net_realized_pnl,
+            )
+            return BacktestEconomicState(
+                positions=self.positions,
+                pnl=new_pnl,
+                realized_equity_curve=self.realized_equity_curve,
+                fills=self.fills,
+                mark_evidence=mark_evidence,
+            )
+
         for pos in self.positions:
             if pos.is_flat:
                 continue
@@ -309,6 +350,7 @@ class BacktestEconomicState:
             explicit_fees=self.pnl.explicit_fees,
             net_realized_pnl=self.pnl.net_realized_pnl,
             diagnostic_slippage_burden=self.pnl.diagnostic_slippage_burden,
+            diagnostic_spread_burden=self.pnl.diagnostic_spread_burden,
             unrealized_pnl=unrealized_sum,
             total_net_pnl=self.pnl.net_realized_pnl + unrealized_sum,
         )
@@ -318,4 +360,5 @@ class BacktestEconomicState:
             pnl=new_pnl,
             realized_equity_curve=self.realized_equity_curve,
             fills=self.fills,
+            mark_evidence=mark_evidence,
         )

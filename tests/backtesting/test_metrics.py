@@ -20,7 +20,7 @@ from btg_ai_trader.backtesting.domain import (
     SimulatedFill,
 )
 from btg_ai_trader.backtesting.metrics import compute_descriptive_metrics
-from btg_ai_trader.observer.identity import TradableInstrumentId
+from btg_ai_trader.observer.identity import EventId, TradableInstrumentId
 
 
 def make_uuid(num: int = 1) -> str:
@@ -49,21 +49,38 @@ def make_fill(
     outcome: ExecutionOutcome = ExecutionOutcome.FILL,
     fee: Decimal = Decimal("0"),
     slippage: Decimal = Decimal("0"),
+    source_event_id: EventId | None = None,
 ) -> SimulatedFill:
     t = datetime(2026, 9, 16, 10, 0, 0, tzinfo=UTC)
     timing = ExecutionTiming(t, t, t, t, t)
+    if outcome != ExecutionOutcome.FILL:
+        resolved_qty = Decimal("0")
+        resolved_raw = Decimal("0")
+        resolved_fill = Decimal("0")
+        resolved_slip = Decimal("0")
+        resolved_fee = Decimal("0")
+        ev_id = None
+    else:
+        resolved_qty = qty
+        resolved_raw = price
+        resolved_fill = price
+        resolved_slip = slippage
+        resolved_fee = fee
+        ev_id = source_event_id if source_event_id is not None else EventId(make_uuid(999))
+
     return SimulatedFill(
         fill_id=ActionIdentity(make_uuid(100)),
         action_id=ActionIdentity(make_uuid(200)),
         instrument_id=iid,
         side=side,
-        quantity=qty,
-        raw_price=price,
-        fill_price=price,
-        slippage=slippage,
-        explicit_fee=fee,
+        quantity=resolved_qty,
+        raw_price=resolved_raw,
+        fill_price=resolved_fill,
+        slippage=resolved_slip,
+        explicit_fee=resolved_fee,
         timing=timing,
         outcome=outcome,
+        source_event_id=ev_id,
     )
 
 
@@ -93,7 +110,7 @@ def test_compute_descriptive_metrics_empty() -> None:
     assert metrics.profit_factor == Decimal("0")
     assert metrics.expectancy == Decimal("0")
     assert metrics.max_drawdown_amount == Decimal("0")
-    assert metrics.max_drawdown_ratio == Decimal("0")
+    assert metrics.max_drawdown_ratio is None
 
 
 def test_compute_descriptive_metrics_full_trade_lifecycle() -> None:
@@ -237,5 +254,5 @@ def test_metrics_negative_equity_curve_drawdown() -> None:
     )
 
     assert metrics.max_drawdown_amount == Decimal("100")
-    # Peak is 0, so max_dd_ratio is not calculated and stays 0
-    assert metrics.max_drawdown_ratio == Decimal("0")
+    # Peak is 0, so max_dd_ratio is not calculated and is None (no positive denominator)
+    assert metrics.max_drawdown_ratio is None

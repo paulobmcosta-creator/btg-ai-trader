@@ -14,13 +14,14 @@ from btg_ai_trader.backtesting.accounting import (
 )
 from btg_ai_trader.backtesting.domain import (
     ActionIdentity,
+    BacktestMarkEvidence,
     ExecutionOutcome,
     ExecutionTiming,
     InstrumentEconomics,
     Side,
     SimulatedFill,
 )
-from btg_ai_trader.observer.identity import TradableInstrumentId
+from btg_ai_trader.observer.identity import EventId, TradableInstrumentId
 
 
 def make_uuid(num: int = 1) -> str:
@@ -36,21 +37,42 @@ def make_fill(
     slippage: Decimal = Decimal("0"),
     fee: Decimal = Decimal("0"),
     outcome: ExecutionOutcome = ExecutionOutcome.FILL,
+    source_event_id: EventId | None = None,
+    diagnostic_spread_burden: Decimal = Decimal("0"),
 ) -> SimulatedFill:
     t = datetime(2026, 9, 16, 10, 0, 0, tzinfo=UTC)
     timing = ExecutionTiming(t, t, t, t, t)
+    if outcome != ExecutionOutcome.FILL:
+        resolved_qty = Decimal("0")
+        resolved_raw = Decimal("0")
+        resolved_fill = Decimal("0")
+        resolved_slip = Decimal("0")
+        resolved_fee = Decimal("0")
+        ev_id = None
+        burden = Decimal("0")
+    else:
+        resolved_qty = qty
+        resolved_raw = raw_price if raw_price is not None else fill_price
+        resolved_fill = fill_price
+        resolved_slip = slippage if slippage != Decimal("0") else abs(fill_price - resolved_raw)
+        resolved_fee = fee
+        ev_id = source_event_id if source_event_id is not None else EventId(make_uuid(999))
+        burden = diagnostic_spread_burden
+
     return SimulatedFill(
         fill_id=ActionIdentity(make_uuid(100)),
         action_id=ActionIdentity(make_uuid(200)),
         instrument_id=instrument_id,
         side=side,
-        quantity=qty,
-        raw_price=raw_price if raw_price is not None else fill_price,
-        fill_price=fill_price,
-        slippage=slippage,
-        explicit_fee=fee,
+        quantity=resolved_qty,
+        raw_price=resolved_raw,
+        fill_price=resolved_fill,
+        slippage=resolved_slip,
+        explicit_fee=resolved_fee,
         timing=timing,
         outcome=outcome,
+        source_event_id=ev_id,
+        diagnostic_spread_burden=burden,
     )
 
 
@@ -275,7 +297,15 @@ def test_economic_state_lifecycle_and_mark_to_market() -> None:
     assert state.pnl.net_realized_pnl == Decimal("-2.0")
 
     # Mark to market with quote 110 -> unrealized = (110 - 100)*10 = 100, total_net = -2 + 100 = 98
-    marked = state.compute_mark_to_market({iid: Decimal("110.0")})
+    mark_ev = BacktestMarkEvidence(
+        instrument_id=iid,
+        mark_price=Decimal("110.0"),
+        mark_time=datetime(2026, 9, 16, 10, 0, 1, tzinfo=UTC),
+        knowledge_time=datetime(2026, 9, 16, 10, 0, 1, tzinfo=UTC),
+        source_event_id=EventId(make_uuid(888)),
+        valuation_method="MID_PRICE",
+    )
+    marked = state.compute_mark_to_market({iid: Decimal("110.0")}, mark_evidence=mark_ev)
     assert marked.pnl.unrealized_pnl == Decimal("100.0")
     assert marked.pnl.total_net_pnl == Decimal("98.0")
 
@@ -391,7 +421,15 @@ def test_economic_state_mark_to_market_short_and_invalid_type() -> None:
     assert state.positions[0].is_short
 
     # Mark price = 90 (profit of 10 per unit * 5 units * 2 money_per_unit = 100)
-    marked = state.compute_mark_to_market({iid: Decimal("90.0")})
+    mark_ev_short = BacktestMarkEvidence(
+        instrument_id=iid,
+        mark_price=Decimal("90.0"),
+        mark_time=datetime(2026, 9, 16, 10, 0, 1, tzinfo=UTC),
+        knowledge_time=datetime(2026, 9, 16, 10, 0, 1, tzinfo=UTC),
+        source_event_id=EventId(make_uuid(888)),
+        valuation_method="MID_PRICE",
+    )
+    marked = state.compute_mark_to_market({iid: Decimal("90.0")}, mark_evidence=mark_ev_short)
     assert marked.pnl.unrealized_pnl == Decimal("100.0")
     assert marked.pnl.total_net_pnl == Decimal("99.0")  # net_realized (-1) + 100
 

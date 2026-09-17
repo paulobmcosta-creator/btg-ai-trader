@@ -199,7 +199,7 @@ def test_stale_quote_rejection() -> None:
 
     fill = simulate_action_execution(action, (ev,), assumptions, econ)
     assert fill.outcome == ExecutionOutcome.INDETERMINATE
-    assert fill.reason == "STALE_QUOTE_EXCEEDS_MAX_AGE"
+    assert fill.reason == "NO_EXECUTION_EVIDENCE_WITHIN_WAIT_WINDOW"
 
     # Fresh quote under max_quote_age_us (delta = 500us < 1000us)
     t_fresh = datetime(2026, 9, 16, 10, 0, 0, 500, tzinfo=UTC)
@@ -362,9 +362,9 @@ def test_candle_execution_handling() -> None:
     )
     fill1 = simulate_action_execution(action, (ev_candle,), assumptions_default, econ)
     assert fill1.outcome == ExecutionOutcome.INDETERMINATE
-    assert fill1.reason == "CANDLE_INTRABAR_TRAJECTORY_AMBIGUOUS_DEFERRED"
+    assert fill1.reason == "CANDLE_EXECUTION_PATH_UNSUPPORTED"
 
-    # 2. When allowed -> fill at open price
+    # 2. Even when allow_candle_fills=True -> precise execution is deferred, returns INDETERMINATE
     assumptions_allowed = EconomicAssumptions(
         "test_a",
         SpreadModel(),
@@ -374,11 +374,10 @@ def test_candle_execution_handling() -> None:
         ExecutionPolicy(allow_candle_fills=True),
     )
     fill2 = simulate_action_execution(action, (ev_candle,), assumptions_allowed, econ)
-    assert fill2.outcome == ExecutionOutcome.FILL
-    assert fill2.raw_price == Decimal("100.0")
-    assert fill2.reason == "FILLED_AT_CANDLE_OPEN"
+    assert fill2.outcome == ExecutionOutcome.INDETERMINATE
+    assert fill2.reason == "CANDLE_EXECUTION_PATH_UNSUPPORTED"
 
-    # 3. Missing candle open
+    # 3. Missing candle open also results in INDETERMINATE
     candle_no_open = Candle(
         interval_start=t0,
         interval_end=t1,
@@ -394,7 +393,7 @@ def test_candle_execution_handling() -> None:
     ev_no_open = make_event(21, t1, iid, candle_no_open, event_type=EventType.CANDLE)
     fill3 = simulate_action_execution(action, (ev_no_open,), assumptions_allowed, econ)
     assert fill3.outcome == ExecutionOutcome.INDETERMINATE
-    assert fill3.reason == "MISSING_CANDLE_OPEN_PRICE"
+    assert fill3.reason == "CANDLE_EXECUTION_PATH_UNSUPPORTED"
 
 
 def test_simulate_actions_batch() -> None:

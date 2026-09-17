@@ -33,7 +33,10 @@ from btg_ai_trader.observer.identity import (
     TradableInstrumentId,
 )
 from btg_ai_trader.observer.market import Tick
+from btg_ai_trader.observer.provenance import CodeRevision
 from btg_ai_trader.observer.temporal import EventTime, ObservationTimes
+
+DUMMY_REV = CodeRevision("a" * 40)
 
 
 def make_uuid(num: int = 1) -> str:
@@ -99,7 +102,7 @@ def test_future_event_insertion_invariance() -> None:
         latency_model=LatencyModel(decision_latency_us=100, transit_latency_us=100),
         execution_policy=ExecutionPolicy(),
     )
-    engine = DeterministicEconomicBacktester(econ, assumptions)
+    engine = DeterministicEconomicBacktester(econ, assumptions, code_revision=DUMMY_REV)
 
     t0 = datetime(2026, 9, 16, 10, 0, 0, tzinfo=UTC)
     t_future = datetime(2026, 9, 16, 10, 5, 0, tzinfo=UTC)
@@ -147,7 +150,7 @@ def test_future_event_perturbation_invariance() -> None:
         latency_model=LatencyModel(),
         execution_policy=ExecutionPolicy(),
     )
-    engine = DeterministicEconomicBacktester(econ, assumptions)
+    engine = DeterministicEconomicBacktester(econ, assumptions, code_revision=DUMMY_REV)
 
     t0 = datetime(2026, 9, 16, 10, 0, 0, tzinfo=UTC)
     t1 = datetime(2026, 9, 16, 10, 0, 1, tzinfo=UTC)
@@ -181,7 +184,7 @@ def test_pre_arrival_event_cannot_be_consumed() -> None:
         latency_model=LatencyModel(decision_latency_us=500, transit_latency_us=500),
         execution_policy=ExecutionPolicy(),
     )
-    engine = DeterministicEconomicBacktester(econ, assumptions)
+    engine = DeterministicEconomicBacktester(econ, assumptions, code_revision=DUMMY_REV)
 
     t0 = datetime(2026, 9, 16, 10, 0, 0, tzinfo=UTC)
     # Order ready at t0 -> simulated arrival at t0 + 1000us

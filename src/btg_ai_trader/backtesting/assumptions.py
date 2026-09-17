@@ -103,7 +103,12 @@ class FixedPointsSlippageModel:
             fill_price = raw_price + self.adverse_points
             return (fill_price, self.adverse_points)
         if side == Side.SELL:
-            fill_price = max(Decimal("0.00000001"), raw_price - self.adverse_points)
+            fill_price = raw_price - self.adverse_points
+            if fill_price <= Decimal("0"):
+                raise ValueError(
+                    f"adverse slippage points {self.adverse_points} "
+                    f"implies non-positive fill price: {fill_price}"
+                )
             return (fill_price, self.adverse_points)
         raise ValueError(f"unrecognized side: {side}")
 
@@ -129,9 +134,16 @@ class FixedBpsSlippageModel:
             fill_price = raw_price + slippage_amt
             return (fill_price, slippage_amt)
         if side == Side.SELL:
-            fill_price = max(Decimal("0.00000001"), raw_price - slippage_amt)
+            fill_price = raw_price - slippage_amt
+            if fill_price <= Decimal("0"):
+                raise ValueError(
+                    f"adverse slippage bps {self.bps} implies non-positive fill price: {fill_price}"
+                )
             return (fill_price, slippage_amt)
         raise ValueError(f"unrecognized side: {side}")
+
+
+FixedPercentageSlippageModel = FixedBpsSlippageModel
 
 
 @dataclass(frozen=True, slots=True)
@@ -146,6 +158,8 @@ class FeeSchedule:
     per_unit: Decimal = Decimal("0")
     bps_rate: Decimal = Decimal("0")
     currency: str = "BRL"
+    effective_from: datetime | None = None
+    effective_until: datetime | None = None
 
     def __post_init__(self) -> None:
         require_text(self.schedule_id, "schedule_id")
@@ -156,6 +170,25 @@ class FeeSchedule:
             raise ValueError("per_unit must be nonnegative Decimal")
         if not isinstance(self.bps_rate, Decimal) or self.bps_rate < Decimal("0"):
             raise ValueError("bps_rate must be nonnegative Decimal")
+        if self.effective_from is not None:
+            require_utc(self.effective_from, "effective_from")
+        if self.effective_until is not None:
+            require_utc(self.effective_until, "effective_until")
+        if (
+            self.effective_from is not None
+            and self.effective_until is not None
+            and self.effective_until < self.effective_from
+        ):
+            raise ValueError("effective_until cannot precede effective_from")
+
+    def is_effective_at(self, t: datetime) -> bool:
+        """Check whether timestamp falls within configured effective period."""
+        require_utc(t, "t")
+        if self.effective_from is not None and t < self.effective_from:
+            return False
+        if self.effective_until is not None and t > self.effective_until:
+            return False
+        return True
 
     def compute_fee(
         self,
@@ -209,22 +242,41 @@ class LatencyModel:
         return (simulated_ready, simulated_arrival)
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, init=False)
 class ExecutionPolicy:
     """Execution constraints and fail-closed policies for market simulation."""
 
-    small_lot_max_quantity: Decimal = Decimal("100")
-    allow_candle_fills: bool = False
-    max_quote_age_us: int | None = None
+    small_lot_max_quantity: Decimal
+    allow_candle_fills: bool
+    max_execution_evidence_wait_us: int | None
 
-    def __post_init__(self) -> None:
-        if not isinstance(self.small_lot_max_quantity, Decimal):
+    def __init__(
+        self,
+        small_lot_max_quantity: Decimal = Decimal("100"),
+        allow_candle_fills: bool = False,
+        max_execution_evidence_wait_us: int | None = None,
+        max_quote_age_us: int | None = None,
+    ) -> None:
+        resolved_wait = (
+            max_execution_evidence_wait_us
+            if max_execution_evidence_wait_us is not None
+            else max_quote_age_us
+        )
+        if not isinstance(small_lot_max_quantity, Decimal):
             raise ValueError("small_lot_max_quantity must be Decimal")
-        if self.small_lot_max_quantity <= Decimal("0"):
+        if small_lot_max_quantity <= Decimal("0"):
             raise ValueError("small_lot_max_quantity must be positive")
-        if self.max_quote_age_us is not None:
-            if type(self.max_quote_age_us) is not int or self.max_quote_age_us <= 0:
-                raise ValueError("max_quote_age_us must be positive integer or None")
+        if resolved_wait is not None:
+            if type(resolved_wait) is not int or resolved_wait <= 0:
+                raise ValueError("max_execution_evidence_wait_us must be positive integer or None")
+
+        object.__setattr__(self, "small_lot_max_quantity", small_lot_max_quantity)
+        object.__setattr__(self, "allow_candle_fills", allow_candle_fills)
+        object.__setattr__(self, "max_execution_evidence_wait_us", resolved_wait)
+
+    @property
+    def max_quote_age_us(self) -> int | None:
+        return self.max_execution_evidence_wait_us
 
 
 @dataclass(frozen=True, slots=True)

@@ -10,8 +10,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any
-from uuid import NAMESPACE_DNS, uuid4, uuid5
+from uuid import uuid5
 
 from btg_ai_trader.backtesting.accounting import (
     BacktestEconomicState,
@@ -21,13 +20,11 @@ from btg_ai_trader.backtesting.assumptions import EconomicAssumptions
 from btg_ai_trader.backtesting.domain import (
     ActionIdentity,
     BacktestAction,
-    ExecutionOutcome,
-    ExecutionTiming,
+    BacktestMarkEvidence,
     InstrumentEconomics,
-    Side,
     SimulatedFill,
 )
-from btg_ai_trader.backtesting.execution import simulate_actions
+from btg_ai_trader.backtesting.execution import BACKTEST_UUID_NAMESPACE, simulate_actions
 from btg_ai_trader.backtesting.metrics import (
     DescriptiveBacktestMetrics,
     compute_descriptive_metrics,
@@ -35,9 +32,13 @@ from btg_ai_trader.backtesting.metrics import (
 from btg_ai_trader.backtesting.provenance import (
     BacktestInputBoundary,
     BacktestRunManifest,
+    compute_actions_hash,
 )
 from btg_ai_trader.observer.envelope import EventEnvelope
+from btg_ai_trader.observer.identity import RunId, TradableInstrumentId
 from btg_ai_trader.observer.market import Tick
+from btg_ai_trader.observer.provenance import CodeRevision, ConfigHash
+from btg_ai_trader.replay.core import CausalMarketReplaySchedule
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,6 +61,44 @@ class BacktestResult:
             raise ValueError("fills must be a tuple")
 
 
+def validate_action_sequence(
+    actions: Sequence[BacktestAction],
+    instrument_id: TradableInstrumentId,
+) -> None:
+    """Validate action sequence for order, idempotency, causality, and instrument match."""
+    seen_ids: set[ActionIdentity] = set()
+    prev_cutoff: datetime | None = None
+    prev_decision: datetime | None = None
+    prev_ready: datetime | None = None
+
+    for act in actions:
+        if act.instrument_id != instrument_id:
+            raise ValueError(
+                f"Action instrument {act.instrument_id} does not match "
+                f"engine instrument {instrument_id}"
+            )
+        if act.action_id in seen_ids:
+            raise ValueError(f"duplicate action_id rejected: {act.action_id.value}")
+        seen_ids.add(act.action_id)
+
+        if prev_cutoff is not None and act.knowledge_cutoff < prev_cutoff:
+            raise ValueError(
+                "action sequence contradicts knowledge_cutoff causality: regression rejected"
+            )
+        if prev_decision is not None and act.decision_time < prev_decision:
+            raise ValueError(
+                "action sequence contradicts decision_time causality: regression rejected"
+            )
+        if prev_ready is not None and act.order_ready_time < prev_ready:
+            raise ValueError(
+                "action sequence contradicts order_ready_time causality: regression rejected"
+            )
+
+        prev_cutoff = act.knowledge_cutoff
+        prev_decision = act.decision_time
+        prev_ready = act.order_ready_time
+
+
 class DeterministicEconomicBacktester:
     """Deterministic Economic Backtesting Kernel for Sprint 3.
 
@@ -71,8 +110,8 @@ class DeterministicEconomicBacktester:
         self,
         instrument_economics: InstrumentEconomics,
         assumptions: EconomicAssumptions,
+        code_revision: CodeRevision | str,
         end_of_window_policy: EndOfWindowPolicy = EndOfWindowPolicy.KEEP_OPEN,
-        code_revision: str = "ba6c0c41988fc9fefbdff13b0daedf96301dd74c",
     ) -> None:
         if not isinstance(instrument_economics, InstrumentEconomics):
             raise ValueError("instrument_economics must be InstrumentEconomics")
@@ -80,62 +119,104 @@ class DeterministicEconomicBacktester:
             raise ValueError("assumptions must be EconomicAssumptions")
         if not isinstance(end_of_window_policy, EndOfWindowPolicy):
             raise ValueError("end_of_window_policy must be EndOfWindowPolicy enum")
+        if code_revision is None:
+            raise ValueError("code_revision must be explicitly provided")
+        resolved_revision = (
+            code_revision
+            if isinstance(code_revision, CodeRevision)
+            else CodeRevision(str(code_revision))
+        )
 
         self.instrument_economics = instrument_economics
         self.assumptions = assumptions
         self.end_of_window_policy = end_of_window_policy
-        self.code_revision = code_revision
+        self.code_revision = resolved_revision
 
     def run(
         self,
         actions: Sequence[BacktestAction],
-        market_events: Sequence[EventEnvelope],
+        market_events: Sequence[EventEnvelope] | None = None,
+        replay_schedule: CausalMarketReplaySchedule | None = None,
+        run_id: ActionIdentity | RunId | str | None = None,
         session_id: str | None = None,
         created_at: datetime | None = None,
     ) -> BacktestResult:
         """Run deterministic backtest over the causal event stream."""
-        # 1. Validate action instrument IDs
-        for act in actions:
-            if act.instrument_id != self.instrument_economics.instrument_id:
-                raise ValueError(
-                    f"Action instrument {act.instrument_id} does not match "
-                    f"engine instrument {self.instrument_economics.instrument_id}"
-                )
+        # 1. Validate action sequence
+        validate_action_sequence(actions, self.instrument_economics.instrument_id)
 
-        # 2. Simulate standard action executions
+        # 2. Resolve replay schedule and events
+        schedule: CausalMarketReplaySchedule
+        if replay_schedule is not None:
+            if not isinstance(replay_schedule, CausalMarketReplaySchedule):
+                raise ValueError("replay_schedule must be CausalMarketReplaySchedule")
+            schedule = replay_schedule
+            events = tuple(schedule.events)
+        elif market_events is not None:
+            ev_tuple = tuple(market_events)
+            prov = ev_tuple[0].source.provider if ev_tuple else "synthetic"
+            scope = ev_tuple[0].source.scope if ev_tuple else "backtest"
+            sched_run_id = (
+                RunId(str(run_id))
+                if run_id is not None
+                else RunId("00000000-0000-0000-0000-000000000001")
+            )
+            schedule = CausalMarketReplaySchedule(
+                events=ev_tuple,
+                run_id=sched_run_id,
+                code_revision=self.code_revision,
+                config_hash=ConfigHash("0" * 64),
+                provider_id=prov,
+                capture_scope=scope,
+            )
+            events = tuple(schedule.events)
+        else:
+            raise ValueError("Either replay_schedule or market_events must be provided")
+
+        # 3. Simulate standard action executions
         simulated_fills = list(
             simulate_actions(
                 actions=actions,
-                replay_events=market_events,
+                replay_events=events,
                 assumptions=self.assumptions,
                 instrument_economics=self.instrument_economics,
             )
         )
 
-        # 3. Apply fills to simulated economic accounting
+        # 4. Apply fills to simulated economic accounting
         state = BacktestEconomicState.initial(self.instrument_economics)
         state = state.apply_fills(simulated_fills)
 
-        # 4. Handle EndOfWindowPolicy if position is still open
+        # 5. Handle EndOfWindowPolicy if position is still open
         pos = state.positions[0]
         if (
             not pos.is_flat
             and self.end_of_window_policy == EndOfWindowPolicy.CLOSE_AT_LAST_VALID_QUOTE
         ):
-            last_quote_price = self._find_last_quote_price(market_events, pos.is_long)
-            if last_quote_price is not None:
-                close_fill = self._create_close_fill(pos, last_quote_price, market_events)
-                simulated_fills.append(close_fill)
-                state = state.apply_fills((close_fill,))
-
-        # 5. Mark to market final open position (if any)
-        latest_mid_or_last = self._find_latest_mark_price(market_events)
-        if latest_mid_or_last is not None:
-            state = state.compute_mark_to_market(
-                {self.instrument_economics.instrument_id: latest_mid_or_last}
+            raise NotImplementedError(
+                "CLOSE_AT_LAST_VALID_QUOTE is deferred to future sprint (DD-98 deferred); "
+                "baseline supports KEEP_OPEN"
             )
 
-        # 6. Compute descriptive metrics
+        # 6. Mark to market final open position (if any)
+        mark_evidence = self._find_latest_mark_price(events)
+        if not pos.is_flat:
+            if mark_evidence is None:
+                raise ValueError(
+                    f"Cannot mark open position {pos.instrument_id} to market: "
+                    f"no valid mark evidence found in events"
+                )
+            state = state.compute_mark_to_market(
+                {self.instrument_economics.instrument_id: mark_evidence.mark_price},
+                mark_evidence=mark_evidence,
+            )
+        elif mark_evidence is not None:
+            state = state.compute_mark_to_market(
+                {self.instrument_economics.instrument_id: mark_evidence.mark_price},
+                mark_evidence=mark_evidence,
+            )
+
+        # 7. Compute descriptive metrics
         metrics = compute_descriptive_metrics(
             actions=actions,
             fills=simulated_fills,
@@ -143,32 +224,52 @@ class DeterministicEconomicBacktester:
             instrument_economics=self.instrument_economics,
         )
 
-        # 7. Build cryptographic run manifest
-        if session_id:
-            run_uuid = str(uuid5(NAMESPACE_DNS, f"backtest.{session_id}"))
+        # 8. Deterministic run identity
+        resolved_run_id: ActionIdentity
+        if run_id is not None:
+            resolved_run_id = (
+                run_id if isinstance(run_id, ActionIdentity) else ActionIdentity(str(run_id))
+            )
+        elif session_id is not None:
+            resolved_run_id = ActionIdentity(
+                str(uuid5(BACKTEST_UUID_NAMESPACE, f"backtest.{session_id}"))
+            )
         else:
-            run_uuid = str(uuid4())
-        run_id = ActionIdentity(run_uuid)
+            act_hash = compute_actions_hash(actions)
+            resolved_run_id = ActionIdentity(
+                str(
+                    uuid5(
+                        BACKTEST_UUID_NAMESPACE,
+                        f"backtest:{act_hash.value}:{schedule.boundary.run_id.value}:{self.code_revision.value}",
+                    )
+                )
+            )
 
+        # 9. Build cryptographic run manifest
         input_boundary = BacktestInputBoundary.create(
-            events=market_events,
             actions=actions,
-            code_revision_str=self.code_revision,
+            code_revision=self.code_revision,
+            replay_schedule=schedule,
+            events=events,
         )
 
         manifest_created_at = created_at
         if manifest_created_at is None:
-            if market_events and isinstance(market_events[-1].times.knowledge_time, datetime):
-                manifest_created_at = market_events[-1].times.knowledge_time
+            if events and isinstance(events[-1].times.knowledge_time, datetime):
+                manifest_created_at = events[-1].times.knowledge_time
             else:
                 manifest_created_at = datetime(2026, 9, 16, 0, 0, 0, tzinfo=UTC)
 
         manifest = BacktestRunManifest.create(
-            run_id=run_id,
+            run_id=resolved_run_id,
             input_boundary=input_boundary,
             assumptions=self.assumptions,
             instrument_id=self.instrument_economics.instrument_id,
+            instrument_economics=self.instrument_economics,
+            fills=simulated_fills,
+            economic_state=state,
             metrics=metrics,
+            end_of_window_policy=self.end_of_window_policy,
             created_at=manifest_created_at,
         )
 
@@ -179,85 +280,53 @@ class DeterministicEconomicBacktester:
             fills=tuple(simulated_fills),
         )
 
-    def _find_last_quote_price(
-        self,
-        events: Sequence[EventEnvelope],
-        is_closing_long: bool,
-    ) -> Decimal | None:
-        """Find the price of the last valid quote for closing an open position."""
-        for ev in reversed(events):
-            payload = ev.payload
-            if isinstance(payload, Tick):
-                if is_closing_long and isinstance(payload.bid, Decimal):
-                    return payload.bid
-                if not is_closing_long and isinstance(payload.ask, Decimal):
-                    return payload.ask
-        return None
-
     def _find_latest_mark_price(
         self,
         events: Sequence[EventEnvelope],
-    ) -> Decimal | None:
+    ) -> BacktestMarkEvidence | None:
         """Find the latest mid or last trade price for mark-to-market evaluation."""
         for ev in reversed(events):
+            if ev.instrument_id != self.instrument_economics.instrument_id:
+                continue
             payload = ev.payload
+            mark_price: Decimal | None = None
+            method: str = ""
             if isinstance(payload, Tick):
                 if isinstance(payload.bid, Decimal) and isinstance(payload.ask, Decimal):
-                    return (payload.bid + payload.ask) / Decimal("2")
-                if isinstance(payload.last, Decimal):
-                    return payload.last
-            else:
-                # Candle
-                if isinstance(payload.close, Decimal):
-                    return payload.close
+                    mark_price = (payload.bid + payload.ask) / Decimal("2")
+                    method = "MID_PRICE"
+                elif isinstance(payload.last, Decimal):
+                    mark_price = payload.last
+                    method = "LAST_PRICE"
+            elif hasattr(payload, "close") and isinstance(payload.close, Decimal):
+                mark_price = payload.close
+                method = "CANDLE_CLOSE"
+
+            if mark_price is not None:
+                raw_m = ev.times.event_time
+                m_time: datetime | None = (
+                    raw_m.value
+                    if hasattr(raw_m, "value") and isinstance(raw_m.value, datetime)
+                    else raw_m
+                    if isinstance(raw_m, datetime)
+                    else None
+                )
+                raw_k = ev.times.knowledge_time
+                k_time: datetime | None = (
+                    raw_k.value
+                    if hasattr(raw_k, "value") and isinstance(raw_k.value, datetime)
+                    else raw_k
+                    if isinstance(raw_k, datetime)
+                    else None
+                )
+                if m_time is not None and k_time is not None:
+                    return BacktestMarkEvidence(
+                        instrument_id=self.instrument_economics.instrument_id,
+                        mark_price=mark_price,
+                        mark_time=m_time,
+                        knowledge_time=k_time,
+                        source_event_id=ev.event_id,
+                        valuation_method=method,
+                    )
         return None
 
-    def _create_close_fill(
-        self,
-        pos: Any,
-        raw_price: Decimal,
-        events: Sequence[EventEnvelope],
-    ) -> SimulatedFill:
-        """Construct synthetic close-out fill with full economic friction."""
-        side = Side.SELL if pos.is_long else Side.BUY
-        qty = abs(pos.quantity)
-
-        # Apply slippage
-        fill_price, slip_points = self.assumptions.slippage_model.apply_slippage(
-            side=side,
-            raw_price=raw_price,
-        )
-
-        # Apply fee
-        fee = self.assumptions.fee_schedule.compute_fee(
-            quantity=qty,
-            fill_price=fill_price,
-            money_per_price_unit=self.instrument_economics.money_per_price_unit,
-        )
-
-        last_ts = (
-            events[-1].times.knowledge_time
-            if events and isinstance(events[-1].times.knowledge_time, datetime)
-            else datetime(2026, 9, 16, 0, 0, 0, tzinfo=UTC)
-        )
-        timing = ExecutionTiming(
-            knowledge_cutoff=last_ts,
-            decision_time=last_ts,
-            order_ready_time=last_ts,
-            simulated_market_arrival_time=last_ts,
-            fill_opportunity_time=last_ts,
-        )
-
-        return SimulatedFill(
-            fill_id=ActionIdentity(str(uuid4())),
-            action_id=ActionIdentity(str(uuid4())),
-            instrument_id=self.instrument_economics.instrument_id,
-            side=side,
-            quantity=qty,
-            raw_price=raw_price,
-            fill_price=fill_price,
-            slippage=slip_points,
-            explicit_fee=fee,
-            timing=timing,
-            outcome=ExecutionOutcome.FILL,
-        )

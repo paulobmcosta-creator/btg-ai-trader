@@ -21,7 +21,7 @@ from btg_ai_trader.backtesting.domain import (
 )
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, init=False)
 class DescriptiveBacktestMetrics:
     """Deterministic descriptive economic summary of a completed backtest run."""
 
@@ -29,6 +29,7 @@ class DescriptiveBacktestMetrics:
     net_realized_pnl: Decimal
     total_explicit_fees: Decimal
     diagnostic_slippage_burden: Decimal
+    diagnostic_spread_burden: Decimal
     turnover: Decimal
     total_actions: int
     fill_count: int
@@ -43,10 +44,77 @@ class DescriptiveBacktestMetrics:
     hit_rate: Decimal
     average_win: Decimal
     average_loss: Decimal
-    profit_factor: Decimal
-    expectancy: Decimal
+    gross_profit_factor: Decimal
+    gross_expectancy: Decimal
     max_drawdown_amount: Decimal
-    max_drawdown_ratio: Decimal
+    max_drawdown_ratio: Decimal | None
+
+    def __init__(
+        self,
+        gross_realized_pnl: Decimal,
+        net_realized_pnl: Decimal,
+        total_explicit_fees: Decimal,
+        diagnostic_slippage_burden: Decimal,
+        turnover: Decimal,
+        total_actions: int,
+        fill_count: int,
+        no_fill_count: int,
+        indeterminate_count: int,
+        rejected_count: int,
+        fill_rate: Decimal,
+        closed_trade_count: int,
+        winning_trade_count: int,
+        losing_trade_count: int,
+        breakeven_trade_count: int,
+        hit_rate: Decimal,
+        average_win: Decimal,
+        average_loss: Decimal,
+        gross_profit_factor: Decimal | None = None,
+        gross_expectancy: Decimal | None = None,
+        max_drawdown_amount: Decimal = Decimal("0"),
+        max_drawdown_ratio: Decimal | None = None,
+        profit_factor: Decimal | None = None,
+        expectancy: Decimal | None = None,
+        diagnostic_spread_burden: Decimal = Decimal("0"),
+    ) -> None:
+        resolved_pf = gross_profit_factor if gross_profit_factor is not None else (
+            profit_factor if profit_factor is not None else Decimal("0")
+        )
+        resolved_exp = gross_expectancy if gross_expectancy is not None else (
+            expectancy if expectancy is not None else Decimal("0")
+        )
+
+        object.__setattr__(self, "gross_realized_pnl", gross_realized_pnl)
+        object.__setattr__(self, "net_realized_pnl", net_realized_pnl)
+        object.__setattr__(self, "total_explicit_fees", total_explicit_fees)
+        object.__setattr__(self, "diagnostic_slippage_burden", diagnostic_slippage_burden)
+        object.__setattr__(self, "diagnostic_spread_burden", diagnostic_spread_burden)
+        object.__setattr__(self, "turnover", turnover)
+        object.__setattr__(self, "total_actions", total_actions)
+        object.__setattr__(self, "fill_count", fill_count)
+        object.__setattr__(self, "no_fill_count", no_fill_count)
+        object.__setattr__(self, "indeterminate_count", indeterminate_count)
+        object.__setattr__(self, "rejected_count", rejected_count)
+        object.__setattr__(self, "fill_rate", fill_rate)
+        object.__setattr__(self, "closed_trade_count", closed_trade_count)
+        object.__setattr__(self, "winning_trade_count", winning_trade_count)
+        object.__setattr__(self, "losing_trade_count", losing_trade_count)
+        object.__setattr__(self, "breakeven_trade_count", breakeven_trade_count)
+        object.__setattr__(self, "hit_rate", hit_rate)
+        object.__setattr__(self, "average_win", average_win)
+        object.__setattr__(self, "average_loss", average_loss)
+        object.__setattr__(self, "gross_profit_factor", resolved_pf)
+        object.__setattr__(self, "gross_expectancy", resolved_exp)
+        object.__setattr__(self, "max_drawdown_amount", max_drawdown_amount)
+        object.__setattr__(self, "max_drawdown_ratio", max_drawdown_ratio)
+
+    @property
+    def profit_factor(self) -> Decimal:
+        return self.gross_profit_factor
+
+    @property
+    def expectancy(self) -> Decimal:
+        return self.gross_expectancy
 
 
 def compute_descriptive_metrics(
@@ -62,7 +130,11 @@ def compute_descriptive_metrics(
     indeterminate_count = sum(1 for f in fills if f.outcome == ExecutionOutcome.INDETERMINATE)
     rejected_count = sum(1 for f in fills if f.outcome == ExecutionOutcome.REJECTED)
 
-    fill_rate = Decimal(fill_count) / Decimal(total_actions) if total_actions > 0 else Decimal("0")
+    # Action-level fill rate bounded in [0, 1]
+    raw_fill_rate = (
+        Decimal(fill_count) / Decimal(total_actions) if total_actions > 0 else Decimal("0")
+    )
+    fill_rate = min(Decimal("1"), raw_fill_rate)
 
     turnover = sum(
         (
@@ -74,7 +146,6 @@ def compute_descriptive_metrics(
     )
 
     # Reconstruct closed trades from fills to evaluate trade-level stats
-    # A closed trade occurs whenever a position reduction takes place
     closed_pnls: list[Decimal] = []
     curr_qty = Decimal("0")
     curr_basis = Decimal("0")
@@ -137,19 +208,23 @@ def compute_descriptive_metrics(
     )
 
     if gross_losses > Decimal("0"):
-        profit_factor = gross_wins / gross_losses
+        gross_profit_factor = gross_wins / gross_losses
     elif gross_wins > Decimal("0"):
-        profit_factor = Decimal("Infinity")
+        gross_profit_factor = Decimal("Infinity")
     else:
-        profit_factor = Decimal("0")
+        gross_profit_factor = Decimal("0")
 
-    expectancy = (hit_rate * average_win) - ((Decimal("1") - hit_rate) * average_loss)
+    # Mathematical trade expectancy handles breakevens without bias
+    gross_expectancy = (
+        sum(closed_pnls, start=Decimal("0")) / Decimal(closed_trade_count)
+        if closed_trade_count > 0
+        else Decimal("0")
+    )
 
-    # Compute realized drawdown from the equity curve
+    # Realized drawdown amount from equity curve; ratio is None without explicit capital denominator
     curve = economic_state.realized_equity_curve
     max_peak = Decimal("0")
     max_dd_amount = Decimal("0")
-    max_dd_ratio = Decimal("0")
 
     for val in curve:
         if val > max_peak:
@@ -157,14 +232,15 @@ def compute_descriptive_metrics(
         dd = max_peak - val
         if dd > max_dd_amount:
             max_dd_amount = dd
-            if max_peak > Decimal("0"):
-                max_dd_ratio = dd / max_peak
+
+    max_dd_ratio: Decimal | None = None
 
     return DescriptiveBacktestMetrics(
         gross_realized_pnl=economic_state.pnl.gross_realized_pnl,
         net_realized_pnl=economic_state.pnl.net_realized_pnl,
         total_explicit_fees=economic_state.pnl.explicit_fees,
         diagnostic_slippage_burden=economic_state.pnl.diagnostic_slippage_burden,
+        diagnostic_spread_burden=economic_state.pnl.diagnostic_spread_burden,
         turnover=turnover,
         total_actions=total_actions,
         fill_count=fill_count,
@@ -179,8 +255,8 @@ def compute_descriptive_metrics(
         hit_rate=hit_rate,
         average_win=average_win,
         average_loss=average_loss,
-        profit_factor=profit_factor,
-        expectancy=expectancy,
+        gross_profit_factor=gross_profit_factor,
+        gross_expectancy=gross_expectancy,
         max_drawdown_amount=max_dd_amount,
         max_drawdown_ratio=max_dd_ratio,
     )

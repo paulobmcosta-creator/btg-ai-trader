@@ -98,9 +98,9 @@ def test_fixed_points_slippage_model() -> None:
     assert price == Decimal("99.5")
     assert slip == Decimal("0.5")
 
-    # Extreme SELL floor
-    p_low, s_low = model.apply_slippage(Side.SELL, Decimal("0.2"))
-    assert p_low == Decimal("0.00000001")
+    # Extreme SELL floor: silent clamp removed, non-positive price raises ValueError
+    with pytest.raises(ValueError, match="implies non-positive fill price"):
+        model.apply_slippage(Side.SELL, Decimal("0.2"))
 
     with pytest.raises(ValueError, match="adverse_points must be Decimal"):
         FixedPointsSlippageModel(adverse_points=0.5)  # type: ignore[arg-type]
@@ -226,7 +226,7 @@ def test_execution_policy_and_economic_assumptions() -> None:
     with pytest.raises(ValueError, match="small_lot_max_quantity must be positive"):
         ExecutionPolicy(small_lot_max_quantity=Decimal("0"))
 
-    with pytest.raises(ValueError, match="max_quote_age_us must be positive integer"):
+    with pytest.raises(ValueError, match="must be positive integer"):
         ExecutionPolicy(max_quote_age_us=0)
 
     assumptions = EconomicAssumptions(

@@ -14,12 +14,14 @@ from btg_ai_trader.backtesting.assumptions import (
     EconomicAssumptions,
     FeeSchedule,
     FixedPointsSlippageModel,
+    LatencyModel,
     SlippageModel,
     ZeroSlippageModel,
 )
 from btg_ai_trader.backtesting.domain import BacktestAction, InstrumentEconomics
 from btg_ai_trader.backtesting.engine import DeterministicEconomicBacktester
 from btg_ai_trader.observer.envelope import EventEnvelope
+from btg_ai_trader.observer.provenance import CodeRevision
 
 
 class MonotonicityViolationError(Exception):
@@ -43,9 +45,20 @@ def verify_pnl_monotonicity(sweep_results: Sequence[SensitivityDataPoint]) -> No
     if len(sweep_results) < 2:
         return
 
+    first_param = sweep_results[0].parameter_name
     for i in range(1, len(sweep_results)):
         prev = sweep_results[i - 1]
         curr = sweep_results[i]
+
+        if curr.parameter_name != first_param:
+            raise ValueError(
+                f"Mixed parameters in sensitivity sweep: {curr.parameter_name} vs {first_param}"
+            )
+        if curr.friction_value < prev.friction_value:
+            raise ValueError(
+                f"Sensitivity sweep results must be sorted by friction_value ascending: "
+                f"{curr.friction_value} < {prev.friction_value}"
+            )
         if curr.net_realized_pnl > prev.net_realized_pnl:
             raise MonotonicityViolationError(
                 f"Monotonicity violation on {curr.parameter_name}: "
@@ -61,6 +74,7 @@ def run_fee_sensitivity_sweep(
     instrument_economics: InstrumentEconomics,
     base_assumptions: EconomicAssumptions,
     fee_multipliers: Sequence[Decimal],
+    code_revision: CodeRevision | str = "0000000000000000000000000000000000000000",
 ) -> list[SensitivityDataPoint]:
     """Sweep explicit fee multipliers and verify net P&L monotonicity."""
     results: list[SensitivityDataPoint] = []
@@ -89,6 +103,7 @@ def run_fee_sensitivity_sweep(
         tester = DeterministicEconomicBacktester(
             instrument_economics=instrument_economics,
             assumptions=swept_assumptions,
+            code_revision=code_revision,
         )
         res = tester.run(actions=actions, market_events=market_events)
         point = SensitivityDataPoint(
@@ -111,6 +126,7 @@ def run_slippage_sensitivity_sweep(
     instrument_economics: InstrumentEconomics,
     base_assumptions: EconomicAssumptions,
     slippage_points_list: Sequence[Decimal],
+    code_revision: CodeRevision | str = "0000000000000000000000000000000000000000",
 ) -> list[SensitivityDataPoint]:
     """Sweep fixed adverse slippage points and verify net P&L monotonicity."""
     results: list[SensitivityDataPoint] = []
@@ -137,6 +153,7 @@ def run_slippage_sensitivity_sweep(
         tester = DeterministicEconomicBacktester(
             instrument_economics=instrument_economics,
             assumptions=swept_assumptions,
+            code_revision=code_revision,
         )
         res = tester.run(actions=actions, market_events=market_events)
         point = SensitivityDataPoint(
@@ -151,3 +168,51 @@ def run_slippage_sensitivity_sweep(
 
     verify_pnl_monotonicity(results)
     return results
+
+
+def run_latency_sensitivity_sweep(
+    actions: Sequence[BacktestAction],
+    market_events: Sequence[EventEnvelope],
+    instrument_economics: InstrumentEconomics,
+    base_assumptions: EconomicAssumptions,
+    transit_latencies_us: Sequence[int],
+    code_revision: CodeRevision | str = "0000000000000000000000000000000000000000",
+) -> list[SensitivityDataPoint]:
+    """Sweep virtual transit latency in microseconds and collect sensitivity data."""
+    results: list[SensitivityDataPoint] = []
+
+    for lat_us in sorted(transit_latencies_us):
+        if lat_us < 0:
+            raise ValueError("latency cannot be negative")
+
+        swept_latency = LatencyModel(
+            decision_latency_us=base_assumptions.latency_model.decision_latency_us,
+            transit_latency_us=lat_us,
+        )
+        swept_assumptions = EconomicAssumptions(
+            assumptions_id=f"{base_assumptions.assumptions_id}-lat-{lat_us}",
+            spread_model=base_assumptions.spread_model,
+            slippage_model=base_assumptions.slippage_model,
+            fee_schedule=base_assumptions.fee_schedule,
+            latency_model=swept_latency,
+            execution_policy=base_assumptions.execution_policy,
+        )
+
+        tester = DeterministicEconomicBacktester(
+            instrument_economics=instrument_economics,
+            assumptions=swept_assumptions,
+            code_revision=code_revision,
+        )
+        res = tester.run(actions=actions, market_events=market_events)
+        point = SensitivityDataPoint(
+            parameter_name="transit_latency_us",
+            friction_value=Decimal(lat_us),
+            gross_realized_pnl=res.metrics.gross_realized_pnl,
+            net_realized_pnl=res.metrics.net_realized_pnl,
+            total_explicit_fees=res.metrics.total_explicit_fees,
+            diagnostic_slippage_burden=res.metrics.diagnostic_slippage_burden,
+        )
+        results.append(point)
+
+    return results
+

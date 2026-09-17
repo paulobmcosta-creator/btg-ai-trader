@@ -185,22 +185,24 @@ def test_backtest_input_boundary_validation_and_codec() -> None:
     t0 = datetime(2026, 9, 16, 10, 0, 0, tzinfo=UTC)
     events = [make_event(1, t0)]
     actions = [make_action(1, t0)]
+    rev = CodeRevision("b" * 40)
 
-    boundary = BacktestInputBoundary.create(events, actions)
+    boundary = BacktestInputBoundary.create(events, actions, code_revision=rev)
     d = boundary.to_dict()
-    assert "dataset_hash" in d
+    assert "replay_boundary" in d
     assert "actions_hash" in d
     assert "code_revision" in d
+    assert "dataset_hash" in d
 
     recovered = BacktestInputBoundary.from_dict(d)
     assert recovered == boundary
 
     # Validations
     ch = ContentHash("a" * 64)
-    rev = CodeRevision("b" * 40)
-    with pytest.raises(ValueError, match="dataset_hash must be ContentHash"):
+    rb = boundary.replay_boundary
+    with pytest.raises(ValueError, match="replay_boundary must be ReplayInputBoundary"):
         BacktestInputBoundary(
-            dataset_hash="bad",  # type: ignore[arg-type]
+            replay_boundary="bad",  # type: ignore[arg-type]
             actions_hash=ch,
             code_revision=rev,
             environment_signature="env",
@@ -208,7 +210,7 @@ def test_backtest_input_boundary_validation_and_codec() -> None:
 
     with pytest.raises(ValueError, match="actions_hash must be ContentHash"):
         BacktestInputBoundary(
-            dataset_hash=ch,
+            replay_boundary=rb,
             actions_hash="bad",  # type: ignore[arg-type]
             code_revision=rev,
             environment_signature="env",
@@ -216,7 +218,7 @@ def test_backtest_input_boundary_validation_and_codec() -> None:
 
     with pytest.raises(ValueError, match="code_revision must be CodeRevision"):
         BacktestInputBoundary(
-            dataset_hash=ch,
+            replay_boundary=rb,
             actions_hash=ch,
             code_revision="bad",  # type: ignore[arg-type]
             environment_signature="env",
@@ -224,7 +226,7 @@ def test_backtest_input_boundary_validation_and_codec() -> None:
 
     with pytest.raises(ValueError, match="environment_signature"):
         BacktestInputBoundary(
-            dataset_hash=ch, actions_hash=ch, code_revision=rev, environment_signature=""
+            replay_boundary=rb, actions_hash=ch, code_revision=rev, environment_signature=""
         )
 
 
@@ -241,7 +243,8 @@ def test_backtest_run_manifest_lifecycle_and_integrity() -> None:
         latency_model=LatencyModel(),
         execution_policy=ExecutionPolicy(),
     )
-    boundary = BacktestInputBoundary.create(events, actions)
+    rev = CodeRevision("b" * 40)
+    boundary = BacktestInputBoundary.create(events, actions, code_revision=rev)
     metrics = sample_metrics()
 
     manifest = BacktestRunManifest.create(
@@ -268,6 +271,10 @@ def test_backtest_run_manifest_lifecycle_and_integrity() -> None:
         input_boundary=manifest.input_boundary,
         assumptions_hash=manifest.assumptions_hash,
         instrument_id=manifest.instrument_id,
+        instrument_economics_hash=manifest.instrument_economics_hash,
+        fills_hash=manifest.fills_hash,
+        economic_state_hash=manifest.economic_state_hash,
+        metrics_hash=manifest.metrics_hash,
         metrics=manifest.metrics,
         manifest_hash=ContentHash("f" * 64),
     )
@@ -278,9 +285,11 @@ def test_manifest_field_validations() -> None:
     t0 = datetime(2026, 9, 16, 10, 0, 0, tzinfo=UTC)
     iid = TradableInstrumentId(make_uuid(1))
     run_id = ActionIdentity(make_uuid(10))
-    boundary = BacktestInputBoundary.create([], [])
+    rev = CodeRevision("b" * 40)
+    boundary = BacktestInputBoundary.create([], [], code_revision=rev)
     assump_hash = ContentHash("c" * 64)
     manifest_hash = ContentHash("d" * 64)
+    dummy_hash = ContentHash("0" * 64)
     metrics = sample_metrics()
 
     with pytest.raises(ValueError, match="run_id must be ActionIdentity"):
@@ -290,6 +299,10 @@ def test_manifest_field_validations() -> None:
             input_boundary=boundary,
             assumptions_hash=assump_hash,
             instrument_id=iid,
+            instrument_economics_hash=dummy_hash,
+            fills_hash=dummy_hash,
+            economic_state_hash=dummy_hash,
+            metrics_hash=dummy_hash,
             metrics=metrics,
             manifest_hash=manifest_hash,
         )
@@ -301,6 +314,10 @@ def test_manifest_field_validations() -> None:
             input_boundary="bad",  # type: ignore[arg-type]
             assumptions_hash=assump_hash,
             instrument_id=iid,
+            instrument_economics_hash=dummy_hash,
+            fills_hash=dummy_hash,
+            economic_state_hash=dummy_hash,
+            metrics_hash=dummy_hash,
             metrics=metrics,
             manifest_hash=manifest_hash,
         )
@@ -312,6 +329,10 @@ def test_manifest_field_validations() -> None:
             input_boundary=boundary,
             assumptions_hash="bad",  # type: ignore[arg-type]
             instrument_id=iid,
+            instrument_economics_hash=dummy_hash,
+            fills_hash=dummy_hash,
+            economic_state_hash=dummy_hash,
+            metrics_hash=dummy_hash,
             metrics=metrics,
             manifest_hash=manifest_hash,
         )
@@ -323,6 +344,10 @@ def test_manifest_field_validations() -> None:
             input_boundary=boundary,
             assumptions_hash=assump_hash,
             instrument_id="bad",  # type: ignore[arg-type]
+            instrument_economics_hash=dummy_hash,
+            fills_hash=dummy_hash,
+            economic_state_hash=dummy_hash,
+            metrics_hash=dummy_hash,
             metrics=metrics,
             manifest_hash=manifest_hash,
         )
@@ -334,6 +359,10 @@ def test_manifest_field_validations() -> None:
             input_boundary=boundary,
             assumptions_hash=assump_hash,
             instrument_id=iid,
+            instrument_economics_hash=dummy_hash,
+            fills_hash=dummy_hash,
+            economic_state_hash=dummy_hash,
+            metrics_hash=dummy_hash,
             metrics="bad",  # type: ignore[arg-type]
             manifest_hash=manifest_hash,
         )
@@ -345,6 +374,10 @@ def test_manifest_field_validations() -> None:
             input_boundary=boundary,
             assumptions_hash=assump_hash,
             instrument_id=iid,
+            instrument_economics_hash=dummy_hash,
+            fills_hash=dummy_hash,
+            economic_state_hash=dummy_hash,
+            metrics_hash=dummy_hash,
             metrics=metrics,
             manifest_hash="bad",  # type: ignore[arg-type]
         )

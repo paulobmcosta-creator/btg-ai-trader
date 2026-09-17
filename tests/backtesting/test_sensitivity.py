@@ -25,6 +25,7 @@ from btg_ai_trader.backtesting.sensitivity import (
     MonotonicityViolationError,
     SensitivityDataPoint,
     run_fee_sensitivity_sweep,
+    run_latency_sensitivity_sweep,
     run_slippage_sensitivity_sweep,
     verify_pnl_monotonicity,
 )
@@ -132,6 +133,32 @@ def test_verify_pnl_monotonicity_direct() -> None:
     with pytest.raises(MonotonicityViolationError, match="Monotonicity violation on f"):
         verify_pnl_monotonicity(invalid)
 
+    # Reject mismatched parameter names
+    mismatched = [
+        SensitivityDataPoint(
+            "fee", Decimal("1"), Decimal("100"), Decimal("90"), Decimal("10"), Decimal("0")
+        ),
+        SensitivityDataPoint(
+            "slip", Decimal("2"), Decimal("100"), Decimal("80"), Decimal("20"), Decimal("0")
+        ),
+    ]
+    with pytest.raises(ValueError, match="Mixed parameters in sensitivity sweep"):
+        verify_pnl_monotonicity(mismatched)
+
+    # Reject unsorted friction_value
+    unsorted_pts = [
+        SensitivityDataPoint(
+            "fee", Decimal("2"), Decimal("100"), Decimal("90"), Decimal("10"), Decimal("0")
+        ),
+        SensitivityDataPoint(
+            "fee", Decimal("1"), Decimal("100"), Decimal("80"), Decimal("20"), Decimal("0")
+        ),
+    ]
+    with pytest.raises(
+        ValueError, match="Sensitivity sweep results must be sorted by friction_value ascending"
+    ):
+        verify_pnl_monotonicity(unsorted_pts)
+
 
 def test_run_fee_sensitivity_sweep() -> None:
     iid = TradableInstrumentId(make_uuid(1))
@@ -215,3 +242,44 @@ def test_run_slippage_sensitivity_sweep() -> None:
     for i in range(1, len(sweep)):
         assert sweep[i].net_realized_pnl <= sweep[i - 1].net_realized_pnl
         assert sweep[i].diagnostic_slippage_burden >= sweep[i - 1].diagnostic_slippage_burden
+
+
+def test_run_latency_sensitivity_sweep() -> None:
+    iid = TradableInstrumentId(make_uuid(1))
+    econ = InstrumentEconomics(iid, "BRL", Decimal("1.0"), Decimal("0.5"), Decimal("1.0"))
+    assumptions = EconomicAssumptions(
+        assumptions_id="base",
+        spread_model=SpreadModel(),
+        slippage_model=ZeroSlippageModel(),
+        fee_schedule=FeeSchedule(schedule_id="fee"),
+        latency_model=LatencyModel(decision_latency_us=100, transit_latency_us=100),
+        execution_policy=ExecutionPolicy(),
+    )
+
+    t0 = datetime(2026, 9, 16, 10, 0, 0, tzinfo=UTC)
+    t1 = datetime(2026, 9, 16, 10, 0, 1, tzinfo=UTC)
+
+    actions = [
+        make_action(1, t0, iid, Side.BUY, Decimal("10")),
+        make_action(2, t1, iid, Side.SELL, Decimal("10")),
+    ]
+    events = [
+        make_tick_event(
+            1, t0 + timedelta(microseconds=500), iid, bid=Decimal("99.5"), ask=Decimal("100.0")
+        ),
+        make_tick_event(
+            2, t1 + timedelta(microseconds=500), iid, bid=Decimal("110.0"), ask=Decimal("110.5")
+        ),
+    ]
+
+    # Negative latency rejected
+    with pytest.raises(ValueError, match="latency cannot be negative"):
+        run_latency_sensitivity_sweep(actions, events, econ, assumptions, [-1])
+
+    latencies = [0, 100, 500]
+    sweep = run_latency_sensitivity_sweep(actions, events, econ, assumptions, latencies)
+
+    assert len(sweep) == 3
+    for pt in sweep:
+        assert pt.parameter_name == "transit_latency_us"
+
