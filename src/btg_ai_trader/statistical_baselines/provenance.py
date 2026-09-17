@@ -1,5 +1,7 @@
 """Evaluation provenance, input boundary validation, and cryptographically verifiable manifests."""
 
+# ruff: noqa: I001 -- qualified dataclasses import supports non-transferable verification token.
+
 from __future__ import annotations
 
 import dataclasses
