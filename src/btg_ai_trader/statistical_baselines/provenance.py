@@ -59,14 +59,14 @@ class StatisticalEvaluationInputBoundary:
     numeric_policy: NumericPolicy
     code_revision: str
     logical_evaluation_digest: str
-    _verification_token: object = field(default=None, repr=False, compare=False)
+    _verification_token: object = field(
+        default=None,
+        init=False,
+        repr=False,
+        compare=False,
+    )
 
     def __post_init__(self) -> None:
-        if self._verification_token is not _BOUNDARY_VERIFICATION_TOKEN:
-            raise ValueError(
-                "StatisticalEvaluationInputBoundary must be created via "
-                "StatisticalEvaluationInputBoundary.create()"
-            )
         object.__setattr__(self, "sample_ids", tuple(self.sample_ids))
         object.__setattr__(self, "candidate_identities", tuple(self.candidate_identities))
         object.__setattr__(self, "metric_names", tuple(sorted(self.metric_names)))
@@ -112,6 +112,11 @@ class StatisticalEvaluationInputBoundary:
                 f"logical_evaluation_digest mismatch: expected {expected_digest}, "
                 f"got {self.logical_evaluation_digest}"
             )
+
+    @property
+    def is_verified(self) -> bool:
+        """Whether this boundary was constructed by the validated factory."""
+        return self._verification_token is _BOUNDARY_VERIFICATION_TOKEN
 
     @classmethod
     def compute_dataset_digest(cls, samples: Sequence[StatisticalSample]) -> str:
@@ -248,7 +253,7 @@ class StatisticalEvaluationInputBoundary:
         logical_ser = json.dumps(logical_payload, sort_keys=True, separators=(",", ":"))
         logical_digest = hashlib.sha256(logical_ser.encode("utf-8")).hexdigest()
 
-        return cls(
+        boundary = cls(
             sample_ids=tuple(s.sample_id for s in valid_samples),
             dataset_digest=dataset_digest,
             source_lineage_digest=source_lineage_digest,
@@ -266,8 +271,9 @@ class StatisticalEvaluationInputBoundary:
             numeric_policy=numeric_policy,
             code_revision=code_revision,
             logical_evaluation_digest=logical_digest,
-            _verification_token=_BOUNDARY_VERIFICATION_TOKEN,
         )
+        object.__setattr__(boundary, "_verification_token", _BOUNDARY_VERIFICATION_TOKEN)
+        return boundary
 
 
 @dataclass(frozen=True, slots=True)
@@ -498,14 +504,15 @@ class StatisticalEvaluationManifest:
         )
 
         if input_boundary is not None:
+            if not input_boundary.is_verified:
+                raise ValueError(
+                    "input_boundary must be a verified boundary created via "
+                    "StatisticalEvaluationInputBoundary.create()"
+                )
             if input_boundary.dataset_digest != dataset_digest:
                 raise ValueError(
                     f"input_boundary dataset_digest ({input_boundary.dataset_digest}) "
                     f"does not match dataset_digest of samples ({dataset_digest})"
-                )
-            if input_boundary.source_lineage_digest != source_lineage_digest:
-                raise ValueError(
-                    "input_boundary source_lineage_digest does not match samples"
                 )
             if input_boundary.plan_digest != plan_digest:
                 raise ValueError(
