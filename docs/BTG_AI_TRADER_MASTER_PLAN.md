@@ -308,7 +308,7 @@ Fora do Sprint 2:
 - custos, slippage e queue-fill como simulador econômico;
 - modelos preditivos operacionais.
 
-### Sprint 3 — Deterministic Economic Backtesting — CLOSURE_CANDIDATE / PROPOSED_PASS (MERGE_AUTHORIZED = NO; PROMOTION_TO_SPRINT_4_GATE = NO_UNTIL_INDEPENDENT_REAUDIT)
+### Sprint 3 — Deterministic Economic Backtesting — FORMALLY CLOSED / PASS
 
 Escopo executado e auditado:
 
@@ -332,9 +332,30 @@ Fora do Sprint 3:
 - mutação do `FinancialLedger` canônico futuro;
 - modelos de machine learning preditivos operacionais.
 
-### Sprint 4 — Statistical Baselines
+### Sprint 4 — Statistical Baselines — CLOSURE_CANDIDATE / PROPOSED_PASS (MERGE_AUTHORIZED = NO; PROMOTION_TO_SPRINT_5_GATE = NO_UNTIL_INDEPENDENT_REAUDIT)
 
-Benchmarks, modelos simples, calibração e out-of-sample.
+Escopo executado e auditado:
+
+- domínio de avaliação temporal, amostragem e identificação determinística (`domain.py`);
+- fronteiras de avaliação e planos de walk-forward monotônicos (`boundaries.py`);
+- splitting walk-forward (rolling/expanding), purging de intervalos sobrepostos e embargo pós-evento (`splits.py`);
+- catálogo de 7 baselines estatísticos determinísticos sem RNG e sem frameworks de ML (`baselines.py`);
+- métricas contínuas e categóricas determinísticas padronizadas (`metrics.py`);
+- diagnósticos de calibração probabilística com ECE, MCE e Brier score (`calibration.py`);
+- orquestração de avaliação temporal por fold preservando distribuições (`evaluation.py`);
+- comparador de modelos com invariante estrito de rejeição de seleção em `PROTECTED_TEST` (`comparison.py`);
+- limites de entrada criptográficos, registros de proveniência e manifestos auditáveis (`provenance.py`).
+
+Fora do Sprint 4:
+
+- ML Engine (scikit-learn, XGBoost, LightGBM, PyTorch);
+- busca automatizada de hiperparâmetros;
+- Model Registry operacional;
+- Strategy ou Signal operacional;
+- Risk Engine operacional;
+- Paper ou Live trading operacional;
+- APIs de broker ou ordem;
+- dinheiro real.
 
 ### Sprint 5 — ML Engine
 

@@ -46,8 +46,21 @@ SPRINT_3_FINAL_ACCEPTANCE = docs/program/S3_FINAL_ACCEPTANCE.md
 S3_ENTRY_GATE = PASS
 
 PROMOTION_TO_SPRINT_4_GATE = YES
-SPRINT_4_GATE_ONLY = AUTHORIZED
-SPRINT_4_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+SPRINT_4_BRANCH = sprint/4-statistical-baselines
+SPRINT_4_LIFECYCLE = CLOSURE_CANDIDATE
+SPRINT_4_FINAL_VERDICT = PASS
+SPRINT_4_SCOPE = STATISTICAL_BASELINES
+SPRINT_4_CANONICAL_BASE = 922adee625029c0cbd6c665f8906e7fd99cf71cb
+SPRINT_4_ISSUE = #73 (CLOSURE_CANDIDATE)
+SPRINT_4_ENTRY_CONTRACT = docs/program/S4_ENTRY_CONTRACT.md
+SPRINT_4_DECISION_REGISTER = docs/program/S4_DECISION_REGISTER.md
+SPRINT_4_CAPABILITY_MATRIX = docs/program/S4_CAPABILITY_MATRIX.md
+SPRINT_4_FINAL_ACCEPTANCE = docs/program/S4_FINAL_ACCEPTANCE.md
+S4_ENTRY_GATE = PASS
+S4_TASK_PACKET = docs/program/workstreams/S4-ANTIGRAVITY-FULL-SPRINT.md
+S4_WORK_BRANCH = s4/00-full-statistical-baselines
+PROMOTION_TO_SPRINT_5_GATE = NO_UNTIL_INDEPENDENT_REAUDIT
+SPRINT_5_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 
 OFFICIAL_CODEX_SECURITY_DIFF_SCAN = NOT_EXECUTED
 SPRINT1_GITHUB_NATIVE_SECURITY_GATE = PASS
@@ -128,24 +141,44 @@ predictive ML operacional
 external economic commitment
 ```
 
-## Promotion boundary — Sprint 4
+## Sprint 4 — Statistical Baselines — Candidate Closure
 
-A conclusão formal do Sprint 3 autoriza exclusivamente a abertura/materialização do **Sprint 4 Entry Gate — Statistical Baselines**.
+Sprint 4 has been fully implemented and verified under single-batch autonomous execution mode:
+
+- **Work Branch:** `s4/00-full-statistical-baselines`
+- **Canonical Target:** `sprint/4-statistical-baselines`
+- **Issue:** #73 (CLOSURE_CANDIDATE)
+- **Artifact:** `docs/program/S4_FINAL_ACCEPTANCE.md`
+- **Scope:** Complete Prospective Temporal Evaluation & Deterministic Catalog (`btg_ai_trader.statistical_baselines`):
+  - Domain, samples, and deterministic identities (`domain.py`)
+  - Evaluation boundaries, temporal folds, and walk-forward plans (`boundaries.py`)
+  - Walk-forward splitting, rolling/expanding modes, purging, and embargo (`splits.py`)
+  - Deterministic catalog of seven simple baselines (`baselines.py`)
+  - Standardized continuous and classification metrics (`metrics.py`)
+  - Probability calibration diagnostics and binning (`calibration.py`)
+  - Temporal fold evaluation and distribution-preserving aggregation (`evaluation.py`)
+  - Candidate comparison with strict protected-test rejection invariant (`comparison.py`)
+  - Cryptographic input boundaries, manifests, and evaluation provenance (`provenance.py`)
+- **Verification:** 100% statement (1,110/1,110) and branch (440/440) coverage across all modules and boundary scanner, 134 passed tests, 100-repetition byte-identical determinism, adversarial leakage detection, zero lint errors, zero type errors.
+- **Verdict:** `PROPOSED_SPRINT_4_VERDICT = PASS`, `MERGE_RECOMMENDATION = NO (AWAITING INDEPENDENT AUDIT)`.
+
+## Promotion boundary — Sprint 5
+
+Sprint 4 does not authorize immediate transition to Sprint 5. Independent audit, clearance of the closure PR, and formal merge into `sprint/4-statistical-baselines` are required.
 
 ```text
-PROMOTION_TO_SPRINT_4_GATE = YES
-SPRINT_4_ENTRY_GATE_WORK = AUTHORIZED
-SPRINT_4_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+PROMOTION_TO_SPRINT_5_GATE = NO_UNTIL_INDEPENDENT_REAUDIT
+SPRINT_5_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 ```
 
-Nenhum código funcional de Sprint 4, baseline estatístico, treinamento, model selection, Strategy, Risk, Paper ou Live deve ser implementado antes da materialização, revisão e aprovação formal do Sprint 4 Entry Gate.
+Nenhum código funcional de Sprint 5 (ML Engine, scikit-learn, XGBoost, LightGBM, PyTorch), busca de hiperparâmetros, Strategy, Risk, Paper ou Live está autorizado nesta fase.
 
 ## Repository hardening
 
-Issue #61 permanece aberta para Administrative Branch Protection & Ruleset Hardening. A proteção administrativa continua ausente/pending; CI, boundary scanners e revisão manual não substituem enforcement administrativo. Issue #61 permanece defense-in-depth e não bloqueou o fechamento funcional do Sprint 3.
+Issue #61 permanece aberta para Administrative Branch Protection & Ruleset Hardening. A proteção administrativa continua ausente/pending; CI, boundary scanners e revisão manual não substituem enforcement administrativo. Issue #61 permanece defense-in-depth e não bloqueou o fechamento funcional do Sprint 3 ou 4.
 
 Issue #6 permanece aberta para a errata histórica 0F-F/QPI. `docs/protocols/quantitative/TRACEABILITY.md` continua sendo a autoridade canônica das QPIs; o snapshot histórico 0F-F permanece congelado.
 
 ## Canonical next action
 
-O próximo trabalho autorizado é **Sprint 4 Entry Gate only**. O gate deve ser materializado, auditado e aprovado antes de qualquer implementação funcional de Statistical Baselines.
+O próximo trabalho autorizado é **auditoria independente do PR de fechamento do Sprint 4**. O merge permanece estritamente proibido nesta fase (`MERGE = FORBIDDEN`).

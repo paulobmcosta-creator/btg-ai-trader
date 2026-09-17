@@ -348,4 +348,3 @@ def test_prediction_result_none_probability() -> None:
         predicted_probability=None,
     )
     assert res.predicted_probability is None
-

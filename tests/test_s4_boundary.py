@@ -396,4 +396,3 @@ def test_main_cli_execution(monkeypatch: pytest.MonkeyPatch) -> None:
     with pytest.raises(SystemExit) as exc:
         runpy.run_module("scripts.check_s4_boundary", run_name="__main__")
     assert exc.value.code == 0
-
