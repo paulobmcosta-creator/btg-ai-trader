@@ -4,6 +4,7 @@ from uuid import UUID
 
 import pytest
 
+from btg_ai_trader.backtesting.accounting import BacktestEconomicState
 from btg_ai_trader.backtesting.assumptions import (
     EconomicAssumptions,
     ExecutionPolicy,
@@ -16,8 +17,12 @@ from btg_ai_trader.backtesting.assumptions import (
 from btg_ai_trader.backtesting.domain import (
     ActionIdentity,
     BacktestAction,
+    ExecutionOutcome,
+    ExecutionTiming,
+    InstrumentEconomics,
     OrderStyle,
     Side,
+    SimulatedFill,
 )
 from btg_ai_trader.backtesting.metrics import DescriptiveBacktestMetrics
 from btg_ai_trader.backtesting.provenance import (
@@ -32,11 +37,13 @@ from btg_ai_trader.observer.envelope import EventEnvelope, EventType
 from btg_ai_trader.observer.identity import (
     EventId,
     ProviderInstrumentRef,
+    RunId,
     TradableInstrumentId,
 )
 from btg_ai_trader.observer.market import Candle, CandleFinality, Tick
-from btg_ai_trader.observer.provenance import CodeRevision, ContentHash
+from btg_ai_trader.observer.provenance import CodeRevision, ConfigHash, ContentHash
 from btg_ai_trader.observer.temporal import EventTime, ObservationTimes
+from btg_ai_trader.replay.core import ReplayInputBoundary
 
 
 def make_uuid(num: int = 1) -> str:
@@ -186,8 +193,18 @@ def test_backtest_input_boundary_validation_and_codec() -> None:
     events = [make_event(1, t0)]
     actions = [make_action(1, t0)]
     rev = CodeRevision("b" * 40)
+    source_run_id = RunId(make_uuid(50))
+    cfg_hash = ConfigHash("c" * 64)
 
-    boundary = BacktestInputBoundary.create(events, actions, code_revision=rev)
+    boundary = BacktestInputBoundary.create(
+        events,
+        actions,
+        code_revision=rev,
+        run_id=source_run_id,
+        config_hash=cfg_hash,
+        provider_id="xp",
+        capture_scope="market",
+    )
     d = boundary.to_dict()
     assert "replay_boundary" in d
     assert "actions_hash" in d
@@ -196,6 +213,44 @@ def test_backtest_input_boundary_validation_and_codec() -> None:
 
     recovered = BacktestInputBoundary.from_dict(d)
     assert recovered == boundary
+
+    # Fail-closed when building from events without full provenance
+    with pytest.raises(ValueError, match="run_id must be explicitly provided"):
+        BacktestInputBoundary.create(
+            events,
+            actions,
+            code_revision=rev,
+            config_hash=cfg_hash,
+            provider_id="xp",
+            capture_scope="market",
+        )
+    with pytest.raises(ValueError, match="config_hash must be explicitly provided"):
+        BacktestInputBoundary.create(
+            events,
+            actions,
+            code_revision=rev,
+            run_id=source_run_id,
+            provider_id="xp",
+            capture_scope="market",
+        )
+    with pytest.raises(ValueError, match="provider_id must be explicitly provided"):
+        BacktestInputBoundary.create(
+            events,
+            actions,
+            code_revision=rev,
+            run_id=source_run_id,
+            config_hash=cfg_hash,
+            capture_scope="market",
+        )
+    with pytest.raises(ValueError, match="capture_scope must be explicitly provided"):
+        BacktestInputBoundary.create(
+            events,
+            actions,
+            code_revision=rev,
+            run_id=source_run_id,
+            config_hash=cfg_hash,
+            provider_id="xp",
+        )
 
     # Validations
     ch = ContentHash("a" * 64)
@@ -244,14 +299,45 @@ def test_backtest_run_manifest_lifecycle_and_integrity() -> None:
         execution_policy=ExecutionPolicy(),
     )
     rev = CodeRevision("b" * 40)
-    boundary = BacktestInputBoundary.create(events, actions, code_revision=rev)
+    source_run_id = RunId(make_uuid(50))
+    cfg_hash = ConfigHash("c" * 64)
+    boundary = BacktestInputBoundary.create(
+        events,
+        actions,
+        code_revision=rev,
+        run_id=source_run_id,
+        config_hash=cfg_hash,
+        provider_id="xp",
+        capture_scope="market",
+    )
     metrics = sample_metrics()
+
+    econ = InstrumentEconomics(iid, "BRL", Decimal("1.0"), Decimal("0.5"), Decimal("1.0"))
+    economic_state = BacktestEconomicState.initial(econ)
+    fill = SimulatedFill(
+        fill_id=ActionIdentity(make_uuid(55)),
+        action_id=ActionIdentity(make_uuid(1)),
+        instrument_id=iid,
+        side=Side.BUY,
+        quantity=Decimal("10"),
+        raw_price=Decimal("100.0"),
+        fill_price=Decimal("100.0"),
+        slippage=Decimal("0"),
+        explicit_fee=Decimal("5.0"),
+        timing=ExecutionTiming(t0, t0, t0, t0, t0),
+        outcome=ExecutionOutcome.FILL,
+        diagnostic_spread_burden=Decimal("0.5"),
+        source_event_id=events[0].event_id,
+    )
 
     manifest = BacktestRunManifest.create(
         run_id=ActionIdentity(make_uuid(10)),
         input_boundary=boundary,
         assumptions=assumptions,
         instrument_id=iid,
+        instrument_economics=econ,
+        fills=(fill,),
+        economic_state=economic_state,
         metrics=metrics,
         created_at=t0,
     )
@@ -263,6 +349,18 @@ def test_backtest_run_manifest_lifecycle_and_integrity() -> None:
     reconstructed = BacktestRunManifest.from_json(json_str)
     assert reconstructed == manifest
     assert reconstructed.verify_integrity()
+
+    # Deserializing manifest with missing hash or sentinel '0'*64 is rejected
+    manifest_dict = manifest.to_dict()
+    bad_dict = dict(manifest_dict)
+    bad_dict["fills_hash"] = "0" * 64
+    with pytest.raises(ValueError, match="sentinel '0'\\*64"):
+        BacktestRunManifest.from_dict(bad_dict)
+
+    incomplete_dict = dict(manifest_dict)
+    del incomplete_dict["fills_hash"]
+    with pytest.raises(ValueError, match="Incomplete manifest payload: missing"):
+        BacktestRunManifest.from_dict(incomplete_dict)
 
     # Tampering with manifest_hash fails integrity verification
     tampered_hash = BacktestRunManifest(
@@ -286,10 +384,23 @@ def test_manifest_field_validations() -> None:
     iid = TradableInstrumentId(make_uuid(1))
     run_id = ActionIdentity(make_uuid(10))
     rev = CodeRevision("b" * 40)
-    boundary = BacktestInputBoundary.create([], [], code_revision=rev)
+    rb = ReplayInputBoundary(
+        run_id=RunId(make_uuid(50)),
+        code_revision=rev,
+        config_hash=ConfigHash("c" * 64),
+        provider_id="xp",
+        capture_scope="market",
+        event_ids=(EventId(make_uuid(101)),),
+    )
+    boundary = BacktestInputBoundary(
+        replay_boundary=rb,
+        actions_hash=ContentHash("2" * 64),
+        code_revision=rev,
+        environment_signature="env-sig",
+    )
     assump_hash = ContentHash("c" * 64)
     manifest_hash = ContentHash("d" * 64)
-    dummy_hash = ContentHash("0" * 64)
+    dummy_hash = ContentHash("1" * 64)
     metrics = sample_metrics()
 
     with pytest.raises(ValueError, match="run_id must be ActionIdentity"):

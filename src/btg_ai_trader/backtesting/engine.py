@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
-from uuid import uuid5
+from uuid import UUID, uuid5
 
 from btg_ai_trader.backtesting.accounting import (
     BacktestEconomicState,
@@ -33,6 +33,8 @@ from btg_ai_trader.backtesting.provenance import (
     BacktestInputBoundary,
     BacktestRunManifest,
     compute_actions_hash,
+    compute_assumptions_hash,
+    compute_instrument_economics_hash,
 )
 from btg_ai_trader.observer.envelope import EventEnvelope
 from btg_ai_trader.observer.identity import RunId, TradableInstrumentId
@@ -135,9 +137,18 @@ class DeterministicEconomicBacktester:
     def run(
         self,
         actions: Sequence[BacktestAction],
-        market_events: Sequence[EventEnvelope] | None = None,
+        market_events_or_schedule: (
+            CausalMarketReplaySchedule | Sequence[EventEnvelope] | None
+        ) = None,
+        *,
         replay_schedule: CausalMarketReplaySchedule | None = None,
+        market_events: Sequence[EventEnvelope] | None = None,
         run_id: ActionIdentity | RunId | str | None = None,
+        source_run_id: RunId | str | None = None,
+        source_code_revision: CodeRevision | str | None = None,
+        source_config_hash: ConfigHash | str | None = None,
+        provider_id: str | None = None,
+        capture_scope: str | None = None,
         session_id: str | None = None,
         created_at: datetime | None = None,
     ) -> BacktestResult:
@@ -146,48 +157,115 @@ class DeterministicEconomicBacktester:
         validate_action_sequence(actions, self.instrument_economics.instrument_id)
 
         # 2. Resolve replay schedule and events
+        resolved_schedule = replay_schedule
+        resolved_events_input = market_events
+        if market_events_or_schedule is not None:
+            if isinstance(market_events_or_schedule, CausalMarketReplaySchedule):
+                resolved_schedule = market_events_or_schedule
+            elif isinstance(market_events_or_schedule, Sequence):
+                resolved_events_input = market_events_or_schedule
+            else:
+                raise ValueError(
+                    "market_events_or_schedule must be CausalMarketReplaySchedule "
+                    "or Sequence[EventEnvelope]"
+                )
+
         schedule: CausalMarketReplaySchedule
-        if replay_schedule is not None:
-            if not isinstance(replay_schedule, CausalMarketReplaySchedule):
+        if resolved_schedule is not None:
+            if not isinstance(resolved_schedule, CausalMarketReplaySchedule):
                 raise ValueError("replay_schedule must be CausalMarketReplaySchedule")
-            schedule = replay_schedule
+            schedule = resolved_schedule
             events = tuple(schedule.events)
-        elif market_events is not None:
-            ev_tuple = tuple(market_events)
-            prov = ev_tuple[0].source.provider if ev_tuple else "synthetic"
-            scope = ev_tuple[0].source.scope if ev_tuple else "backtest"
-            sched_run_id = (
-                RunId(str(run_id))
-                if run_id is not None
-                else RunId("00000000-0000-0000-0000-000000000001")
+        elif resolved_events_input is not None:
+            if source_run_id is None:
+                raise ValueError("source_run_id must be provided when using raw market_events")
+            if source_code_revision is None:
+                raise ValueError(
+                    "source_code_revision must be provided when using raw market_events"
+                )
+            if source_config_hash is None:
+                raise ValueError("source_config_hash must be provided when using raw market_events")
+            if provider_id is None:
+                raise ValueError("provider_id must be provided when using raw market_events")
+            if capture_scope is None:
+                raise ValueError("capture_scope must be provided when using raw market_events")
+
+            ev_tuple = tuple(resolved_events_input)
+            resolved_s_run_id = (
+                source_run_id if isinstance(source_run_id, RunId) else RunId(str(source_run_id))
             )
+            resolved_s_code_rev = (
+                source_code_revision
+                if isinstance(source_code_revision, CodeRevision)
+                else CodeRevision(str(source_code_revision))
+            )
+            resolved_s_cfg_hash = (
+                source_config_hash
+                if isinstance(source_config_hash, ConfigHash)
+                else ConfigHash(str(source_config_hash))
+            )
+
             schedule = CausalMarketReplaySchedule(
                 events=ev_tuple,
-                run_id=sched_run_id,
-                code_revision=self.code_revision,
-                config_hash=ConfigHash("0" * 64),
-                provider_id=prov,
-                capture_scope=scope,
+                run_id=resolved_s_run_id,
+                code_revision=resolved_s_code_rev,
+                config_hash=resolved_s_cfg_hash,
+                provider_id=provider_id,
+                capture_scope=capture_scope,
             )
             events = tuple(schedule.events)
         else:
             raise ValueError("Either replay_schedule or market_events must be provided")
 
-        # 3. Simulate standard action executions
+        # 3. Resolve Backtest RunId BEFORE execution and validate UUID
+        resolved_run_id: ActionIdentity
+        if run_id is not None:
+            if isinstance(run_id, ActionIdentity):
+                resolved_run_id = ActionIdentity(str(UUID(run_id.value)))
+            elif isinstance(run_id, RunId):
+                resolved_run_id = ActionIdentity(str(UUID(run_id.value)))
+            elif isinstance(run_id, str):
+                resolved_run_id = ActionIdentity(str(UUID(run_id)))
+            else:
+                raise ValueError(
+                    f"run_id must be ActionIdentity, RunId, or UUID str, got {type(run_id)}"
+                )
+        elif session_id is not None:
+            resolved_run_id = ActionIdentity(
+                str(uuid5(BACKTEST_UUID_NAMESPACE, f"backtest.{session_id}"))
+            )
+        else:
+            act_hash = compute_actions_hash(actions).value
+            assump_hash = compute_assumptions_hash(
+                self.assumptions,
+                instrument_economics=self.instrument_economics,
+                end_of_window_policy=self.end_of_window_policy,
+            ).value
+            econ_hash = compute_instrument_economics_hash(self.instrument_economics).value
+            policy_str = self.end_of_window_policy.value
+            code_rev = self.code_revision.value
+            boundary_run_id = schedule.boundary.run_id.value
+            seed_str = (
+                f"backtest:{boundary_run_id}:{act_hash}:{assump_hash}:{econ_hash}:{policy_str}:{code_rev}"
+            )
+            resolved_run_id = ActionIdentity(str(uuid5(BACKTEST_UUID_NAMESPACE, seed_str)))
+
+        # 4. Simulate standard action executions propagating resolved_run_id
         simulated_fills = list(
             simulate_actions(
                 actions=actions,
                 replay_events=events,
                 assumptions=self.assumptions,
                 instrument_economics=self.instrument_economics,
+                run_id=resolved_run_id.value,
             )
         )
 
-        # 4. Apply fills to simulated economic accounting
+        # 5. Apply fills to simulated economic accounting
         state = BacktestEconomicState.initial(self.instrument_economics)
         state = state.apply_fills(simulated_fills)
 
-        # 5. Handle EndOfWindowPolicy if position is still open
+        # 6. Handle EndOfWindowPolicy if position is still open
         pos = state.positions[0]
         if (
             not pos.is_flat
@@ -198,52 +276,31 @@ class DeterministicEconomicBacktester:
                 "baseline supports KEEP_OPEN"
             )
 
-        # 6. Mark to market final open position (if any)
+        # 7. Mark to market final open position (if any)
         mark_evidence = self._find_latest_mark_price(events)
         if not pos.is_flat:
-            if mark_evidence is None:
-                raise ValueError(
-                    f"Cannot mark open position {pos.instrument_id} to market: "
-                    f"no valid mark evidence found in events"
+            if mark_evidence is not None:
+                state = state.compute_mark_to_market(
+                    {self.instrument_economics.instrument_id: mark_evidence.mark_price},
+                    mark_evidence=mark_evidence,
                 )
-            state = state.compute_mark_to_market(
-                {self.instrument_economics.instrument_id: mark_evidence.mark_price},
-                mark_evidence=mark_evidence,
-            )
+            # If mark_evidence is None: fails closed,
+            # keeping unrealized_pnl=None, total_net_pnl=None
         elif mark_evidence is not None:
             state = state.compute_mark_to_market(
                 {self.instrument_economics.instrument_id: mark_evidence.mark_price},
                 mark_evidence=mark_evidence,
             )
+        else:
+            state = state.compute_mark_to_market({})
 
-        # 7. Compute descriptive metrics
+        # 8. Compute descriptive metrics
         metrics = compute_descriptive_metrics(
             actions=actions,
             fills=simulated_fills,
             economic_state=state,
             instrument_economics=self.instrument_economics,
         )
-
-        # 8. Deterministic run identity
-        resolved_run_id: ActionIdentity
-        if run_id is not None:
-            resolved_run_id = (
-                run_id if isinstance(run_id, ActionIdentity) else ActionIdentity(str(run_id))
-            )
-        elif session_id is not None:
-            resolved_run_id = ActionIdentity(
-                str(uuid5(BACKTEST_UUID_NAMESPACE, f"backtest.{session_id}"))
-            )
-        else:
-            act_hash = compute_actions_hash(actions)
-            resolved_run_id = ActionIdentity(
-                str(
-                    uuid5(
-                        BACKTEST_UUID_NAMESPACE,
-                        f"backtest:{act_hash.value}:{schedule.boundary.run_id.value}:{self.code_revision.value}",
-                    )
-                )
-            )
 
         # 9. Build cryptographic run manifest
         input_boundary = BacktestInputBoundary.create(

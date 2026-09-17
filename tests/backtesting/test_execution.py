@@ -31,6 +31,7 @@ from btg_ai_trader.observer.envelope import EventEnvelope, EventType
 from btg_ai_trader.observer.identity import (
     EventId,
     ProviderInstrumentRef,
+    RunId,
     TradableInstrumentId,
 )
 from btg_ai_trader.observer.market import Candle, CandleFinality, Tick
@@ -40,6 +41,9 @@ from btg_ai_trader.observer.values import MissingReason
 
 def make_uuid(num: int = 1) -> str:
     return str(UUID(int=num))
+
+
+DEFAULT_RUN_ID = make_uuid(999)
 
 
 def make_event(
@@ -89,13 +93,22 @@ def test_simulate_action_validation() -> None:
     )
 
     with pytest.raises(ValueError, match="action must be BacktestAction"):
-        simulate_action_execution("bad", (), assumptions, econ)  # type: ignore[arg-type]
+        simulate_action_execution("bad", (), assumptions, econ, DEFAULT_RUN_ID)  # type: ignore[arg-type]
 
     with pytest.raises(ValueError, match="assumptions must be EconomicAssumptions"):
-        simulate_action_execution(action, (), "bad", econ)  # type: ignore[arg-type]
+        simulate_action_execution(action, (), "bad", econ, DEFAULT_RUN_ID)  # type: ignore[arg-type]
 
     with pytest.raises(ValueError, match="instrument_economics must be InstrumentEconomics"):
-        simulate_action_execution(action, (), assumptions, "bad")  # type: ignore[arg-type]
+        simulate_action_execution(action, (), assumptions, "bad", DEFAULT_RUN_ID)  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="run_id must be a valid non-empty string or typed RunId"):
+        simulate_action_execution(action, (), assumptions, econ, "")
+
+    with pytest.raises(ValueError, match="run_id must be a valid UUID string"):
+        simulate_action_execution(action, (), assumptions, econ, "not-a-uuid")
+
+    with pytest.raises(TypeError, match="run_id must be ActionIdentity, RunId, or str"):
+        simulate_action_execution(action, (), assumptions, econ, 123)  # type: ignore[arg-type]
 
 
 def test_capacity_rejection() -> None:
@@ -122,7 +135,7 @@ def test_capacity_rejection() -> None:
         t,
     )
 
-    fill = simulate_action_execution(action, (), assumptions, econ)
+    fill = simulate_action_execution(action, (), assumptions, econ, DEFAULT_RUN_ID)
     assert fill.outcome == ExecutionOutcome.REJECTED
     assert fill.reason == "EXCEEDS_SMALL_LOT_CAPACITY"
 
@@ -159,7 +172,7 @@ def test_no_fill_when_no_eligible_events() -> None:
         Tick(Decimal("100.0"), Decimal("100.5"), Decimal("100.2"), Decimal("1")),
     )
 
-    fill = simulate_action_execution(action, (ev1,), assumptions, econ)
+    fill = simulate_action_execution(action, (ev1,), assumptions, econ, DEFAULT_RUN_ID)
     assert fill.outcome == ExecutionOutcome.NO_FILL
     assert fill.reason == "NO_MARKET_EVENT_AFTER_ARRIVAL"
 
@@ -197,7 +210,7 @@ def test_stale_quote_rejection() -> None:
         Tick(Decimal("100.0"), Decimal("100.5"), Decimal("100.2"), Decimal("1")),
     )
 
-    fill = simulate_action_execution(action, (ev,), assumptions, econ)
+    fill = simulate_action_execution(action, (ev,), assumptions, econ, DEFAULT_RUN_ID)
     assert fill.outcome == ExecutionOutcome.INDETERMINATE
     assert fill.reason == "NO_EXECUTION_EVIDENCE_WITHIN_WAIT_WINDOW"
 
@@ -209,7 +222,7 @@ def test_stale_quote_rejection() -> None:
         iid,
         Tick(Decimal("100.0"), Decimal("100.5"), Decimal("100.2"), Decimal("1")),
     )
-    fill_fresh = simulate_action_execution(action, (ev_fresh,), assumptions, econ)
+    fill_fresh = simulate_action_execution(action, (ev_fresh,), assumptions, econ, DEFAULT_RUN_ID)
     assert fill_fresh.outcome == ExecutionOutcome.FILL
 
 
@@ -243,7 +256,7 @@ def test_missing_quote_or_spread_rejection() -> None:
         iid,
         Tick(MissingReason.NOT_PROVIDED, Decimal("100.5"), Decimal("100.2"), Decimal("1")),
     )
-    fill1 = simulate_action_execution(action, (ev_missing,), assumptions, econ)
+    fill1 = simulate_action_execution(action, (ev_missing,), assumptions, econ, DEFAULT_RUN_ID)
     assert fill1.outcome == ExecutionOutcome.INDETERMINATE
     assert fill1.reason == "MISSING_BID_ASK_DATA"
 
@@ -254,9 +267,28 @@ def test_missing_quote_or_spread_rejection() -> None:
         iid,
         Tick(Decimal("100.0"), Decimal("100.0"), Decimal("100.0"), Decimal("1")),
     )
-    fill2 = simulate_action_execution(action, (ev_zero_spread,), assumptions, econ)
+    fill2 = simulate_action_execution(action, (ev_zero_spread,), assumptions, econ, DEFAULT_RUN_ID)
     assert fill2.outcome == ExecutionOutcome.INDETERMINATE
-    assert "SPREAD_REJECTED_NON_POSITIVE_SPREAD" in fill2.reason
+    assert "NON_POSITIVE_SPREAD" in fill2.reason
+
+    # 3. Crossed spread (ask < bid) strictly fail-closed INDETERMINATE
+    crossed_tick = object.__new__(Tick)
+    object.__setattr__(crossed_tick, "bid", Decimal("101.0"))
+    object.__setattr__(crossed_tick, "ask", Decimal("100.0"))
+    object.__setattr__(crossed_tick, "last", Decimal("100.5"))
+    object.__setattr__(crossed_tick, "volume", Decimal("1"))
+
+    ev_crossed_spread = make_event(
+        12,
+        t,
+        iid,
+        crossed_tick,
+    )
+    fill3 = simulate_action_execution(
+        action, (ev_crossed_spread,), assumptions, econ, DEFAULT_RUN_ID
+    )
+    assert fill3.outcome == ExecutionOutcome.INDETERMINATE
+    assert "NON_POSITIVE_SPREAD" in fill3.reason
 
 
 def test_successful_market_tick_fill() -> None:
@@ -303,7 +335,7 @@ def test_successful_market_tick_fill() -> None:
 
     # BUY consumes Ask (101.0) + slippage (0.5) = 101.5
     # Fee: fixed 1.0 + unit 0.5*2 = 2.0
-    fill_buy = simulate_action_execution(action_buy, (ev,), assumptions, econ)
+    fill_buy = simulate_action_execution(action_buy, (ev,), assumptions, econ, DEFAULT_RUN_ID)
     assert fill_buy.outcome == ExecutionOutcome.FILL
     assert fill_buy.raw_price == Decimal("101.0")
     assert fill_buy.fill_price == Decimal("101.5")
@@ -313,7 +345,7 @@ def test_successful_market_tick_fill() -> None:
     assert fill_buy.reason == "FILLED_AT_MARKET"
 
     # SELL consumes Bid (100.0) - slippage (0.5) = 99.5
-    fill_sell = simulate_action_execution(action_sell, (ev,), assumptions, econ)
+    fill_sell = simulate_action_execution(action_sell, (ev,), assumptions, econ, DEFAULT_RUN_ID)
     assert fill_sell.outcome == ExecutionOutcome.FILL
     assert fill_sell.raw_price == Decimal("100.0")
     assert fill_sell.fill_price == Decimal("99.5")
@@ -360,7 +392,9 @@ def test_candle_execution_handling() -> None:
         LatencyModel(),
         ExecutionPolicy(allow_candle_fills=False),
     )
-    fill1 = simulate_action_execution(action, (ev_candle,), assumptions_default, econ)
+    fill1 = simulate_action_execution(
+        action, (ev_candle,), assumptions_default, econ, DEFAULT_RUN_ID
+    )
     assert fill1.outcome == ExecutionOutcome.INDETERMINATE
     assert fill1.reason == "CANDLE_EXECUTION_PATH_UNSUPPORTED"
 
@@ -373,7 +407,9 @@ def test_candle_execution_handling() -> None:
         LatencyModel(),
         ExecutionPolicy(allow_candle_fills=True),
     )
-    fill2 = simulate_action_execution(action, (ev_candle,), assumptions_allowed, econ)
+    fill2 = simulate_action_execution(
+        action, (ev_candle,), assumptions_allowed, econ, DEFAULT_RUN_ID
+    )
     assert fill2.outcome == ExecutionOutcome.INDETERMINATE
     assert fill2.reason == "CANDLE_EXECUTION_PATH_UNSUPPORTED"
 
@@ -391,7 +427,9 @@ def test_candle_execution_handling() -> None:
         volume=Decimal("100"),
     )
     ev_no_open = make_event(21, t1, iid, candle_no_open, event_type=EventType.CANDLE)
-    fill3 = simulate_action_execution(action, (ev_no_open,), assumptions_allowed, econ)
+    fill3 = simulate_action_execution(
+        action, (ev_no_open,), assumptions_allowed, econ, DEFAULT_RUN_ID
+    )
     assert fill3.outcome == ExecutionOutcome.INDETERMINATE
     assert fill3.reason == "CANDLE_EXECUTION_PATH_UNSUPPORTED"
 
@@ -436,7 +474,7 @@ def test_simulate_actions_batch() -> None:
         Tick(Decimal("100.0"), Decimal("100.5"), Decimal("100.2"), Decimal("1")),
     )
 
-    results = simulate_actions((a1, a2), (ev,), assumptions, econ)
+    results = simulate_actions((a1, a2), (ev,), assumptions, econ, DEFAULT_RUN_ID)
     assert len(results) == 2
     assert results[0].side == Side.BUY
     assert results[0].outcome == ExecutionOutcome.FILL
@@ -483,7 +521,9 @@ def test_unsupported_event_payload_and_skipping() -> None:
         Tick(Decimal("100.0"), Decimal("100.5"), Decimal("100.2"), Decimal("1")),
     )
 
-    fill = simulate_action_execution(action, (ev_other, ev_no_kt), assumptions, econ)
+    fill = simulate_action_execution(
+        action, (ev_other, ev_no_kt), assumptions, econ, DEFAULT_RUN_ID
+    )
     assert fill.outcome == ExecutionOutcome.NO_FILL
 
 
@@ -524,6 +564,57 @@ def test_unsupported_payload_type() -> None:
 
     ev = DummyEvent()
 
-    fill = simulate_action_execution(action, (ev,), assumptions, econ)  # type: ignore[arg-type]
+    fill = simulate_action_execution(action, (ev,), assumptions, econ, DEFAULT_RUN_ID)  # type: ignore[arg-type]
     assert fill.outcome == ExecutionOutcome.INDETERMINATE
     assert fill.reason == "UNSUPPORTED_EVENT_PAYLOAD"
+
+
+def test_typed_run_id_variants_and_determinism() -> None:
+    iid = TradableInstrumentId(make_uuid(1))
+    econ = InstrumentEconomics(iid, "BRL", Decimal("1.0"), Decimal("0.5"), Decimal("1.0"))
+    assumptions = EconomicAssumptions(
+        "test_a",
+        SpreadModel(),
+        ZeroSlippageModel(),
+        FeeSchedule("fee"),
+        LatencyModel(),
+        ExecutionPolicy(),
+    )
+    t = datetime(2026, 9, 16, 10, 0, 0, tzinfo=UTC)
+    action = BacktestAction(
+        ActionIdentity(make_uuid(2)),
+        iid,
+        Side.BUY,
+        Decimal("1"),
+        OrderStyle.MARKET,
+        t,
+        t,
+        t,
+    )
+    ev = make_event(
+        10,
+        t,
+        iid,
+        Tick(Decimal("100.0"), Decimal("100.5"), Decimal("100.2"), Decimal("1")),
+    )
+
+    uid_str = make_uuid(100)
+    run_id_obj = RunId(uid_str)
+    action_id_obj = ActionIdentity(uid_str)
+
+    # All three types resolve to identical fill IDs when run_id UUID is identical
+    fill_str = simulate_action_execution(action, (ev,), assumptions, econ, uid_str)
+    fill_obj = simulate_action_execution(action, (ev,), assumptions, econ, run_id_obj)
+    fill_act = simulate_action_execution(action, (ev,), assumptions, econ, action_id_obj)
+
+    assert fill_str.fill_id == fill_obj.fill_id
+    assert fill_str.fill_id == fill_act.fill_id
+
+    # Same inputs + same run -> same fill IDs (reproducibility)
+    fill_again = simulate_action_execution(action, (ev,), assumptions, econ, uid_str)
+    assert fill_again.fill_id == fill_str.fill_id
+
+    # Same inputs + different run -> different fill IDs
+    different_run_id = make_uuid(101)
+    fill_diff = simulate_action_execution(action, (ev,), assumptions, econ, different_run_id)
+    assert fill_diff.fill_id != fill_str.fill_id

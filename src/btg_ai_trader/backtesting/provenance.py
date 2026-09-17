@@ -406,64 +406,81 @@ class BacktestInputBoundary:
         if resolved_events is not None:
             resolved_derived_digest = compute_dataset_hash(resolved_events)
 
-        if replay_boundary is not None:
-            return cls(
-                replay_boundary=replay_boundary,
-                actions_hash=resolved_actions_hash,
-                code_revision=resolved_revision,
-                environment_signature=env_sig,
-                derived_input_digest=resolved_derived_digest,
-            )
-
+        target_boundary: ReplayInputBoundary | None = None
         if replay_schedule is not None:
+            if not isinstance(replay_schedule, CausalMarketReplaySchedule):
+                raise ValueError("replay_schedule must be CausalMarketReplaySchedule")
+            target_boundary = replay_schedule.boundary
+        elif replay_boundary is not None:
+            if not isinstance(replay_boundary, ReplayInputBoundary):
+                raise ValueError("replay_boundary must be ReplayInputBoundary")
+            target_boundary = replay_boundary
+
+        if target_boundary is not None:
+            if resolved_events is not None:
+                ev_tuple = tuple(resolved_events)
+                ev_ids = tuple(ev.event_id for ev in ev_tuple)
+                if ev_ids != target_boundary.event_ids:
+                    raise ValueError(
+                        f"Event IDs in events ({len(ev_ids)}) do not match "
+                        f"replay boundary event_ids ({len(target_boundary.event_ids)})"
+                    )
+                for ev in ev_tuple:
+                    if ev.source.provider != target_boundary.provider_id:
+                        raise ValueError(
+                            f"Event provider {ev.source.provider} does not match "
+                            f"replay boundary provider {target_boundary.provider_id}"
+                        )
+                    if ev.source.scope != target_boundary.capture_scope:
+                        raise ValueError(
+                            f"Event capture scope {ev.source.scope} does not match "
+                            f"replay boundary capture scope {target_boundary.capture_scope}"
+                        )
             return cls(
-                replay_boundary=replay_schedule.boundary,
+                replay_boundary=target_boundary,
                 actions_hash=resolved_actions_hash,
                 code_revision=resolved_revision,
                 environment_signature=env_sig,
                 derived_input_digest=resolved_derived_digest,
             )
 
-        ev_list = tuple(resolved_events) if resolved_events is not None else ()
-        resolved_run_id = (
-            run_id
-            if isinstance(run_id, RunId)
-            else (
-                RunId(str(run_id))
-                if run_id is not None
-                else RunId("00000000-0000-0000-0000-000000000001")
+        # Neither replay_schedule nor replay_boundary provided:
+        # All provenance fields are strictly required without synthetic fallbacks
+        if resolved_events is None:
+            raise ValueError(
+                "BacktestInputBoundary requires replay_schedule, replay_boundary, "
+                "or explicit events with full source provenance"
             )
-        )
-        resolved_cfg_hash = (
-            config_hash
-            if isinstance(config_hash, ConfigHash)
-            else (
-                ConfigHash(str(config_hash))
-                if config_hash is not None
-                else ConfigHash("0" * 64)
+        if run_id is None:
+            raise ValueError(
+                "run_id must be explicitly provided when building boundary from raw events"
             )
-        )
+        if config_hash is None:
+            raise ValueError(
+                "config_hash must be explicitly provided when building boundary from raw events"
+            )
+        if provider_id is None:
+            raise ValueError(
+                "provider_id must be explicitly provided when building boundary from raw events"
+            )
+        if capture_scope is None:
+            raise ValueError(
+                "capture_scope must be explicitly provided when building boundary from raw events"
+            )
 
-        resolved_prov = provider_id
-        resolved_scope = capture_scope
-        if ev_list:
-            if resolved_prov is None:
-                resolved_prov = ev_list[0].source.provider
-            if resolved_scope is None:
-                resolved_scope = ev_list[0].source.scope
-        else:
-            if resolved_prov is None:
-                resolved_prov = "synthetic"
-            if resolved_scope is None:
-                resolved_scope = "backtest"
+        ev_list = tuple(resolved_events)
+        resolved_run_id = run_id if isinstance(run_id, RunId) else RunId(str(run_id))
+        resolved_cfg_hash = (
+            config_hash if isinstance(config_hash, ConfigHash) else ConfigHash(str(config_hash))
+        )
 
         rb = ReplayInputBoundary.from_events(
             ev_list,
             run_id=resolved_run_id,
             code_revision=resolved_revision,
             config_hash=resolved_cfg_hash,
-            provider_id=resolved_prov,
-            capture_scope=resolved_scope,
+            provider_id=provider_id,
+            capture_scope=capture_scope,
         )
 
         return cls(
@@ -607,17 +624,23 @@ class BacktestRunManifest:
         input_boundary: BacktestInputBoundary,
         assumptions: EconomicAssumptions,
         instrument_id: TradableInstrumentId,
+        instrument_economics: InstrumentEconomics,
+        fills: Sequence[SimulatedFill],
+        economic_state: BacktestEconomicState,
         metrics: DescriptiveBacktestMetrics,
-        instrument_economics: InstrumentEconomics | None = None,
-        fills: Sequence[SimulatedFill] | None = None,
-        economic_state: BacktestEconomicState | None = None,
+        *,
         end_of_window_policy: EndOfWindowPolicy | None = None,
         created_at: datetime | None = None,
-        fills_hash: ContentHash | None = None,
-        economic_state_hash: ContentHash | None = None,
-        instrument_economics_hash: ContentHash | None = None,
-        metrics_hash: ContentHash | None = None,
     ) -> BacktestRunManifest:
+        if not isinstance(instrument_economics, InstrumentEconomics):
+            raise ValueError("instrument_economics must be InstrumentEconomics")
+        if not isinstance(economic_state, BacktestEconomicState):
+            raise ValueError("economic_state must be BacktestEconomicState")
+        if not isinstance(metrics, DescriptiveBacktestMetrics):
+            raise ValueError("metrics must be DescriptiveBacktestMetrics")
+        if type(fills) is not tuple and not isinstance(fills, Sequence):
+            raise ValueError("fills must be a sequence of SimulatedFill")
+
         ts = created_at or datetime(2026, 9, 16, 0, 0, 0, tzinfo=UTC)
         assump_hash = compute_assumptions_hash(
             assumptions,
@@ -625,38 +648,10 @@ class BacktestRunManifest:
             end_of_window_policy=end_of_window_policy,
         )
 
-        resolved_econ_hash = (
-            instrument_economics_hash
-            if instrument_economics_hash is not None
-            else (
-                compute_instrument_economics_hash(instrument_economics)
-                if instrument_economics is not None
-                else ContentHash("0" * 64)
-            )
-        )
-        resolved_fills_hash = (
-            fills_hash
-            if fills_hash is not None
-            else (
-                compute_fills_hash(fills)
-                if fills is not None
-                else ContentHash("0" * 64)
-            )
-        )
-        resolved_state_hash = (
-            economic_state_hash
-            if economic_state_hash is not None
-            else (
-                compute_economic_state_hash(economic_state)
-                if economic_state is not None
-                else ContentHash("0" * 64)
-            )
-        )
-        resolved_metrics_hash = (
-            metrics_hash
-            if metrics_hash is not None
-            else compute_metrics_hash(metrics)
-        )
+        resolved_econ_hash = compute_instrument_economics_hash(instrument_economics)
+        resolved_fills_hash = compute_fills_hash(fills)
+        resolved_state_hash = compute_economic_state_hash(economic_state)
+        resolved_metrics_hash = compute_metrics_hash(metrics)
 
         unhashed = cls(
             run_id=run_id,
@@ -688,6 +683,23 @@ class BacktestRunManifest:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> BacktestRunManifest:
+        for h_field in (
+            "instrument_economics_hash",
+            "fills_hash",
+            "economic_state_hash",
+            "metrics_hash",
+        ):
+            if h_field not in data:
+                raise ValueError(f"Incomplete manifest payload: missing '{h_field}'")
+            val = data[h_field]
+            if not isinstance(val, str) or len(val) != 64:
+                raise ValueError(f"Invalid hash in manifest payload: '{h_field}'")
+            if val == "0" * 64:
+                raise ValueError(
+                    f"Fabricated sentinel '0'*64 hash rejected for '{h_field}' "
+                    "in BacktestRunManifest"
+                )
+
         metrics_dict = data["metrics"]
         metrics = DescriptiveBacktestMetrics(
             gross_realized_pnl=Decimal(metrics_dict["gross_realized_pnl"]),
@@ -722,21 +734,22 @@ class BacktestRunManifest:
                 else Decimal("0")
             ),
         )
-        return cls(
+        manifest = cls(
             run_id=ActionIdentity(data["run_id"]),
             created_at=datetime.fromisoformat(data["created_at"]),
             input_boundary=BacktestInputBoundary.from_dict(data["input_boundary"]),
             assumptions_hash=ContentHash(data["assumptions_hash"]),
             instrument_id=TradableInstrumentId(data["instrument_id"]),
-            instrument_economics_hash=ContentHash(
-                data.get("instrument_economics_hash", "0" * 64)
-            ),
-            fills_hash=ContentHash(data.get("fills_hash", "0" * 64)),
-            economic_state_hash=ContentHash(data.get("economic_state_hash", "0" * 64)),
-            metrics_hash=ContentHash(data.get("metrics_hash", "0" * 64)),
+            instrument_economics_hash=ContentHash(data["instrument_economics_hash"]),
+            fills_hash=ContentHash(data["fills_hash"]),
+            economic_state_hash=ContentHash(data["economic_state_hash"]),
+            metrics_hash=ContentHash(data["metrics_hash"]),
             metrics=metrics,
             manifest_hash=ContentHash(data["manifest_hash"]),
         )
+        if not manifest.verify_integrity():
+            raise ValueError("Manifest integrity verification failed: hash mismatch")
+        return manifest
 
     @classmethod
     def from_json(cls, json_str: str) -> BacktestRunManifest:

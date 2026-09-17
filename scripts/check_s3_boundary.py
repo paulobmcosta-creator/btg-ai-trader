@@ -140,27 +140,65 @@ def _call_name(node: ast.Call) -> str:
 def _is_forbidden_stochastic_call(cname: str) -> bool:
     if cname in FORBIDDEN_STOCHASTIC_EXACT:
         return True
-    return any(cname.startswith(p) for p in FORBIDDEN_STOCHASTIC_PREFIXES)
+    if any(cname.startswith(p) for p in FORBIDDEN_STOCHASTIC_PREFIXES):
+        return True
+    parts = cname.split(".")
+    if parts[0] in FORBIDDEN_STOCHASTIC_MODULES or parts[0] in FORBIDDEN_STOCHASTIC_EXACT:
+        return True
+    return False
+
+
+def _resolve_expr(
+    node: ast.AST,
+    module_aliases: dict[str, str],
+    symbol_aliases: dict[str, str],
+) -> str:
+    if isinstance(node, ast.Name):
+        if node.id in symbol_aliases:
+            return symbol_aliases[node.id]
+        if node.id in module_aliases:
+            return module_aliases[node.id]
+        return node.id
+    if isinstance(node, ast.Attribute):
+        parts: list[str] = []
+        curr: ast.AST = node
+        while isinstance(curr, ast.Attribute):
+            parts.append(curr.attr)
+            curr = curr.value
+        if isinstance(curr, ast.Name):
+            base = curr.id
+            if base in symbol_aliases:
+                base = symbol_aliases[base]
+            elif base in module_aliases:
+                base = module_aliases[base]
+            parts.append(base)
+            return ".".join(reversed(parts))
+    return ""
 
 
 def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
     findings: list[Finding] = []
     str_path = str(path).replace("\\", "/")
+    module_aliases: dict[str, str] = {}
+    symbol_aliases: dict[str, str] = {}
+
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
+                mod_name = alias.name
+                local_name = alias.asname or alias.name
+                module_aliases[local_name] = mod_name
                 if (
-                    alias.name in FORBIDDEN_STOCHASTIC_MODULES
-                    or alias.name.startswith("random.")
-                    or alias.name.startswith("secrets.")
-                    or alias.name.startswith("numpy.random")
+                    mod_name in FORBIDDEN_STOCHASTIC_MODULES
+                    or mod_name.startswith("random.")
+                    or mod_name.startswith("secrets.")
+                    or mod_name.startswith("numpy.random")
                 ):
                     findings.append(
-                        Finding(str_path, node.lineno, f"forbidden stochastic import: {alias.name}")
+                        Finding(str_path, node.lineno, f"forbidden stochastic import: {mod_name}")
                     )
-            imp = _import_name(node)
-            if _is_forbidden_import(imp):
-                findings.append(Finding(str_path, node.lineno, f"forbidden import: {imp}"))
+                if _is_forbidden_import(mod_name):
+                    findings.append(Finding(str_path, node.lineno, f"forbidden import: {mod_name}"))
         elif isinstance(node, ast.ImportFrom):
             mod = node.module or ""
             if (
@@ -173,21 +211,66 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                     Finding(str_path, node.lineno, f"forbidden stochastic import: {mod}")
                 )
             for alias in node.names:
-                if alias.name == "uuid4":
+                imported_symbol = alias.name
+                local_name = alias.asname or alias.name
+                canonical_symbol = f"{mod}.{imported_symbol}" if mod else imported_symbol
+                symbol_aliases[local_name] = canonical_symbol
+
+                if imported_symbol == "uuid4":
                     findings.append(
                         Finding(str_path, node.lineno, "forbidden stochastic import: uuid4")
                     )
-                elif alias.name == "urandom" and mod == "os":
+                elif imported_symbol == "urandom" and mod == "os":
                     findings.append(
                         Finding(str_path, node.lineno, "forbidden stochastic import: os.urandom")
                     )
-                elif alias.name == "SystemRandom":
+                elif imported_symbol == "SystemRandom":
                     findings.append(
                         Finding(str_path, node.lineno, "forbidden stochastic import: SystemRandom")
+                    )
+                elif (
+                    mod in FORBIDDEN_STOCHASTIC_MODULES
+                    or mod.startswith("random")
+                    or mod.startswith("secrets")
+                ):
+                    findings.append(
+                        Finding(
+                            str_path,
+                            node.lineno,
+                            f"forbidden stochastic import: {canonical_symbol}",
+                        )
                     )
             imp = _import_name(node)
             if _is_forbidden_import(imp):
                 findings.append(Finding(str_path, node.lineno, f"forbidden import: {imp}"))
+        elif isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name):
+                    target_name = target.id
+                    if SECRET_NAME.search(target_name):
+                        if (
+                            isinstance(node.value, ast.Constant)
+                            and isinstance(node.value.value, str)
+                        ):
+                            val = node.value.value.strip()
+                            if val and not val.startswith("$") and not val.startswith("env:"):
+                                findings.append(
+                                    Finding(
+                                        str_path,
+                                        node.lineno,
+                                        f"suspected literal credential in {target_name}",
+                                    )
+                                )
+                    if isinstance(node.value, ast.Name):
+                        val_name = node.value.id
+                        if val_name in module_aliases:
+                            module_aliases[target_name] = module_aliases[val_name]
+                        if val_name in symbol_aliases:
+                            symbol_aliases[target_name] = symbol_aliases[val_name]
+                    elif isinstance(node.value, ast.Attribute):
+                        resolved_attr = _resolve_expr(node.value, module_aliases, symbol_aliases)
+                        if resolved_attr:
+                            symbol_aliases[target_name] = resolved_attr
         elif isinstance(node, ast.Name):
             if node.id in FORBIDDEN_OPERATIONAL_NAMES:
                 findings.append(
@@ -199,7 +282,8 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                     Finding(str_path, node.lineno, f"forbidden operational attribute: {node.attr}")
                 )
         elif isinstance(node, ast.Call):
-            cname = _call_name(node)
+            resolved_call = _resolve_expr(node.func, module_aliases, symbol_aliases)
+            cname = resolved_call or _call_name(node)
             if cname in WALL_CLOCK_CALLS:
                 findings.append(
                     Finding(str_path, node.lineno, f"forbidden wall-clock call: {cname}")
@@ -216,19 +300,6 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                         f"forbidden stochastic call in baseline: {cname}",
                     )
                 )
-        elif isinstance(node, ast.Assign):
-            for target in node.targets:
-                if isinstance(target, ast.Name) and SECRET_NAME.search(target.id):
-                    if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
-                        val = node.value.value.strip()
-                        if val and not val.startswith("$") and not val.startswith("env:"):
-                            findings.append(
-                                Finding(
-                                    str_path,
-                                    node.lineno,
-                                    f"suspected literal credential in {target.id}",
-                                )
-                            )
     return findings
 
 

@@ -18,9 +18,28 @@ from btg_ai_trader.backtesting.domain import (
     SimulatedFill,
 )
 from btg_ai_trader.observer.envelope import EventEnvelope, EventType
+from btg_ai_trader.observer.identity import RunId
 from btg_ai_trader.observer.market import Candle, Tick
 
 BACKTEST_UUID_NAMESPACE = UUID("a3b4c5d6-e7f8-4901-b234-56789abcdef0")
+
+
+def resolve_run_id_string(run_id: ActionIdentity | RunId | str) -> str:
+    """Extract and validate UUID string from ActionIdentity, RunId, or str."""
+    if not isinstance(run_id, ActionIdentity | RunId | str):
+        raise TypeError(
+            f"run_id must be ActionIdentity, RunId, or str, got {type(run_id)}"
+        )
+    if isinstance(run_id, ActionIdentity | RunId):
+        val = run_id.value
+    else:
+        val = run_id
+    if not val or not val.strip():
+        raise ValueError("run_id must be a valid non-empty string or typed RunId")
+    try:
+        return str(UUID(val))
+    except (ValueError, AttributeError) as err:
+        raise ValueError(f"run_id must be a valid UUID string, got {val!r}") from err
 
 
 def derive_fill_id(
@@ -41,8 +60,8 @@ def simulate_action_execution(
     replay_events: Sequence[EventEnvelope],
     assumptions: EconomicAssumptions,
     instrument_economics: InstrumentEconomics,
+    run_id: ActionIdentity | RunId | str,
     *,
-    run_id: str = "default-run",
     ordinal: int = 0,
 ) -> SimulatedFill:
     """Simulate execution of a single BacktestAction against replay events deterministically."""
@@ -52,6 +71,13 @@ def simulate_action_execution(
         raise ValueError("assumptions must be EconomicAssumptions")
     if not isinstance(instrument_economics, InstrumentEconomics):
         raise ValueError("instrument_economics must be InstrumentEconomics")
+
+    run_id_str = resolve_run_id_string(run_id)
+    action_id_str = (
+        action.action_id.value
+        if isinstance(action.action_id, ActionIdentity)
+        else str(action.action_id)
+    )
 
     if action.instrument_id != instrument_economics.instrument_id:
         raise ValueError(
@@ -78,7 +104,7 @@ def simulate_action_execution(
     # 1. Capacity check under small-lot assumption
     if action.quantity > assumptions.execution_policy.small_lot_max_quantity:
         fill_id = derive_fill_id(
-            run_id, action.action_id.value, ordinal, None, ExecutionOutcome.REJECTED.value
+            run_id_str, action_id_str, ordinal, None, ExecutionOutcome.REJECTED.value
         )
         return SimulatedFill(
             fill_id=fill_id,
@@ -118,7 +144,7 @@ def simulate_action_execution(
 
     if candidate_event is None or candidate_kt is None:
         fill_id = derive_fill_id(
-            run_id, action.action_id.value, ordinal, None, ExecutionOutcome.NO_FILL.value
+            run_id_str, action_id_str, ordinal, None, ExecutionOutcome.NO_FILL.value
         )
         return SimulatedFill(
             fill_id=fill_id,
@@ -156,8 +182,8 @@ def simulate_action_execution(
         delta_us = int((candidate_kt - simulated_arrival).total_seconds() * 1_000_000)
         if delta_us > wait_limit_us:
             fill_id = derive_fill_id(
-                run_id,
-                action.action_id.value,
+                run_id_str,
+                action_id_str,
                 ordinal,
                 candidate_event.event_id.value,
                 ExecutionOutcome.INDETERMINATE.value,
@@ -182,8 +208,8 @@ def simulate_action_execution(
     # 5. Check fee schedule validity period
     if not assumptions.fee_schedule.is_effective_at(candidate_kt):
         fill_id = derive_fill_id(
-            run_id,
-            action.action_id.value,
+            run_id_str,
+            action_id_str,
             ordinal,
             candidate_event.event_id.value,
             ExecutionOutcome.INDETERMINATE.value,
@@ -216,8 +242,8 @@ def simulate_action_execution(
             or ask_val <= Decimal("0")
         ):
             fill_id = derive_fill_id(
-                run_id,
-                action.action_id.value,
+                run_id_str,
+                action_id_str,
                 ordinal,
                 candidate_event.event_id.value,
                 ExecutionOutcome.INDETERMINATE.value,
@@ -239,13 +265,38 @@ def simulate_action_execution(
                 reason="MISSING_BID_ASK_DATA",
             )
 
+        if ask_val <= bid_val:
+            fill_id = derive_fill_id(
+                run_id_str,
+                action_id_str,
+                ordinal,
+                candidate_event.event_id.value,
+                ExecutionOutcome.INDETERMINATE.value,
+            )
+            return SimulatedFill(
+                fill_id=fill_id,
+                action_id=action.action_id,
+                instrument_id=action.instrument_id,
+                side=action.side,
+                quantity=Decimal("0"),
+                raw_price=Decimal("0"),
+                fill_price=Decimal("0"),
+                slippage=Decimal("0"),
+                explicit_fee=Decimal("0"),
+                timing=timing,
+                outcome=ExecutionOutcome.INDETERMINATE,
+                diagnostic_spread_burden=Decimal("0"),
+                source_event_id=candidate_event.event_id,
+                reason="NON_POSITIVE_SPREAD",
+            )
+
         raw_price, spread_reason = assumptions.spread_model.resolve_executable_price(
             action.side, bid_val, ask_val
         )
         if raw_price is None:
             fill_id = derive_fill_id(
-                run_id,
-                action.action_id.value,
+                run_id_str,
+                action_id_str,
                 ordinal,
                 candidate_event.event_id.value,
                 ExecutionOutcome.INDETERMINATE.value,
@@ -286,8 +337,8 @@ def simulate_action_execution(
         )
 
         fill_id = derive_fill_id(
-            run_id,
-            action.action_id.value,
+            run_id_str,
+            action_id_str,
             ordinal,
             candidate_event.event_id.value,
             ExecutionOutcome.FILL.value,
@@ -314,8 +365,8 @@ def simulate_action_execution(
     ):
         # Precise candle execution is deferred in Sprint 3 baseline
         fill_id = derive_fill_id(
-            run_id,
-            action.action_id.value,
+            run_id_str,
+            action_id_str,
             ordinal,
             candidate_event.event_id.value,
             ExecutionOutcome.INDETERMINATE.value,
@@ -339,8 +390,8 @@ def simulate_action_execution(
 
     # Unknown or unsupported payload
     fill_id = derive_fill_id(
-        run_id,
-        action.action_id.value,
+        run_id_str,
+        action_id_str,
         ordinal,
         candidate_event.event_id.value,
         ExecutionOutcome.INDETERMINATE.value,
@@ -368,8 +419,7 @@ def simulate_actions(
     replay_events: Sequence[EventEnvelope],
     assumptions: EconomicAssumptions,
     instrument_economics: InstrumentEconomics,
-    *,
-    run_id: str = "default-run",
+    run_id: ActionIdentity | RunId | str,
 ) -> tuple[SimulatedFill, ...]:
     """Simulate a sequence of BacktestAction instances deterministically in order."""
     return tuple(
@@ -378,7 +428,7 @@ def simulate_actions(
             replay_events,
             assumptions,
             instrument_economics,
-            run_id=run_id,
+            run_id,
             ordinal=idx,
         )
         for idx, action in enumerate(actions)

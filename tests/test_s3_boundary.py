@@ -125,6 +125,22 @@ def test_symlink_under_s3_root_fails(tmp_path: Path, monkeypatch: pytest.MonkeyP
             "forbidden stochastic call in baseline: random.random",
         ),
         ("import subprocess\nsubprocess.run(['ls'])\n", "forbidden process call: subprocess.run"),
+        (
+            "import uuid as u\nx = u.uuid4()\n",
+            "forbidden stochastic call in baseline: uuid.uuid4",
+        ),
+        (
+            "from uuid import uuid4 as make_id\nx = make_id()\n",
+            "forbidden stochastic call in baseline: uuid.uuid4",
+        ),
+        (
+            "import os as operating_system\nx = operating_system.urandom(16)\n",
+            "forbidden stochastic call in baseline: os.urandom",
+        ),
+        (
+            "import secrets as sec\nx = sec.token_bytes(16)\n",
+            "forbidden stochastic call in baseline: secrets.token_bytes",
+        ),
     ],
 )
 def test_prohibited_constructs_detected(
@@ -151,3 +167,9 @@ def test_non_utf8_file_fails(tmp_path: Path) -> None:
 
     findings = scan_tree(s3_root)
     assert any("not valid UTF-8 text" in f.rule for f in findings)
+
+
+def test_acceptance_symbols_verification() -> None:
+    from scripts.verify_s3_acceptance_symbols import verify_acceptance_symbols
+
+    assert verify_acceptance_symbols() == 0

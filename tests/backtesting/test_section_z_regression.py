@@ -1,5 +1,6 @@
 """Comprehensive regression test suite covering all Section Z criteria (1-40)."""
 
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -44,17 +45,37 @@ from btg_ai_trader.observer.envelope import EventEnvelope, EventType
 from btg_ai_trader.observer.identity import (
     EventId,
     ProviderInstrumentRef,
+    RunId,
     TradableInstrumentId,
 )
 from btg_ai_trader.observer.market import Tick
-from btg_ai_trader.observer.provenance import CodeRevision
+from btg_ai_trader.observer.provenance import CodeRevision, ConfigHash
 from btg_ai_trader.observer.temporal import EventTime, ObservationTimes
+from btg_ai_trader.replay.core import CausalMarketReplaySchedule
 
 DUMMY_REV = CodeRevision("a" * 40)
 
 
 def make_uuid(num: int = 1) -> str:
     return str(UUID(int=num))
+
+
+def make_schedule(
+    events: Sequence[EventEnvelope],
+    run_id: str | None = None,
+    code_revision: CodeRevision | None = None,
+    config_hash: ConfigHash | None = None,
+    provider_id: str = "xp",
+    capture_scope: str = "market",
+) -> CausalMarketReplaySchedule:
+    return CausalMarketReplaySchedule(
+        events,
+        run_id=RunId(run_id or make_uuid(50)),
+        code_revision=code_revision or DUMMY_REV,
+        config_hash=config_hash or ConfigHash("1" * 64),
+        provider_id=provider_id,
+        capture_scope=capture_scope,
+    )
 
 
 def make_tick(
@@ -294,7 +315,7 @@ def test_criterion_11_close_at_last_valid_quote_deferred() -> None:
     ev = make_tick(1, t0, iid)
 
     with pytest.raises(NotImplementedError, match="CLOSE_AT_LAST_VALID_QUOTE is deferred"):
-        engine.run([act], [ev])
+        engine.run([act], make_schedule([ev]))
 
 
 # ---------------------------------------------------------------------------
@@ -407,7 +428,7 @@ def test_criterion_14_fee_schedule_effective_window() -> None:
     act = make_act(1, t0, iid, Side.BUY, Decimal("1.0"))
     ev = make_tick(1, t0, iid)
 
-    res = engine.run([act], [ev])
+    res = engine.run([act], make_schedule([ev]))
     assert len(res.fills) == 1
     assert res.fills[0].outcome == ExecutionOutcome.INDETERMINATE
     assert res.fills[0].reason == "FEE_SCHEDULE_OUTSIDE_EFFECTIVE_PERIOD"
@@ -438,7 +459,7 @@ def test_criterion_15_execution_policy_timeout() -> None:
     # Event arrives 5 seconds later (> 1000us)
     ev_late = make_tick(1, t0 + timedelta(seconds=5), iid)
 
-    res = engine.run([act], [ev_late])
+    res = engine.run([act], make_schedule([ev_late]))
     assert len(res.fills) == 1
     assert res.fills[0].outcome == ExecutionOutcome.INDETERMINATE
     assert res.fills[0].reason == "NO_EXECUTION_EVIDENCE_WITHIN_WAIT_WINDOW"
@@ -490,7 +511,7 @@ def test_criterion_17_diagnostic_spread_burden() -> None:
     ev1 = make_tick(1, t0, iid, bid=Decimal("99.0"), ask=Decimal("101.0"))
     ev2 = make_tick(2, t1, iid, bid=Decimal("109.0"), ask=Decimal("111.0"))
 
-    res = engine.run([act1, act2], [ev1, ev2])
+    res = engine.run([act1, act2], make_schedule([ev1, ev2]))
 
     assert res.fills[0].diagnostic_spread_burden == Decimal("10.0")
     assert res.fills[1].diagnostic_spread_burden == Decimal("10.0")
@@ -523,9 +544,10 @@ def test_criterion_28_run_id_deterministic_uuid5() -> None:
     t0 = datetime(2026, 9, 16, 10, 0, 0, tzinfo=UTC)
     act = make_act(1, t0, iid, Side.BUY, Decimal("1.0"))
     ev = make_tick(1, t0, iid)
+    sched = make_schedule([ev])
 
-    res1 = engine.run([act], [ev])
-    res2 = engine.run([act], [ev])
+    res1 = engine.run([act], sched)
+    res2 = engine.run([act], sched)
 
     assert res1.manifest.run_id == res2.manifest.run_id
     # Valid UUID v5

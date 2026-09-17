@@ -54,10 +54,9 @@ def test_spread_model_edge_cases() -> None:
     price, reason = model.resolve_executable_price(Side.BUY, Decimal("100.0"), Decimal("102.0"))
     assert price is None and reason == "SPREAD_EXCEEDS_MAX"
 
-    # When require_positive_spread is False, crossed spread still consumes side price
-    permissive = SpreadModel(require_positive_spread=False, max_spread=None)
-    p, r = permissive.resolve_executable_price(Side.BUY, Decimal("100.0"), Decimal("99.0"))
-    assert p == Decimal("99.0")
+    # require_positive_spread=False is strictly rejected
+    with pytest.raises(ValueError, match="require_positive_spread=False is forbidden"):
+        SpreadModel(require_positive_spread=False, max_spread=None)
 
     # Invalid max_spread
     with pytest.raises(ValueError, match="max_spread must be Decimal or None"):
@@ -264,6 +263,20 @@ def test_execution_policy_and_economic_assumptions() -> None:
             assumptions_id="valid",
             spread_model=SpreadModel(),
             slippage_model="bad",  # type: ignore[arg-type]
+            fee_schedule=FeeSchedule("default"),
+            latency_model=LatencyModel(),
+            execution_policy=policy,
+        )
+
+    class CustomSlippageModel:
+        def apply_slippage(self, side: Side, price: Decimal) -> tuple[Decimal, Decimal]:
+            return price, Decimal("0")
+
+    with pytest.raises(ValueError, match="slippage_model must be ZeroSlippageModel"):
+        EconomicAssumptions(
+            assumptions_id="valid",
+            spread_model=SpreadModel(),
+            slippage_model=CustomSlippageModel(),
             fee_schedule=FeeSchedule("default"),
             latency_model=LatencyModel(),
             execution_policy=policy,

@@ -30,11 +30,13 @@ from btg_ai_trader.observer.envelope import EventEnvelope, EventType
 from btg_ai_trader.observer.identity import (
     EventId,
     ProviderInstrumentRef,
+    RunId,
     TradableInstrumentId,
 )
 from btg_ai_trader.observer.market import Tick
-from btg_ai_trader.observer.provenance import CodeRevision
+from btg_ai_trader.observer.provenance import CodeRevision, ConfigHash
 from btg_ai_trader.observer.temporal import EventTime, ObservationTimes
+from btg_ai_trader.replay.core import CausalMarketReplaySchedule
 
 
 def make_uuid(num: int = 1) -> str:
@@ -131,12 +133,21 @@ def test_100_runs_exact_byte_determinism() -> None:
         make_tick_event(3, t2, iid, bid=Decimal("107.0"), ask=Decimal("108.0")),
     ]
 
+    schedule = CausalMarketReplaySchedule(
+        events,
+        run_id=RunId(make_uuid(50)),
+        code_revision=code_rev,
+        config_hash=ConfigHash("1" * 64),
+        provider_id="xp",
+        capture_scope="market",
+    )
+
     full_result_canonical_bytes: list[bytes] = []
 
     for i in range(100):
         # Vary external Python random state to verify zero dependence on RNG
         random.seed(i * 1337)
-        res = engine.run(actions, events, session_id="fixed-session-seed-100")
+        res = engine.run(actions, replay_schedule=schedule, session_id="fixed-session-seed-100")
         manifest_bytes = res.manifest.to_json().encode("utf-8")
         full_result_canonical_bytes.append(manifest_bytes)
         assert res.manifest.verify_integrity()

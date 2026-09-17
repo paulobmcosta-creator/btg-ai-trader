@@ -1,7 +1,9 @@
 """Deterministic sensitivity analysis and monotonicity verification (Sprint 3).
 
-Evaluates simulation behavior under adverse friction sweeps (slippage, fees, latency)
-and verifies that economic performance degrades monotonically as friction increases.
+Evaluates simulation behavior under adverse friction sweeps (slippage, fees, latency).
+Under stated assumptions, fees and adverse slippage verify monotonic net P&L degradation.
+Latency is evaluated for deterministic and comparable sensitivity ONLY; universal latency
+monotonicity is not claimed.
 """
 
 from __future__ import annotations
@@ -20,8 +22,8 @@ from btg_ai_trader.backtesting.assumptions import (
 )
 from btg_ai_trader.backtesting.domain import BacktestAction, InstrumentEconomics
 from btg_ai_trader.backtesting.engine import DeterministicEconomicBacktester
-from btg_ai_trader.observer.envelope import EventEnvelope
 from btg_ai_trader.observer.provenance import CodeRevision
+from btg_ai_trader.replay.core import CausalMarketReplaySchedule
 
 
 class MonotonicityViolationError(Exception):
@@ -70,16 +72,21 @@ def verify_pnl_monotonicity(sweep_results: Sequence[SensitivityDataPoint]) -> No
 
 def run_fee_sensitivity_sweep(
     actions: Sequence[BacktestAction],
-    market_events: Sequence[EventEnvelope],
+    replay_schedule: CausalMarketReplaySchedule,
     instrument_economics: InstrumentEconomics,
     base_assumptions: EconomicAssumptions,
     fee_multipliers: Sequence[Decimal],
-    code_revision: CodeRevision | str = "0000000000000000000000000000000000000000",
+    code_revision: CodeRevision | str,
 ) -> list[SensitivityDataPoint]:
     """Sweep explicit fee multipliers and verify net P&L monotonicity."""
-    results: list[SensitivityDataPoint] = []
+    if not isinstance(replay_schedule, CausalMarketReplaySchedule):
+        raise ValueError("replay_schedule must be CausalMarketReplaySchedule")
+    if code_revision is None:
+        raise ValueError("code_revision must be explicitly provided")
 
+    results: list[SensitivityDataPoint] = []
     base_fee = base_assumptions.fee_schedule
+
     for mult in sorted(fee_multipliers):
         if mult < Decimal("0"):
             raise ValueError("fee multiplier cannot be negative")
@@ -90,6 +97,8 @@ def run_fee_sensitivity_sweep(
             per_unit=base_fee.per_unit * mult,
             bps_rate=base_fee.bps_rate * mult,
             currency=base_fee.currency,
+            effective_from=base_fee.effective_from,
+            effective_until=base_fee.effective_until,
         )
         swept_assumptions = EconomicAssumptions(
             assumptions_id=f"{base_assumptions.assumptions_id}-fee-{mult}",
@@ -105,7 +114,7 @@ def run_fee_sensitivity_sweep(
             assumptions=swept_assumptions,
             code_revision=code_revision,
         )
-        res = tester.run(actions=actions, market_events=market_events)
+        res = tester.run(actions=actions, replay_schedule=replay_schedule)
         point = SensitivityDataPoint(
             parameter_name="fee_multiplier",
             friction_value=mult,
@@ -122,13 +131,18 @@ def run_fee_sensitivity_sweep(
 
 def run_slippage_sensitivity_sweep(
     actions: Sequence[BacktestAction],
-    market_events: Sequence[EventEnvelope],
+    replay_schedule: CausalMarketReplaySchedule,
     instrument_economics: InstrumentEconomics,
     base_assumptions: EconomicAssumptions,
     slippage_points_list: Sequence[Decimal],
-    code_revision: CodeRevision | str = "0000000000000000000000000000000000000000",
+    code_revision: CodeRevision | str,
 ) -> list[SensitivityDataPoint]:
     """Sweep fixed adverse slippage points and verify net P&L monotonicity."""
+    if not isinstance(replay_schedule, CausalMarketReplaySchedule):
+        raise ValueError("replay_schedule must be CausalMarketReplaySchedule")
+    if code_revision is None:
+        raise ValueError("code_revision must be explicitly provided")
+
     results: list[SensitivityDataPoint] = []
 
     for pts in sorted(slippage_points_list):
@@ -155,7 +169,7 @@ def run_slippage_sensitivity_sweep(
             assumptions=swept_assumptions,
             code_revision=code_revision,
         )
-        res = tester.run(actions=actions, market_events=market_events)
+        res = tester.run(actions=actions, replay_schedule=replay_schedule)
         point = SensitivityDataPoint(
             parameter_name="slippage_points",
             friction_value=pts,
@@ -172,13 +186,18 @@ def run_slippage_sensitivity_sweep(
 
 def run_latency_sensitivity_sweep(
     actions: Sequence[BacktestAction],
-    market_events: Sequence[EventEnvelope],
+    replay_schedule: CausalMarketReplaySchedule,
     instrument_economics: InstrumentEconomics,
     base_assumptions: EconomicAssumptions,
     transit_latencies_us: Sequence[int],
-    code_revision: CodeRevision | str = "0000000000000000000000000000000000000000",
+    code_revision: CodeRevision | str,
 ) -> list[SensitivityDataPoint]:
     """Sweep virtual transit latency in microseconds and collect sensitivity data."""
+    if not isinstance(replay_schedule, CausalMarketReplaySchedule):
+        raise ValueError("replay_schedule must be CausalMarketReplaySchedule")
+    if code_revision is None:
+        raise ValueError("code_revision must be explicitly provided")
+
     results: list[SensitivityDataPoint] = []
 
     for lat_us in sorted(transit_latencies_us):
@@ -203,7 +222,7 @@ def run_latency_sensitivity_sweep(
             assumptions=swept_assumptions,
             code_revision=code_revision,
         )
-        res = tester.run(actions=actions, market_events=market_events)
+        res = tester.run(actions=actions, replay_schedule=replay_schedule)
         point = SensitivityDataPoint(
             parameter_name="transit_latency_us",
             friction_value=Decimal(lat_us),

@@ -20,6 +20,11 @@ class SpreadModel:
     max_spread: Decimal | None = None
 
     def __post_init__(self) -> None:
+        if not self.require_positive_spread:
+            raise ValueError(
+                "require_positive_spread=False is forbidden in Sprint 3 baseline: "
+                "crossed or non-positive quotes are indeterminate"
+            )
         if self.max_spread is not None:
             if not isinstance(self.max_spread, Decimal):
                 raise ValueError("max_spread must be Decimal or None")
@@ -44,7 +49,7 @@ class SpreadModel:
             return (None, "NON_POSITIVE_PRICE")
 
         spread = ask - bid
-        if spread <= Decimal("0") and self.require_positive_spread:
+        if spread <= Decimal("0"):
             return (None, "NON_POSITIVE_SPREAD")
         if self.max_spread is not None and spread > self.max_spread:
             return (None, "SPREAD_EXCEEDS_MAX")
@@ -294,8 +299,14 @@ class EconomicAssumptions:
         require_text(self.assumptions_id, "assumptions_id")
         if not isinstance(self.spread_model, SpreadModel):
             raise ValueError("spread_model must be SpreadModel")
-        if not hasattr(self.slippage_model, "apply_slippage"):
-            raise ValueError("slippage_model must implement SlippageModel protocol")
+        if not isinstance(
+            self.slippage_model,
+            ZeroSlippageModel | FixedPointsSlippageModel | FixedBpsSlippageModel,
+        ):
+            raise ValueError(
+                "slippage_model must be ZeroSlippageModel, FixedPointsSlippageModel, "
+                "or FixedBpsSlippageModel"
+            )
         if not isinstance(self.fee_schedule, FeeSchedule):
             raise ValueError("fee_schedule must be FeeSchedule")
         if not isinstance(self.latency_model, LatencyModel):

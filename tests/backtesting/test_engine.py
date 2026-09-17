@@ -1,5 +1,6 @@
 """Unit tests for the Deterministic Economic Backtesting Engine."""
 
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
@@ -37,18 +38,38 @@ from btg_ai_trader.observer.envelope import EventEnvelope, EventType
 from btg_ai_trader.observer.identity import (
     EventId,
     ProviderInstrumentRef,
+    RunId,
     TradableInstrumentId,
 )
 from btg_ai_trader.observer.market import Candle, CandleFinality, Tick
-from btg_ai_trader.observer.provenance import CodeRevision
+from btg_ai_trader.observer.provenance import CodeRevision, ConfigHash
 from btg_ai_trader.observer.temporal import EventTime, ObservationTimes
 from btg_ai_trader.observer.values import MissingReason
+from btg_ai_trader.replay.core import CausalMarketReplaySchedule
 
 DUMMY_REV = CodeRevision("a" * 40)
 
 
 def make_uuid(num: int = 1) -> str:
     return str(UUID(int=num))
+
+
+def make_schedule(
+    events: Sequence[EventEnvelope],
+    run_id: str | None = None,
+    code_revision: CodeRevision | None = None,
+    config_hash: ConfigHash | None = None,
+    provider_id: str = "xp",
+    capture_scope: str = "market",
+) -> CausalMarketReplaySchedule:
+    return CausalMarketReplaySchedule(
+        events,
+        run_id=RunId(run_id or make_uuid(50)),
+        code_revision=code_revision or DUMMY_REV,
+        config_hash=config_hash or ConfigHash("1" * 64),
+        provider_id=provider_id,
+        capture_scope=capture_scope,
+    )
 
 
 def make_tick_event(
@@ -166,7 +187,8 @@ def test_engine_initialization_and_result_validation() -> None:
         )
 
     # Result validation
-    boundary = BacktestInputBoundary.create([], code_revision=DUMMY_REV, events=[])
+    schedule = make_schedule([])
+    boundary = BacktestInputBoundary.create([], code_revision=DUMMY_REV, replay_schedule=schedule)
     metrics = DescriptiveBacktestMetrics(
         gross_realized_pnl=Decimal("0"),
         net_realized_pnl=Decimal("0"),
@@ -233,17 +255,24 @@ def test_engine_empty_run_and_mismatched_instrument() -> None:
     )
     engine = DeterministicEconomicBacktester(econ, assumptions, code_revision=DUMMY_REV)
 
-    # Empty run
-    res = engine.run(actions=[], market_events=[], session_id="test-session")
+    # Empty run via replay_schedule
+    schedule = make_schedule([])
+    res = engine.run(actions=[], replay_schedule=schedule, session_id="test-session")
     assert res.metrics.total_actions == 0
     assert len(res.fills) == 0
     assert res.manifest.verify_integrity()
+
+    # Raw market_events without explicit provenance is strictly rejected (no fabricated fallbacks)
+    with pytest.raises(
+        ValueError, match="source_run_id must be provided when using raw market_events"
+    ):
+        engine.run(actions=[], market_events=[])
 
     # Mismatched instrument action
     t0 = datetime(2026, 9, 16, 10, 0, 0, tzinfo=UTC)
     bad_action = make_action(1, t0, iid2)
     with pytest.raises(ValueError, match="does not match engine instrument"):
-        engine.run(actions=[bad_action], market_events=[])
+        engine.run(actions=[bad_action], replay_schedule=schedule)
 
 
 def test_engine_full_lifecycle_and_session_determinism() -> None:
@@ -276,8 +305,8 @@ def test_engine_full_lifecycle_and_session_determinism() -> None:
         2, t1 + timedelta(microseconds=500), iid, bid=Decimal("110.0"), ask=Decimal("110.5")
     )
 
-    res1 = engine.run([a1, a2], [e1, e2], session_id="fixed-seed-1")
-    res2 = engine.run([a1, a2], [e1, e2], session_id="fixed-seed-1")
+    res1 = engine.run([a1, a2], replay_schedule=make_schedule([e1, e2]), session_id="fixed-seed-1")
+    res2 = engine.run([a1, a2], replay_schedule=make_schedule([e1, e2]), session_id="fixed-seed-1")
 
     # Byte-for-byte identical manifest and hash
     assert res1.manifest.manifest_hash == res2.manifest.manifest_hash
@@ -324,12 +353,12 @@ def test_engine_end_of_window_policy_close_long_and_short() -> None:
     e2 = make_tick_event(2, t1, iid, bid=Decimal("105.0"), ask=Decimal("106.0"))
 
     with pytest.raises(NotImplementedError, match="CLOSE_AT_LAST_VALID_QUOTE is deferred"):
-        engine_close.run([a_buy], [e1, e2])
+        engine_close.run([a_buy], replay_schedule=make_schedule([e1, e2]))
 
     # 2. Short position left open, policy = CLOSE_AT_LAST_VALID_QUOTE -> raises NotImplementedError
     a_sell = make_action(2, t0, iid, Side.SELL, Decimal("10"))
     with pytest.raises(NotImplementedError, match="CLOSE_AT_LAST_VALID_QUOTE is deferred"):
-        engine_close.run([a_sell], [e1, e2])
+        engine_close.run([a_sell], replay_schedule=make_schedule([e1, e2]))
 
     # 3. Policy = KEEP_OPEN -> position stays open, marked to market
     engine_keep = DeterministicEconomicBacktester(
@@ -338,7 +367,7 @@ def test_engine_end_of_window_policy_close_long_and_short() -> None:
         code_revision=DUMMY_REV,
         end_of_window_policy=EndOfWindowPolicy.KEEP_OPEN,
     )
-    res_keep = engine_keep.run([a_buy], [e1, e2])
+    res_keep = engine_keep.run([a_buy], replay_schedule=make_schedule([e1, e2]))
     assert len(res_keep.fills) == 1
     assert res_keep.economic_state.positions[0].is_long
     # Marked to market using mid price of e2: (105 + 106)/2 = 105.5
@@ -369,7 +398,7 @@ def test_engine_mark_prices_variations() -> None:
     # Candle event gives close price for mark to market
     e_candle = make_candle_event(1, t1, iid, close=Decimal("110.0"))
     e_tick_entry = make_tick_event(1, t0, iid, bid=Decimal("99.5"), ask=Decimal("100.0"))
-    res_candle = engine.run([a_buy], [e_tick_entry, e_candle])
+    res_candle = engine.run([a_buy], replay_schedule=make_schedule([e_tick_entry, e_candle]))
     assert res_candle.economic_state.pnl.unrealized_pnl == Decimal("50.0")  # (110 - 100)*5
     assert res_candle.economic_state.mark_evidence is not None
     assert res_candle.economic_state.mark_evidence.valuation_method == "CANDLE_CLOSE"
@@ -390,7 +419,7 @@ def test_engine_mark_prices_variations() -> None:
         times=ObservationTimes(event_time=event_time, ingestion_time=t1, knowledge_time=t1),
         payload=payload_last_only,
     )
-    res_last = engine.run([a_buy], [e_tick_entry, e_last])
+    res_last = engine.run([a_buy], replay_schedule=make_schedule([e_tick_entry, e_last]))
     assert res_last.economic_state.pnl.unrealized_pnl == Decimal("60.0")  # (112 - 100)*5
     assert res_last.economic_state.mark_evidence is not None
     assert res_last.economic_state.mark_evidence.valuation_method == "LAST_PRICE"
@@ -419,7 +448,7 @@ def test_engine_edge_cases_coverage() -> None:
     a_buy = make_action(1, t0, iid, Side.BUY, Decimal("5"))
 
     # Explicit created_at
-    res_custom = engine.run([], [], created_at=t_custom)
+    res_custom = engine.run([], replay_schedule=make_schedule([]), created_at=t_custom)
     assert res_custom.manifest.created_at == t_custom
 
     # Event with missing bid & missing ask (only volume)
@@ -480,7 +509,44 @@ def test_engine_edge_cases_coverage() -> None:
         end_of_window_policy=EndOfWindowPolicy.KEEP_OPEN,
     )
     e_candle_valid = make_candle_event(1, t0, iid, close=Decimal("100.0"))
-    res_candle = engine_candle.run([a_buy], [e_candle_valid])
+    res_candle = engine_candle.run([a_buy], replay_schedule=make_schedule([e_candle_valid]))
     assert len(res_candle.fills) == 1
     assert res_candle.fills[0].outcome == ExecutionOutcome.INDETERMINATE
     assert res_candle.fills[0].reason == "CANDLE_EXECUTION_PATH_UNSUPPORTED"
+
+
+def test_engine_missing_mark_price_on_open_position(monkeypatch: pytest.MonkeyPatch) -> None:
+    iid = TradableInstrumentId(make_uuid(1))
+    econ = InstrumentEconomics(iid, "BRL", Decimal("1.0"), Decimal("0.5"), Decimal("1.0"))
+    assumptions = EconomicAssumptions(
+        assumptions_id="base",
+        spread_model=SpreadModel(),
+        slippage_model=ZeroSlippageModel(),
+        fee_schedule=FeeSchedule(schedule_id="fee"),
+        latency_model=LatencyModel(),
+        execution_policy=ExecutionPolicy(),
+    )
+    engine = DeterministicEconomicBacktester(
+        econ,
+        assumptions,
+        code_revision=DUMMY_REV,
+        end_of_window_policy=EndOfWindowPolicy.KEEP_OPEN,
+    )
+    t0 = datetime(2026, 9, 16, 10, 0, 0, tzinfo=UTC)
+    a_buy = make_action(1, t0, iid, Side.BUY, Decimal("5"))
+    e_entry = make_tick_event(1, t0, iid, bid=Decimal("99.5"), ask=Decimal("100.0"))
+
+    # When no mark price evidence is available for the open position,
+    # the engine must fail closed without raising ValueError or fabricating 0:
+    # unrealized_pnl = None, total_net_pnl = None, mark_evidence = None
+    monkeypatch.setattr(engine, "_find_latest_mark_price", lambda evs: None)
+
+    schedule = make_schedule([e_entry])
+    res = engine.run([a_buy], replay_schedule=schedule)
+
+    assert len(res.fills) == 1
+    assert res.fills[0].outcome == ExecutionOutcome.FILL
+    assert res.economic_state.positions[0].is_long
+    assert res.economic_state.mark_evidence is None
+    assert res.economic_state.pnl.unrealized_pnl is None
+    assert res.economic_state.pnl.total_net_pnl is None

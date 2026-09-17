@@ -4,6 +4,7 @@ Verifies that execution outcomes and realized metrics are strictly causal,
 preventing future events or post-execution perturbations from influencing earlier actions.
 """
 
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
@@ -30,17 +31,37 @@ from btg_ai_trader.observer.envelope import EventEnvelope, EventType
 from btg_ai_trader.observer.identity import (
     EventId,
     ProviderInstrumentRef,
+    RunId,
     TradableInstrumentId,
 )
 from btg_ai_trader.observer.market import Tick
-from btg_ai_trader.observer.provenance import CodeRevision
+from btg_ai_trader.observer.provenance import CodeRevision, ConfigHash
 from btg_ai_trader.observer.temporal import EventTime, ObservationTimes
+from btg_ai_trader.replay.core import CausalMarketReplaySchedule
 
 DUMMY_REV = CodeRevision("a" * 40)
 
 
 def make_uuid(num: int = 1) -> str:
     return str(UUID(int=num))
+
+
+def make_schedule(
+    events: Sequence[EventEnvelope],
+    run_id: str | None = None,
+    code_revision: CodeRevision | None = None,
+    config_hash: ConfigHash | None = None,
+    provider_id: str = "xp",
+    capture_scope: str = "market",
+) -> CausalMarketReplaySchedule:
+    return CausalMarketReplaySchedule(
+        events,
+        run_id=RunId(run_id or make_uuid(50)),
+        code_revision=code_revision or DUMMY_REV,
+        config_hash=config_hash or ConfigHash("1" * 64),
+        provider_id=provider_id,
+        capture_scope=capture_scope,
+    )
 
 
 def make_tick_event(
@@ -114,7 +135,7 @@ def test_future_event_insertion_invariance() -> None:
     )
 
     # Baseline: single action and single eligible event
-    res_base = engine.run([action], [e1])
+    res_base = engine.run([action], replay_schedule=make_schedule([e1]))
     assert len(res_base.fills) == 1
     f_base = res_base.fills[0]
     assert f_base.outcome == ExecutionOutcome.FILL
@@ -126,7 +147,9 @@ def test_future_event_insertion_invariance() -> None:
         3, t_future + timedelta(seconds=1), iid, bid=Decimal("200.0"), ask=Decimal("201.0")
     )
 
-    res_with_future = engine.run([action], [e1, e_future1, e_future2])
+    res_with_future = engine.run(
+        [action], replay_schedule=make_schedule([e1, e_future1, e_future2])
+    )
     assert len(res_with_future.fills) == 1
     f_with_future = res_with_future.fills[0]
 
@@ -160,11 +183,11 @@ def test_future_event_perturbation_invariance() -> None:
 
     # Future event variant A
     e2_a = make_tick_event(2, t1, iid, bid=Decimal("105.0"), ask=Decimal("106.0"))
-    res_a = engine.run([action1], [e1, e2_a])
+    res_a = engine.run([action1], replay_schedule=make_schedule([e1, e2_a]))
 
     # Future event variant B (drastically different quote)
     e2_b = make_tick_event(2, t1, iid, bid=Decimal("150.0"), ask=Decimal("151.0"))
-    res_b = engine.run([action1], [e1, e2_b])
+    res_b = engine.run([action1], replay_schedule=make_schedule([e1, e2_b]))
 
     # Past fill for action1 is completely invariant
     assert res_a.fills[0].fill_price == res_b.fills[0].fill_price == Decimal("100.0")
@@ -199,7 +222,7 @@ def test_pre_arrival_event_cannot_be_consumed() -> None:
         2, t0 + timedelta(microseconds=1200), iid, bid=Decimal("99.0"), ask=Decimal("100.0")
     )
 
-    res = engine.run([action], [e_too_early, e_eligible])
+    res = engine.run([action], replay_schedule=make_schedule([e_too_early, e_eligible]))
     assert len(res.fills) == 1
     # Must NOT consume the pre-arrival event at 80.0
     assert res.fills[0].fill_price == Decimal("100.0")

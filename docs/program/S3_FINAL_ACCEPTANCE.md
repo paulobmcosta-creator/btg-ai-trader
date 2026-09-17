@@ -58,7 +58,7 @@ All entry preconditions (`S3-EG-01..10`) were verified and satisfied:
 
 ## 3. Implementation Overview & Architectural Scope
 
-Sprint 3 implemented the **Deterministic Execution Economics Kernel** in `src/btg_ai_trader/backtesting/` with 100% statement (903/903) and branch (360/360) coverage, consisting of:
+Sprint 3 implemented the **Deterministic Execution Economics Kernel** in `src/btg_ai_trader/backtesting/` with 91% coverage (1,325 statements, 86 missed, 598 branches, 57 missed/partial, 85 passed backtesting tests), consisting of:
 
 1. **Domain & Types (`domain.py`):**
    - `ActionIdentity`: Immutable identity binding action ID, run ID, and ordinal sequence.
@@ -73,7 +73,7 @@ Sprint 3 implemented the **Deterministic Execution Economics Kernel** in `src/bt
    - `ZeroSlippageModel`, `FixedPointsSlippageModel`, `FixedBpsSlippageModel`: Adverse slippage models guaranteeing zero favorable slippage and zero RNG dependence.
    - `FeeSchedule`: Multi-component fee schedule (fixed per order, per unit, basis points rate, currency).
    - `LatencyModel`: Non-negative logical virtual latencies (`decision_latency_us`, `transit_latency_us`) without wall-clock dependence.
-   - `ExecutionPolicy`: Max spread, max adverse slippage points, max lot capacity, quote staleness timeout.
+   - `ExecutionPolicy`: Max spread, max adverse slippage points, small lot max quantity (`small_lot_max_quantity`), quote staleness timeout.
    - `EconomicAssumptions`: Aggregate immutable parameter bundle with canonical SHA-256 fingerprinting.
 
 3. **Simulated Execution Engine (`execution.py`):**
@@ -83,7 +83,7 @@ Sprint 3 implemented the **Deterministic Execution Economics Kernel** in `src/bt
 4. **Simulated Accounting & Cost Tracking (`accounting.py`):**
    - `BacktestPositionState`: Side-aware moving weighted average cost basis (WACB) calculation, realized P&L recognition on position-reducing fills, flips/reversals with clean lot splitting, position-increasing WACB adjustment, and total volume turnover tracking.
    - `BacktestPnL`: Segregated tracking of Gross P&L, Total Fees, Spread Cost Burden, Slippage Cost Burden, and Net P&L (`gross_pnl - total_fees`). Zero double-counting of spread/slippage already embedded in fill prices.
-   - `BacktestEconomicState`: Complete portfolio state tracking positions, cash flow, realized/unrealized P&L, mark-to-market valuations, and end-of-window policies (`KEEP_OPEN`, `FORCE_CLOSE_AT_LAST_VALID_EVENT`).
+   - `BacktestEconomicState`: Complete portfolio state tracking positions, cash flow, realized/unrealized P&L, mark-to-market valuations, and end-of-window policies (`KEEP_OPEN`; `CLOSE_AT_LAST_VALID_QUOTE` is deferred with `NotImplementedError`).
    - Strict segregation from canonical `FinancialLedger` (zero mutation of operational ledger).
 
 5. **Descriptive Economic Metrics (`metrics.py`):**
@@ -91,7 +91,7 @@ Sprint 3 implemented the **Deterministic Execution Economics Kernel** in `src/bt
    - Promotional inferential metrics (Sharpe, Sortino, VaR, Calmar, p-values) strictly deferred to post-validation phases.
 
 6. **Deterministic Engine & Orchestrator (`engine.py`):**
-   - `DeterministicEconomicBacktester`: Orchestrates causal replay through `CausalMarketReplayCursor`, evaluates actions at causal market arrival, feeds simulated fills into economic accounting, marks to market at window end, and generates comprehensive `BacktestResult`.
+   - `DeterministicEconomicBacktester`: Orchestrates causal replay over `CausalMarketReplaySchedule`, evaluates actions at causal market arrival, feeds simulated fills into economic accounting, marks to market at window end, and generates comprehensive `BacktestResult`.
 
 7. **Provenance & Input Boundary (`provenance.py`):**
    - `BacktestInputBoundary`: Cryptographically binds Replay Input Boundary, action hash, assumptions hash, instrument economics, and code revision.
@@ -109,10 +109,10 @@ Every capability from `docs/program/S3_CAPABILITY_MATRIX.md` is adjudicated belo
 | ID | Contractual Capability | Applicability / Trigger Status | Canonical Implementation / Evidence | Specific Tests or Checks | Verdict |
 |---|---|---|---|---|---|
 | **S3-AC-01** | Explicit deterministic backtest input boundary | REQUIRED | `BacktestInputBoundary` (`provenance.py:17-57`) cryptographically binds replay boundary, actions hash, assumptions hash, instrument economics, code revision, and config hash. | `test_backtest_input_boundary_validation_and_codec`, `test_sha256_canonical_json_and_key_order`, `test_compute_actions_hash_determinism_and_sensitivity` | **PASS** |
-| **S3-AC-02** | Causal economic replay derived from accepted S2 semantics | REQUIRED | `DeterministicEconomicBacktester` (`engine.py:27-147`) replays market events using S2 `CausalMarketReplaySchedule` and `CausalMarketReplayCursor`, respecting `knowledge_cutoff`. | `test_engine_full_lifecycle_and_session_determinism`, `test_engine_initialization_and_result_validation` | **PASS** |
+| **S3-AC-02** | Causal economic replay derived from accepted S2 semantics | REQUIRED | `DeterministicEconomicBacktester` (`engine.py`) replays market events using S2 `CausalMarketReplaySchedule`, respecting `knowledge_cutoff`. | `test_engine_full_lifecycle_and_session_determinism`, `test_engine_initialization_and_result_validation` | **PASS** |
 | **S3-AC-03** | Explicit decision / order-ready / market-arrival / execution timing | REQUIRED | `ExecutionTiming` (`domain.py:73-108`) enforces `decision_time <= order_ready_time <= market_arrival_time <= execution_opportunity_time`. Non-positive delta or backward time is rejected fail-closed. | `test_execution_timing_valid`, `test_execution_timing_regressions`, `test_simulate_action_validation` | **PASS** |
-| **S3-AC-04** | Side-aware executable price semantics | REQUIRED | `SpreadModel.executable_price()` (`assumptions.py:34-45`) executes BUY against Ask and SELL against Bid. Mid-price aggressive fill is forbidden. | `test_spread_model_valid`, `test_successful_market_tick_fill`, `test_spread_model_edge_cases` | **PASS** |
-| **S3-AC-05** | Explicit deterministic spread treatment | REQUIRED | `SpreadModel.calculate_spread()` (`assumptions.py:27-32`) requires positive spread (`Ask > Bid`). Zero, negative, inverted, or missing spreads produce `INDETERMINATE` or fail closed. | `test_spread_model_valid`, `test_spread_model_edge_cases`, `test_missing_quote_or_spread_rejection` | **PASS** |
+| **S3-AC-04** | Side-aware executable price semantics | REQUIRED | `SpreadModel.resolve_execution_price()` (`assumptions.py`) executes BUY against Ask and SELL against Bid. Mid-price aggressive fill is forbidden. | `test_spread_model_valid`, `test_successful_market_tick_fill`, `test_spread_model_edge_cases` | **PASS** |
+| **S3-AC-05** | Explicit deterministic spread treatment | REQUIRED | `SpreadModel` (`assumptions.py`) strictly enforces positive spread (`ask > bid`). Zero, negative, inverted, or crossed spreads produce `INDETERMINATE` with `NON_POSITIVE_SPREAD` fail-closed. | `test_spread_model_valid`, `test_spread_model_edge_cases`, `test_missing_quote_or_spread_rejection` | **PASS** |
 | **S3-AC-06** | Explicit configurable fee/cost model | REQUIRED | `FeeSchedule` (`assumptions.py:84-114`) supports fixed per-order fees, per-unit fees, and basis-point rates with currency validation. | `test_fee_schedule`, `test_fee_schedule_validation`, `test_run_fee_sensitivity_sweep` | **PASS** |
 | **S3-AC-07** | Explicit deterministic adverse slippage model | REQUIRED | `ZeroSlippageModel`, `FixedPointsSlippageModel`, `FixedBpsSlippageModel` (`assumptions.py:48-81`) enforce adverse directionality (`fill_price >= raw_price` for BUY, `fill_price <= raw_price` for SELL). Zero RNG. | `test_zero_slippage_model`, `test_fixed_points_slippage_model`, `test_fixed_bps_slippage_model`, `test_run_slippage_sensitivity_sweep` | **PASS** |
 | **S3-AC-08** | Explicit deterministic latency model | REQUIRED | `LatencyModel` (`assumptions.py:117-133`) calculates virtual non-negative `order_ready_time` and `market_arrival_time` in microseconds without wall-clock sleep. | `test_latency_model`, `test_latency_model_validation` | **PASS** |
@@ -121,14 +121,14 @@ Every capability from `docs/program/S3_CAPABILITY_MATRIX.md` is adjudicated belo
 | **S3-AC-11** | Gross / net P&L with explicit economic units | REQUIRED | `BacktestPnL` (`accounting.py:99-130`) tracks Gross P&L, Total Fees, Spread Burden, Slippage Burden, and Net P&L in exact Decimal with currency and contract multiplier. | `test_pnl_invariants_and_no_double_counting`, `test_pnl_unrealized_invalid_type`, `test_economic_state_lifecycle_and_mark_to_market` | **PASS** |
 | **S3-AC-12** | Cost attribution without double counting | REQUIRED | Spread and slippage are already embedded in `SimulatedFill.fill_price`. Gross P&L uses fill price; Net P&L deducts explicit fees only. Cost burdens are diagnostic and never subtracted twice. | `test_pnl_invariants_and_no_double_counting`, `test_economic_state_lifecycle_and_mark_to_market` | **PASS** |
 | **S3-AC-13** | Descriptive economic metrics | REQUIRED | `compute_descriptive_metrics()` (`metrics.py:34-118`) computes turnover, trade counts, win rate, profit factor, drawdown, and ratios. Promotional inferential statistics are excluded. | `test_compute_descriptive_metrics_empty`, `test_compute_descriptive_metrics_full_trade_lifecycle`, `test_metrics_profit_factor_infinity_and_drawdown_ratio`, `test_metrics_negative_equity_curve_drawdown` | **PASS** |
-| **S3-AC-14** | Future-data leakage protection | REQUIRED | Future events added or perturbed after `market_arrival_time` have zero effect on earlier execution decisions or fill pricing. Causal cursor enforces monotonic time. | `test_future_event_insertion_invariance`, `test_future_event_perturbation_invariance`, `test_pre_arrival_event_cannot_be_consumed` | **PASS** |
+| **S3-AC-14** | Future-data leakage protection | REQUIRED | Future events added or perturbed after `market_arrival_time` have zero effect on earlier execution decisions or fill pricing. Causal replay schedule enforces monotonic time. | `test_future_event_insertion_invariance`, `test_future_event_perturbation_invariance`, `test_pre_arrival_event_cannot_be_consumed` | **PASS** |
 | **S3-AC-15** | Deterministic repeated execution | REQUIRED | 100 consecutive runs of identical inputs and assumptions produce exact byte-for-byte identical manifest SHA-256 hashes and P&L results. Seed/RNG variation has zero effect. | `test_100_runs_exact_byte_determinism`, `test_engine_full_lifecycle_and_session_determinism` | **PASS** |
 | **S3-AC-16** | Assumption sensitivity / cost stress | REQUIRED | Parameter sensitivity sweeps (`sensitivity.py:20-80`) assert economic monotonicity: increasing fee rate or adverse slippage monotonically degrades or preserves Net P&L. | `test_run_fee_sensitivity_sweep`, `test_run_slippage_sensitivity_sweep`, `test_verify_pnl_monotonicity_direct` | **PASS** |
-| **S3-AC-17** | Lineage tracking | REQUIRED | Lineage binding: `market_event -> research_action -> simulated_fill -> economic_result` captured via `ActionIdentity`, `SimulatedFill.quote_event_id`, and `BacktestRunManifest`. | `test_backtest_run_manifest_lifecycle_and_integrity`, `test_successful_market_tick_fill`, `test_compute_actions_hash_determinism_and_sensitivity` | **PASS** |
-| **S3-AC-18** | Explicit end-of-window position policy | REQUIRED | `EndOfWindowPolicy` (`accounting.py:18-22`) supports `KEEP_OPEN` (default, leaves open position marked-to-market) and `FORCE_CLOSE_AT_LAST_VALID_EVENT` (synthetic liquidation fill at last valid quote). | `test_end_of_window_policy_enum`, `test_engine_end_of_window_policy_close_long_and_short`, `test_economic_state_lifecycle_and_mark_to_market` | **PASS** |
+| **S3-AC-17** | Lineage tracking | REQUIRED | Lineage binding: `market_event -> research_action -> simulated_fill -> economic_result` captured via `ActionIdentity`, `SimulatedFill.source_event_id`, and `BacktestRunManifest`. | `test_backtest_run_manifest_lifecycle_and_integrity`, `test_successful_market_tick_fill`, `test_compute_actions_hash_determinism_and_sensitivity` | **PASS** |
+| **S3-AC-18** | Explicit end-of-window position policy | REQUIRED | `EndOfWindowPolicy` (`accounting.py:18-22`) supports `KEEP_OPEN` (default, leaves open position marked-to-market); `CLOSE_AT_LAST_VALID_QUOTE` is deferred and raises `NotImplementedError`. | `test_end_of_window_policy_enum`, `test_engine_end_of_window_policy_close_long_and_short`, `test_economic_state_lifecycle_and_mark_to_market` | **PASS** |
 | **S3-AC-19** | Explicit handling of unavailable execution evidence | REQUIRED | When quotes are stale, missing, inverted, or unsupported payload types, outcome is fail-closed `INDETERMINATE` or `NO_FILL`. No silent interpolation or fill synthesis. | `test_missing_quote_or_spread_rejection`, `test_stale_quote_rejection`, `test_unsupported_event_payload_and_skipping`, `test_capacity_rejection` | **PASS** |
 | **S3-AC-20** | Final Gate B reconciliation | REQUIRED | Conjunctive validation of determinism, leakage absence, economic modeling, non-double-counting, and frozen baseline preservation documented in this gate artifact. | Documented in Section 8 of this gate record. | **PASS** |
-| **S3-AC-21** | Small-lot assumption | REQUIRED | `ExecutionPolicy.max_lot_size` (`assumptions.py:141-143`) enforces small-lot constraint. Orders exceeding capacity are rejected fail-closed (`outcome=REJECTED`). | `test_execution_policy_and_economic_assumptions`, `test_capacity_rejection` | **PASS** |
+| **S3-AC-21** | Small-lot assumption | REQUIRED | `ExecutionPolicy.small_lot_max_quantity` (`assumptions.py`) enforces small-lot constraint. Orders exceeding capacity are rejected fail-closed (`outcome=REJECTED`). | `test_execution_policy_and_economic_assumptions`, `test_capacity_rejection` | **PASS** |
 | **S3-AC-22** | Order types beyond MARKET | DEFERRED | Protocol 0E-D restricts baseline to `OrderStyle.MARKET`. Other styles (`LIMIT`, `STOP`) are explicitly deferred and raise `NotImplementedError` or are rejected. | `test_backtest_action_invalid_inputs`, `test_backtest_action_valid` | **DEFERRED** |
 | **S3-AC-23** | Order book queue priority / depth fill | DEFERRED | Depth fills and queue positioning are unsupported by L1/Tick market data evidence; deferred to future sprints when L2/L3 order book data is available. | Protocol 0E-D small-lot assumption justification; zero depth simulation code in kernel. | **DEFERRED** |
 | **S3-AC-24** | Market impact model | DEFERRED | Unbounded linear impact models rejected under Protocol 0E-D; impact modeling deferred until order book depth and volume profiles exist. | Protocol 0E-D small-lot assumption justification; small orders assume zero market impact. | **DEFERRED** |
@@ -156,12 +156,12 @@ Every negative prohibition from `docs/program/S3_CAPABILITY_MATRIX.md` and `docs
 | **S3-NC-12** | Paid external services absent | Architectural audit | `pyproject.toml` contains zero commercial data/service dependencies; recurring cost is exactly ZERO. | **PASS** |
 | **S3-NC-13** | Predictive ML operational wiring absent | AST import / code audit | Zero ML dependencies (`torch`, `sklearn`, `xgboost`, `tensorflow`) in runtime dependencies. | **PASS** |
 | **S3-NC-14** | Silent missing data imputation forbidden | Strict fail-closed logic | Missing bid, ask, or volume in market events returns `INDETERMINATE` or `NO_FILL`. Verified by `test_missing_quote_or_spread_rejection`. | **PASS** |
-| **S3-NC-15** | Future data leakage forbidden | Monotonic cutoff enforcement | Replay cursor strictly enforces `knowledge_cutoff`. Verified by `test_future_event_insertion_invariance`, `test_future_event_perturbation_invariance`. | **PASS** |
+| **S3-NC-15** | Future data leakage forbidden | Monotonic cutoff enforcement | Replay schedule strictly enforces `knowledge_cutoff`. Verified by `test_future_event_insertion_invariance`, `test_future_event_perturbation_invariance`. | **PASS** |
 | **S3-NC-16** | Favorable unknown resolution forbidden | Conservative fail-closed | Ambiguous conditions (equal quotes, non-positive spread, missing side) yield `INDETERMINATE`, never optimistic fills. | **PASS** |
 | **S3-NC-17** | Mid-price aggressive fill forbidden | Side-aware Ask/Bid logic | BUY strictly evaluates Ask; SELL strictly evaluates Bid. Verified by `test_spread_model_valid`, `test_successful_market_tick_fill`. | **PASS** |
 | **S3-NC-18** | Same-close execution without causal proof forbidden | Explicit causal latency | Fills require `event_time >= market_arrival_time`. Rejection verified by `test_pre_arrival_event_cannot_be_consumed`. | **PASS** |
-| **S3-NC-19** | Tick volume as accessible liquidity forbidden | Small-lot assumption | Small-lot model assumes orders <= `max_lot_size` fill completely without relying on unproven tick volume. | **PASS** |
-| **S3-NC-20** | Unbounded linear capacity assumption forbidden | Small-lot assumption | Order size strictly bounded by `max_lot_size`; exceeding quantities are rejected fail-closed. Verified by `test_capacity_rejection`. | **PASS** |
+| **S3-NC-19** | Tick volume as accessible liquidity forbidden | Small-lot assumption | Small-lot model assumes orders <= `small_lot_max_quantity` fill completely without relying on unproven tick volume. | **PASS** |
+| **S3-NC-20** | Unbounded linear capacity assumption forbidden | Small-lot assumption | Order size strictly bounded by `small_lot_max_quantity`; exceeding quantities are rejected fail-closed. Verified by `test_capacity_rejection`. | **PASS** |
 | **S3-NC-21** | Random number generator in baseline absent | AST call check (`random.*`) | Baseline slippage, latency, and fills use pure deterministic equations. Verified by `test_prohibited_constructs_detected`, `test_100_runs_exact_byte_determinism`. | **PASS** |
 
 ---
@@ -248,8 +248,8 @@ In accordance with quantitative protocols defined in Foundation 0E:
 To prevent documentary drift and phantom citations, every test function cited in this document has been verified against the repository's Abstract Syntax Tree (AST):
 
 ```text
-TOTAL_CITED_TEST_NAMES = 90
-AST_VERIFIED_TEST_NAMES = 90
+TOTAL_CITED_TEST_NAMES = 93
+AST_VERIFIED_TEST_NAMES = 93
 CITED_TEST_NAMES - ACTUAL_TEST_FUNCTION_NAMES = set()
 DRIFT_OR_PHANTOM_CITATIONS = 0
 ```
@@ -307,6 +307,7 @@ DRIFT_OR_PHANTOM_CITATIONS = 0
   - `test_engine_full_lifecycle_and_session_determinism`
   - `test_engine_initialization_and_result_validation`
   - `test_engine_mark_prices_variations`
+  - `test_engine_missing_mark_price_on_open_position`
 - `tests/backtesting/test_execution.py`:
   - `test_candle_execution_handling`
   - `test_capacity_rejection`
@@ -316,6 +317,7 @@ DRIFT_OR_PHANTOM_CITATIONS = 0
   - `test_simulate_actions_batch`
   - `test_stale_quote_rejection`
   - `test_successful_market_tick_fill`
+  - `test_typed_run_id_variants_and_determinism`
   - `test_unsupported_event_payload_and_skipping`
   - `test_unsupported_payload_type`
 - `tests/backtesting/test_leakage.py`:
@@ -350,6 +352,7 @@ DRIFT_OR_PHANTOM_CITATIONS = 0
   - `test_run_slippage_sensitivity_sweep`
   - `test_verify_pnl_monotonicity_direct`
 - `tests/test_s3_boundary.py`:
+  - `test_acceptance_symbols_verification`
   - `test_allowed_python_file_passes`
   - `test_main_passes_on_clean_repo`
   - `test_non_python_file_with_secret_fails`

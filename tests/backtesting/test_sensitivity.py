@@ -33,10 +33,13 @@ from btg_ai_trader.observer.envelope import EventEnvelope, EventType
 from btg_ai_trader.observer.identity import (
     EventId,
     ProviderInstrumentRef,
+    RunId,
     TradableInstrumentId,
 )
 from btg_ai_trader.observer.market import Tick
+from btg_ai_trader.observer.provenance import CodeRevision, ConfigHash
 from btg_ai_trader.observer.temporal import EventTime, ObservationTimes
+from btg_ai_trader.replay.core import CausalMarketReplaySchedule
 
 
 def make_uuid(num: int = 1) -> str:
@@ -191,19 +194,57 @@ def test_run_fee_sensitivity_sweep() -> None:
         make_tick_event(1, t0, iid, bid=Decimal("99.5"), ask=Decimal("100.0")),
         make_tick_event(2, t1, iid, bid=Decimal("110.0"), ask=Decimal("110.5")),
     ]
+    rev = CodeRevision("b" * 40)
+    schedule = CausalMarketReplaySchedule(
+        events,
+        run_id=RunId(make_uuid(50)),
+        code_revision=rev,
+        config_hash=ConfigHash("1" * 64),
+        provider_id="xp",
+        capture_scope="market",
+    )
+
+    # Invalid replay schedule or missing code revision rejected
+    with pytest.raises(ValueError, match="replay_schedule must be CausalMarketReplaySchedule"):
+        run_fee_sensitivity_sweep(
+            actions, events, econ, assumptions, [Decimal("1.0")], code_revision=rev  # type: ignore[arg-type]
+        )
 
     # Negative fee multiplier rejected
     with pytest.raises(ValueError, match="fee multiplier cannot be negative"):
-        run_fee_sensitivity_sweep(actions, events, econ, assumptions, [Decimal("-1")])
+        run_fee_sensitivity_sweep(
+            actions, schedule, econ, assumptions, [Decimal("-1")], code_revision=rev
+        )
 
     multipliers = [Decimal("0.0"), Decimal("0.5"), Decimal("1.0"), Decimal("2.0"), Decimal("5.0")]
-    sweep = run_fee_sensitivity_sweep(actions, events, econ, assumptions, multipliers)
+    sweep = run_fee_sensitivity_sweep(
+        actions, schedule, econ, assumptions, multipliers, code_revision=rev
+    )
 
     assert len(sweep) == 5
     # As multiplier increases, fees strictly increase and net P&L strictly decreases
     for i in range(1, len(sweep)):
         assert sweep[i].total_explicit_fees >= sweep[i - 1].total_explicit_fees
         assert sweep[i].net_realized_pnl <= sweep[i - 1].net_realized_pnl
+
+    # Preserves effective_from and effective_until across sweep
+    win_assumptions = EconomicAssumptions(
+        assumptions_id="win_base",
+        spread_model=SpreadModel(),
+        slippage_model=ZeroSlippageModel(),
+        fee_schedule=FeeSchedule(
+            schedule_id="fee_win",
+            fixed_per_order=Decimal("2.0"),
+            effective_from=t0,
+            effective_until=t1,
+        ),
+        latency_model=LatencyModel(),
+        execution_policy=ExecutionPolicy(),
+    )
+    sweep_win = run_fee_sensitivity_sweep(
+        actions, schedule, econ, win_assumptions, [Decimal("1.0")], code_revision=rev
+    )
+    assert len(sweep_win) == 1
 
 
 def test_run_slippage_sensitivity_sweep() -> None:
@@ -229,13 +270,26 @@ def test_run_slippage_sensitivity_sweep() -> None:
         make_tick_event(1, t0, iid, bid=Decimal("99.5"), ask=Decimal("100.0")),
         make_tick_event(2, t1, iid, bid=Decimal("110.0"), ask=Decimal("110.5")),
     ]
+    rev = CodeRevision("b" * 40)
+    schedule = CausalMarketReplaySchedule(
+        events,
+        run_id=RunId(make_uuid(50)),
+        code_revision=rev,
+        config_hash=ConfigHash("1" * 64),
+        provider_id="xp",
+        capture_scope="market",
+    )
 
     # Negative slippage rejected
     with pytest.raises(ValueError, match="slippage points cannot be negative"):
-        run_slippage_sensitivity_sweep(actions, events, econ, assumptions, [Decimal("-1")])
+        run_slippage_sensitivity_sweep(
+            actions, schedule, econ, assumptions, [Decimal("-1")], code_revision=rev
+        )
 
     points_list = [Decimal("0.0"), Decimal("0.5"), Decimal("1.0"), Decimal("2.0")]
-    sweep = run_slippage_sensitivity_sweep(actions, events, econ, assumptions, points_list)
+    sweep = run_slippage_sensitivity_sweep(
+        actions, schedule, econ, assumptions, points_list, code_revision=rev
+    )
 
     assert len(sweep) == 4
     # As slippage increases, net P&L strictly decreases
@@ -271,13 +325,26 @@ def test_run_latency_sensitivity_sweep() -> None:
             2, t1 + timedelta(microseconds=500), iid, bid=Decimal("110.0"), ask=Decimal("110.5")
         ),
     ]
+    rev = CodeRevision("b" * 40)
+    schedule = CausalMarketReplaySchedule(
+        events,
+        run_id=RunId(make_uuid(50)),
+        code_revision=rev,
+        config_hash=ConfigHash("1" * 64),
+        provider_id="xp",
+        capture_scope="market",
+    )
 
     # Negative latency rejected
     with pytest.raises(ValueError, match="latency cannot be negative"):
-        run_latency_sensitivity_sweep(actions, events, econ, assumptions, [-1])
+        run_latency_sensitivity_sweep(
+            actions, schedule, econ, assumptions, [-1], code_revision=rev
+        )
 
     latencies = [0, 100, 500]
-    sweep = run_latency_sensitivity_sweep(actions, events, econ, assumptions, latencies)
+    sweep = run_latency_sensitivity_sweep(
+        actions, schedule, econ, assumptions, latencies, code_revision=rev
+    )
 
     assert len(sweep) == 3
     for pt in sweep:
