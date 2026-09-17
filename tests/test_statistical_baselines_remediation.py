@@ -505,7 +505,11 @@ def test_plan_digest_policy_sensitivity() -> None:
         train_duration=timedelta(hours=2),
         test_duration=timedelta(hours=1),
         step_duration=timedelta(hours=1),
-        purge_policy=PurgePolicy(purge_overlapping=True, default_horizon=timedelta(hours=1), fail_closed_on_unknown=False),
+        purge_policy=PurgePolicy(
+            fail_closed_on_unknown=False,
+            purge_overlapping=True,
+            default_horizon=timedelta(hours=1),
+        ),
         embargo_policy=EmbargoPolicy(duration=timedelta(minutes=10)),
     )
     plan_p1 = WalkForwardPlanner.generate_plan(
@@ -1010,7 +1014,11 @@ def test_partition_samples_purge_overlapping_branch() -> None:
             train_duration=timedelta(hours=4),
             test_duration=timedelta(hours=2),
             step_duration=timedelta(hours=2),
-            purge_policy=PurgePolicy(purge_overlapping=True, default_horizon=timedelta(hours=2), fail_closed_on_unknown=False),
+            purge_policy=PurgePolicy(
+                fail_closed_on_unknown=False,
+                purge_overlapping=True,
+                default_horizon=timedelta(hours=2),
+            ),
             embargo_policy=EmbargoPolicy(duration=timedelta(0)),
         ),
         plan_id="plan_purge_test",
@@ -1857,25 +1865,36 @@ def test_verified_boundary_constructor_and_manifest_full_reconciliation() -> Non
         numeric_policy=result.numeric_policy,
     )
 
-    with pytest.raises(ValueError, match="must be created via"):
-        StatisticalEvaluationInputBoundary(
-            sample_ids=boundary.sample_ids,
-            dataset_digest=boundary.dataset_digest,
-            source_lineage_digest=boundary.source_lineage_digest,
-            target_semantics=boundary.target_semantics,
-            target_contract_id=boundary.target_contract_id,
-            candidate_identities=boundary.candidate_identities,
-            search_family=boundary.search_family,
-            plan_digest=boundary.plan_digest,
-            fold_definitions=boundary.fold_definitions,
-            purge_policy=boundary.purge_policy,
-            embargo_policy=boundary.embargo_policy,
-            metric_names=boundary.metric_names,
-            calibration_config=boundary.calibration_config,
-            aggregation_policy=boundary.aggregation_policy,
-            numeric_policy=boundary.numeric_policy,
-            code_revision=boundary.code_revision,
-            logical_evaluation_digest=boundary.logical_evaluation_digest,
+    unverified = StatisticalEvaluationInputBoundary(
+        sample_ids=boundary.sample_ids,
+        dataset_digest=boundary.dataset_digest,
+        source_lineage_digest=boundary.source_lineage_digest,
+        target_semantics=boundary.target_semantics,
+        target_contract_id=boundary.target_contract_id,
+        candidate_identities=boundary.candidate_identities,
+        search_family=boundary.search_family,
+        plan_digest=boundary.plan_digest,
+        fold_definitions=boundary.fold_definitions,
+        purge_policy=boundary.purge_policy,
+        embargo_policy=boundary.embargo_policy,
+        metric_names=boundary.metric_names,
+        calibration_config=boundary.calibration_config,
+        aggregation_policy=boundary.aggregation_policy,
+        numeric_policy=boundary.numeric_policy,
+        code_revision=boundary.code_revision,
+        logical_evaluation_digest=boundary.logical_evaluation_digest,
+    )
+    assert unverified.is_verified is False
+    with pytest.raises(ValueError, match="must be a verified boundary"):
+        StatisticalEvaluationManifest.create(
+            plan=plan,
+            samples=samples,
+            candidate_identities=(baseline.identity,),
+            aggregate_results=[result],
+            comparison_results=[],
+            code_revision="rev-a",
+            execution_timestamp=_dt(10),
+            input_boundary=unverified,
         )
 
     altered_samples = [
@@ -1892,7 +1911,7 @@ def test_verified_boundary_constructor_and_manifest_full_reconciliation() -> Non
         aggregation_policy=result.aggregation_policy,
         numeric_policy=result.numeric_policy,
     )
-    with pytest.raises(ValueError, match="source_lineage_digest"):
+    with pytest.raises(ValueError, match="dataset_digest"):
         StatisticalEvaluationManifest.create(
             plan=plan,
             samples=samples,
@@ -2033,4 +2052,3 @@ def test_manifest_rejects_inconsistent_calibration_configs() -> None:
             code_revision="rev-a",
             execution_timestamp=_dt(10),
         )
-
