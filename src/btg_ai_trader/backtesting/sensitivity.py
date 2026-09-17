@@ -215,4 +215,3 @@ def run_latency_sensitivity_sweep(
         results.append(point)
 
     return results
-

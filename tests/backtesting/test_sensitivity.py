@@ -282,4 +282,3 @@ def test_run_latency_sensitivity_sweep() -> None:
     assert len(sweep) == 3
     for pt in sweep:
         assert pt.parameter_name == "transit_latency_us"
-

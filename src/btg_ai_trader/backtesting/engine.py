@@ -329,4 +329,3 @@ class DeterministicEconomicBacktester:
                         valuation_method=method,
                     )
         return None
-
