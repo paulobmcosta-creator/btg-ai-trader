@@ -19,6 +19,7 @@ from btg_ai_trader.statistical_baselines.domain import (
     StatisticalSample,
     TargetSemantics,
 )
+from btg_ai_trader.statistical_baselines.comparison import EvaluationHistory
 from btg_ai_trader.statistical_baselines.evaluation import (
     AggregateEvaluationResult,
     FoldEvaluationResult,
@@ -426,6 +427,7 @@ def test_evaluate_candidate_on_plan_walk_forward() -> None:
         samples=samples,
         role=EvaluationRole.PROTECTED_TEST,
         code_revision="v1.0.0",
+        evaluation_history=EvaluationHistory(),
     )
 
     assert len(agg_res.fold_results) == 2
