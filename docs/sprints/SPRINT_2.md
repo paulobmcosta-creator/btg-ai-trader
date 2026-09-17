@@ -3,16 +3,22 @@
 ## Estado atual
 
 ```text
-SPRINT_2_STATUS = OPEN
+SPRINT_2_STATUS = CLOSURE_CANDIDATE
 SPRINT_1_STATUS = FORMALLY_CLOSED
 SPRINT_1_FINAL_VERDICT = PASS
 SPRINT_1_ACCEPTED_HEAD = 57d820e256dd386624c1842c6f60b6797ba792aa
 SPRINT_2_BRANCH = sprint/2-data-platform-replay
-SPRINT_2_LIFECYCLE = OPEN
+SPRINT_2_LIFECYCLE = PROPOSED_CLOSED
 S2_ENTRY_GATE = PASS
-S2_FIRST_FUNCTIONAL_CODE = AUTHORIZED
-FIRST_IMPLEMENTATION_TOOL = ANTIGRAVITY
-FIRST_IMPLEMENTATION_TARGET = CAUSAL_REPLAY_CORE
+S2_A = ACCEPTED (PR #65, 9faa43c3bc112c1d2e558aa3e1518371880cc518)
+S2_B = ACCEPTED (PR #67, 071e004f2be8e5925b0de63db97af61cbbf37b30)
+S2_C = PROPOSED
+S2_C_ISSUE = #68
+S2_C_PR = #70
+S2_C_BRANCH = s2/03-final-acceptance-reconciliation
+PROPOSED_SPRINT_2_FINAL_VERDICT = PASS
+PROPOSED_SPRINT_2_LIFECYCLE = FORMALLY_CLOSED
+PROMOTION_TO_SPRINT_3_GATE = YES
 FINANCIAL_AUTHORITY = ABSENT
 ECONOMIC_BACKTEST_AUTHORITY = ABSENT
 ```
@@ -152,33 +158,31 @@ S2_FIRST_FUNCTIONAL_CODE = AUTHORIZED
 
 O PR final do gate ainda deve permanecer verde em seu próprio HEAD exato antes do merge; essa revalidação é condição de integração, não reabertura do gate substantivo.
 
-## 9. Primeiro incremento funcional autorizado
+## 9. Incrementos funcionais executados e aceitos
 
-O primeiro incremento será executado via **Antigravity** em branch filha da baseline canônica após o merge do Gate de Entrada, preferencialmente:
+### S2-A — Causal Replay Core (Aceito)
+- **PR:** #65
+- **Merge commit:** `9faa43c3bc112c1d2e558aa3e1518371880cc518`
+- **Validação:** Python CI `35150432340` (8/8 PASS), Upstream `35150432259` (2/2 PASS)
+- **Entregas:** `CausalMarketReplaySchedule`, `CausalMarketReplayCursor`, `CausalLane`, `ReplaySpeed`, `ReplayEmission`, `ReplayEmissionLineage`, e `ReplayInputBoundary` (DD-15). Replay monotônico por cutoff, sem wall-clock, estritamente causal.
 
-```text
-s2/01-causal-replay-core
-```
+### S2-B — Lossless Normalization & Data-Quality Evidence (Aceito)
+- **PR:** #67
+- **Merge commit:** `071e004f2be8e5925b0de63db97af61cbbf37b30`
+- **Validação:** Python CI `35163848955` (8/8 PASS), Upstream `35163848942` (2/2 PASS)
+- **Entregas:** `NormalizedMarketBatch`, `normalize_market_batch`, e `QualityFinding` (S2-AC-10). Preservação integral de fatos e missingness (DD-80), distinção entre achados bloqueantes de replay e não bloqueantes, zero imputação silenciosa.
 
-Escopo máximo do primeiro incremento:
-
-- namespace S2 isolado, preferencialmente `src/btg_ai_trader/replay/`;
-- schedule imutável sobre `EventEnvelope` aceito;
-- uma lane explícita `(provider_id, capture_scope)`;
-- `knowledge_time` conhecido como fronteira causal;
-- ordem fornecida preservada, sem ordenação reparadora por `event_time`;
-- rejeição de lanes misturadas, EventId duplicado e regressão temporal;
-- `advance_to(knowledge_cutoff)` inclusivo e monotônico;
-- velocidade lógica representada por racional positivo exato;
-- estado/emissões determinísticos;
-- testes completos e `s2-boundary` verde.
-
-O handoff operacional para o Antigravity é `docs/program/workstreams/S2-ANTIGRAVITY-HANDOFF.md`.
+### S2-C — Final Acceptance Reconciliation & Sprint 2 Closure Gate (Em revisão)
+- **Branch:** `s2/03-final-acceptance-reconciliation`
+- **Issue:** #68
+- **PR:** #70
+- **Artefato:** `docs/program/S2_FINAL_ACCEPTANCE.md`
+- **Escopo:** Reconciliação formal conjuntiva de todas as capacidades positivas (S2-AC-01..14), negativas (S2-NC-01..16) e decisões ativas (DD-05..83). Zero código funcional novo.
 
 ## 10. Critério de não-regressão do Sprint 1
 
-A Data Platform e o Replay podem consumir contratos/evidência do Observer, mas não podem enfraquecer os invariantes aceitos no Sprint 1. Qualquer incompatibilidade entre necessidade do Sprint 2 e contratos herdados deve parar a implementação e produzir decisão explícita, não alteração silenciosa.
+A Data Platform e o Replay consumiram contratos/evidência do Observer sem enfraquecer nenhum dos invariantes aceitos no Sprint 1. O scanner `scripts/check_s2_boundary.py` garantiu que nenhuma autoridade financeira ou acoplamento a corretoras fosse introduzido.
 
 ## 11. Próxima ação
 
-Após o merge do Gate de Entrada e sua validação pós-merge, criar `s2/01-causal-replay-core` a partir da branch canônica e entregar ao Antigravity o primeiro incremento funcional conforme o handoff versionado.
+Submeter o PR de reconciliação final e fechamento do Sprint 2 (S2-C). Após auditoria independente, aprovação de CI no HEAD exato, merge em `sprint/2-data-platform-replay` e validação pós-merge, preparar formalmente o Gate de Entrada do Sprint 3 (Deterministic Economic Backtesting). O fechamento do Sprint 2 não autoriza antecipadamente capacidades econômicas ou financeiras antes da abertura formal do gate de Sprint 3.

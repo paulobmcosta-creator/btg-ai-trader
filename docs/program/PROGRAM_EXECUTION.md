@@ -17,15 +17,21 @@ SPRINT1_PROVIDER_QUALIFIED = YES
 SPRINT1_ACCEPTANCE = YES
 
 SPRINT_2_BRANCH = sprint/2-data-platform-replay
-SPRINT_2_LIFECYCLE = OPEN
+SPRINT_2_LIFECYCLE = PROPOSED_CLOSED
 SPRINT_2_SCOPE = DATA_PLATFORM_AND_CAUSAL_MARKET_REPLAY
 SPRINT_2_ENTRY_CONTRACT = docs/program/S2_ENTRY_CONTRACT.md
 SPRINT_2_DECISION_REGISTER = docs/program/S2_DECISION_REGISTER.md
 SPRINT_2_CAPABILITY_MATRIX = docs/program/S2_CAPABILITY_MATRIX.md
 SPRINT_2_ENTRY_GATE = PASS
-SPRINT_2_FIRST_FUNCTIONAL_CODE = AUTHORIZED
-SPRINT_2_FIRST_IMPLEMENTATION_TOOL = ANTIGRAVITY
-SPRINT_2_NEXT_INCREMENT = CAUSAL_REPLAY_CORE
+S2_A = ACCEPTED (PR #65, 9faa43c3bc112c1d2e558aa3e1518371880cc518)
+S2_B = ACCEPTED (PR #67, 071e004f2be8e5925b0de63db97af61cbbf37b30)
+S2_C = PROPOSED
+S2_C_ISSUE = #68
+S2_C_PR = #70
+S2_C_BRANCH = s2/03-final-acceptance-reconciliation
+PROPOSED_SPRINT_2_FINAL_VERDICT = PASS
+PROPOSED_SPRINT_2_LIFECYCLE = FORMALLY_CLOSED
+PROMOTION_TO_SPRINT_3_GATE = YES
 
 S2_ENTRY_VALIDATED_HEAD = 8cfb17e3ba7b02c2eccc4d94f17dec986d6bb474
 S2_ENTRY_CI_RUN = 35130469411
@@ -79,23 +85,26 @@ Because the final PASS declarations themselves change the PR head, the final PR 
 - historical data quality and lineage;
 - replay-specific tests and evidence.
 
-## First functional increment
+## Sprint 2 completed increments & final reconciliation
 
-After the Entry Gate PR is merged and the canonical branch remains green, the first new functional increment is authorized via Antigravity under:
+### S2-A — Causal Replay Core
+- **PR:** #65 (merged at `9faa43c3bc112c1d2e558aa3e1518371880cc518`)
+- **CI / Upstream:** runs `35150432340` (8/8 PASS) and `35150432259` (2/2 PASS)
+- **Scope:** Bounded causal replay core (`CausalMarketReplaySchedule`, `CausalMarketReplayCursor`, `CausalLane`, `ReplaySpeed`, `ReplayEmission`, `ReplayEmissionLineage`, `ReplayInputBoundary` per DD-15). Single `(provider_id, capture_scope)` lane, monotonic inclusive cutoffs, UTC `knowledge_time` visibility, exact rational speeds, zero wall-clock dependencies.
 
-```text
-docs/program/workstreams/S2-ANTIGRAVITY-HANDOFF.md
-```
+### S2-B — Lossless Normalization & Data-Quality Evidence
+- **PR:** #67 (merged at `071e004f2be8e5925b0de63db97af61cbbf37b30`)
+- **CI / Upstream:** runs `35163848955` (8/8 PASS) and `35163848942` (2/2 PASS)
+- **Scope:** In-memory lossless Data Platform normalization (`NormalizedMarketBatch`, `normalize_market_batch`, `QualityFinding`). Preserves all source facts and `MissingReason` (DD-80), flags replay-blocking vs. non-blocking quality findings, zero silent imputation or synthetic temporal fabrication.
 
-Preferred child branch:
+### S2-C — Final Acceptance Reconciliation & Sprint 2 Closure Gate
+- **Branch:** `s2/03-final-acceptance-reconciliation`
+- **Issue:** #68
+- **PR:** #70
+- **Artifact:** `docs/program/S2_FINAL_ACCEPTANCE.md`
+- **Scope:** Full conjunctive audit of S2-AC-01..14, S2-NC-01..16, and active decisions DD-05..83. Zero new functional code. Formal proposal of Sprint 2 closure.
 
-```text
-s2/01-causal-replay-core
-```
-
-The first increment is limited to a pure causal replay core over existing accepted `EventEnvelope` values. It must use one explicit `(provider_id, capture_scope)` lane, known `knowledge_time`, monotonic inclusive cutoffs, supplied causal order and exact rational logical speed. It must not depend on wall clock, provider/network access or financial capability.
-
-Historical PRs #9 and #37 are research-only sources. No historical branch is automatically merged or cherry-picked.
+Historical PRs #9 and #37 remained research-only sources throughout Sprint 2; no historical branch was merged or cherry-picked.
 
 ## Sprint 2 exclusions
 
@@ -144,4 +153,4 @@ Pinned upstream engineering verification
 
 ## Repository hardening
 
-Administrative branch/ruleset protection remains tracked in Issue #61 because the connected GitHub integration does not expose branch-protection/ruleset write administration. This administrative limitation does not waive CI or sprint gates.
+Administrative branch/ruleset protection remains tracked in Issue #61 because the connected GitHub integration does not expose branch-protection/ruleset write administration. Administrative branch/ruleset protection remains absent/pending, and Issue #61 remains open as defense-in-depth. CI, boundary scanners, and manual pull request review provide technical verification gates, but these mechanisms do not replace GitHub administrative enforcement. Under the governing contract, administrative protection is not a functional closure requirement for Sprint 2.

@@ -284,9 +284,9 @@ A promoção ao Sprint 2 não altera essas proibições.
 
 ## 8. Roadmap vigente
 
-### Sprint 2 — Data Platform & Causal Market Replay — AUTHORIZED TO OPEN
+### Sprint 2 — Data Platform & Causal Market Replay — PROPOSED CLOSED / PASS
 
-Escopo autorizado:
+Escopo executado e auditado:
 
 - normalização e plataforma de dados;
 - replay formal de dados históricos de mercado;
@@ -465,10 +465,14 @@ ADR-0026 tornou XP/MT5 o provider vigente. Bridge read-only, discovery, portabil
 
 `s1-xp-capture-a12` completou com discovery, ticks e candle finalizado. PR #59 foi integrado. O exact integrated head `6457ae1...` passou CI. A reconciliação `977923a...` também passou CI/upstream. A coordenação humana aceitou o pacote GitHub-native de segurança como substituto do Official Codex Security Diff Scan, preservando este como `NOT_EXECUTED`. Os 41 RQMs e XC-01..XC-11 foram adjudicados PASS; Sprint 1 foi formalmente aceito e Sprint 2 autorizado.
 
+### 2026-09-16 — execução e reconciliação do Sprint 2
+
+O Gate de Entrada do Sprint 2 foi formalizado via PR #63 (`00cc561...`). S2-A implementou o Causal Replay Core (`src/btg_ai_trader/replay/`), com schedule imutável, monotonicidade por cutoff UTC, speed racional e proveniência DD-15 (`ReplayInputBoundary`), aceito via PR #65 (`9faa43c...`). S2-B implementou a normalização sem perdas e evidência determinística de qualidade (`src/btg_ai_trader/data_platform/`), preservando `MissingReason` (DD-80) e neutralidade factual (S2-AC-10), aceito via PR #67 (`071e004...`). A tarefa S2-C consolidou a reconciliação formal conjuntiva em `docs/program/S2_FINAL_ACCEPTANCE.md` (11 ACs PASS, 3 ACs NOT_TRIGGERED, 16 NCs PASS, 0 blockers), propondo o fechamento do Sprint 2 e autorização para materializar o Gate do Sprint 3.
+
 ---
 
 ## 16. Próxima ação oficial
 
-Abrir formalmente o Sprint 2 — Data Platform & Causal Market Replay — em branch canônica própria derivada do head aceito do Sprint 1.
+Aprovar e mesclar o PR de reconciliação final do Sprint 2 (S2-C) e preparar formalmente o Gate de Entrada do Sprint 3 — Deterministic Economic Backtesting.
 
-A abertura do Sprint 2 não autoriza Paper, Risk, Strategy, ML operacional, backtesting econômico, ordens, execução financeira ou dinheiro real.
+A promoção para o Gate do Sprint 3 significa exclusivamente autorização para abrir/materializar o gate do Sprint 3, não autorizando antecipadamente execução de ordens, Strategy, Risk, Paper, Live, P&L, custos, slippage, fills ou dinheiro real.

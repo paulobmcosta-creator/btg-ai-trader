@@ -16,13 +16,18 @@ Por decisão humana explícita de 2026-09-16, o Official Codex Security Diff Sca
 SPRINT1_PROVIDER_QUALIFIED = YES
 SPRINT1_ACCEPTANCE = YES
 PROMOTION_TO_SPRINT_2 = YES
-SPRINT_2_LIFECYCLE = OPEN
+SPRINT_2_STATUS = CLOSURE_CANDIDATE
+SPRINT_2_LIFECYCLE = PROPOSED_CLOSED
 S2_ENTRY_GATE = PASS
-S2_FIRST_FUNCTIONAL_CODE = AUTHORIZED
-S2_FIRST_IMPLEMENTATION_TOOL = ANTIGRAVITY
+S2_A = ACCEPTED
+S2_B = ACCEPTED
+S2_C = PROPOSED
+PROPOSED_SPRINT_2_FINAL_VERDICT = PASS
+PROPOSED_SPRINT_2_LIFECYCLE = FORMALLY_CLOSED
+PROMOTION_TO_SPRINT_3_GATE = YES
 ```
 
-O Sprint 2 pode tratar exclusivamente de **Data Platform & Causal Market Replay** dentro de `docs/program/S2_ENTRY_CONTRACT.md`, `S2_DECISION_REGISTER.md`, `S2_CAPABILITY_MATRIX.md` e dos gates subsequentes. O primeiro incremento funcional está autorizado de forma limitada pelo handoff `docs/program/workstreams/S2-ANTIGRAVITY-HANDOFF.md`.
+O Sprint 2 tratou exclusivamente de **Data Platform & Causal Market Replay** dentro de `docs/program/S2_ENTRY_CONTRACT.md`, `S2_DECISION_REGISTER.md`, `S2_CAPABILITY_MATRIX.md` e dos gates correspondentes. Os incrementos funcionais S2-A (Causal Replay Core) e S2-B (Lossless Normalization & Data Quality) foram formalmente aceitos. O gate final S2-C consolidou a reconciliação formal conjuntiva em `docs/program/S2_FINAL_ACCEPTANCE.md`.
 
 Não há autorização para negociação automática, envio de ordens, Paper, Risk operacional, Strategy operacional, execução financeira, backtesting econômico ou uso de dinheiro real.
 
@@ -104,7 +109,7 @@ Integração em branches canônicas de sprint/staging exige testes, typing, lint
 
 O Sprint 1 preservou `READ_ONLY_BY_CONSTRUCTION` e `STRUCTURAL_ESCALATION`; o Sprint 2 herda essas barreiras e todas as negative financial capabilities. Dinheiro real, credenciais de negociação, ordens de broker e ativação financeira permanecem proibidos.
 
-A partir do Gate de Entrada do Sprint 2, Antigravity está autorizado a implementar o primeiro incremento funcional estritamente dentro do handoff versionado, em branch filha da baseline canônica, com CI completo antes de merge. Qualquer necessidade de ampliar escopo deve parar a implementação e gerar decisão explícita.
+No Sprint 2, os incrementos funcionais S2-A e S2-B foram implementados pelo Antigravity em branches filhas com CI completo e integrados à baseline canônica. A tarefa S2-C consolidou a reconciliação formal de fechamento sem alteração de código funcional. Qualquer transição para o Sprint 3 exige aprovação independente, merge e a materialização formal do gate de entrada do Sprint 3.
 
 Arquitetura e dry-run de sprints futuros podem avançar isoladamente como pesquisa, mas promoção ou ativação exige gate próprio. Decisões in-sprint são registradas antes da primeira dependência material; mudanças arquiteturais materiais seguem ADR. A Issue #6 preserva a errata histórica do 0F-F e `TRACEABILITY.md` continua autoridade canônica das QPIs.
 
