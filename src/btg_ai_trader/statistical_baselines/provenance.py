@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
@@ -38,7 +38,7 @@ from btg_ai_trader.statistical_baselines.splits import (
 _BOUNDARY_VERIFICATION_TOKEN = object()
 
 
-@dataclass(frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True, slots=True)
 class StatisticalEvaluationInputBoundary:
     """Immutable input boundary verifying dataset, plan, and configurations before execution."""
 
@@ -59,7 +59,7 @@ class StatisticalEvaluationInputBoundary:
     numeric_policy: NumericPolicy
     code_revision: str
     logical_evaluation_digest: str
-    _verification_token: object = field(
+    _verification_token: object = dataclasses.field(
         default=None,
         init=False,
         repr=False,
@@ -276,7 +276,7 @@ class StatisticalEvaluationInputBoundary:
         return boundary
 
 
-@dataclass(frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True, slots=True)
 class EvaluationProvenanceRecord:
     """Cryptographically verifiable provenance record describing experimental lineage."""
 
@@ -338,7 +338,7 @@ class EvaluationProvenanceRecord:
         return self.observed_execution_timestamp
 
 
-@dataclass(frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True, slots=True)
 class StatisticalEvaluationManifest:
     """Canonical verifiable evaluation manifest capturing complete experimental lineage."""
 
