@@ -122,12 +122,8 @@ def test_compute_descriptive_metrics_full_trade_lifecycle() -> None:
     f3 = make_fill(iid, Side.SELL, Decimal("5"), Decimal("80.0"))
     f4 = make_fill(iid, Side.BUY, Decimal("5"), Decimal("100.0"))
     f5 = make_fill(iid, Side.SELL, Decimal("5"), Decimal("100.0"))
-    f6 = make_fill(
-        iid, Side.BUY, Decimal("5"), Decimal("100.0"), outcome=ExecutionOutcome.REJECTED
-    )
-    f7 = make_fill(
-        iid, Side.BUY, Decimal("1"), Decimal("100.0"), outcome=ExecutionOutcome.NO_FILL
-    )
+    f6 = make_fill(iid, Side.BUY, Decimal("5"), Decimal("100.0"), outcome=ExecutionOutcome.REJECTED)
+    f7 = make_fill(iid, Side.BUY, Decimal("1"), Decimal("100.0"), outcome=ExecutionOutcome.NO_FILL)
     f8 = make_fill(
         iid, Side.BUY, Decimal("1"), Decimal("100.0"), outcome=ExecutionOutcome.INDETERMINATE
     )

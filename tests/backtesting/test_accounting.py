@@ -403,4 +403,3 @@ def test_economic_state_mark_to_market_short_and_invalid_type() -> None:
 def test_end_of_window_policy_enum() -> None:
     assert EndOfWindowPolicy.KEEP_OPEN.value == "KEEP_OPEN"
     assert EndOfWindowPolicy.CLOSE_AT_LAST_VALID_QUOTE.value == "CLOSE_AT_LAST_VALID_QUOTE"
-

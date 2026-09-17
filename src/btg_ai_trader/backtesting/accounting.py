@@ -43,16 +43,14 @@ class BacktestPositionState:
             raise ValueError("instrument_id must be TradableInstrumentId")
         if not isinstance(self.quantity, Decimal):
             raise ValueError("quantity must be Decimal")
-        if (
-            not isinstance(self.weighted_cost_basis, Decimal)
-            or self.weighted_cost_basis < Decimal("0")
+        if not isinstance(self.weighted_cost_basis, Decimal) or self.weighted_cost_basis < Decimal(
+            "0"
         ):
             raise ValueError("weighted_cost_basis must be nonnegative Decimal")
         require_text(self.currency, "currency")
-        if (
-            not isinstance(self.money_per_price_unit, Decimal)
-            or self.money_per_price_unit <= Decimal("0")
-        ):
+        if not isinstance(
+            self.money_per_price_unit, Decimal
+        ) or self.money_per_price_unit <= Decimal("0"):
             raise ValueError("money_per_price_unit must be positive Decimal")
 
     @property
@@ -296,9 +294,7 @@ class BacktestEconomicState:
 
             if pos.is_long:
                 unrealized = (
-                    (mark_price - pos.weighted_cost_basis)
-                    * pos.quantity
-                    * pos.money_per_price_unit
+                    (mark_price - pos.weighted_cost_basis) * pos.quantity * pos.money_per_price_unit
                 )
             else:
                 unrealized = (

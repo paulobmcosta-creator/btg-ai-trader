@@ -15,6 +15,7 @@ COMPOSITION_PATH = "src/btg_ai_trader/observer/composition.py"
 S2_ROOTS = (
     Path("src/btg_ai_trader/replay"),
     Path("src/btg_ai_trader/data_platform"),
+    Path("src/btg_ai_trader/backtesting"),
 )
 EXTERNAL_IMPORTS = {
     "base64", "hashlib", "json", "os", "re", "stat", "tempfile",

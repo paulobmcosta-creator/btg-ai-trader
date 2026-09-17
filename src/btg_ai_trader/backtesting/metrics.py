@@ -62,11 +62,7 @@ def compute_descriptive_metrics(
     indeterminate_count = sum(1 for f in fills if f.outcome == ExecutionOutcome.INDETERMINATE)
     rejected_count = sum(1 for f in fills if f.outcome == ExecutionOutcome.REJECTED)
 
-    fill_rate = (
-        Decimal(fill_count) / Decimal(total_actions)
-        if total_actions > 0
-        else Decimal("0")
-    )
+    fill_rate = Decimal(fill_count) / Decimal(total_actions) if total_actions > 0 else Decimal("0")
 
     turnover = sum(
         (
@@ -134,14 +130,10 @@ def compute_descriptive_metrics(
     gross_losses = sum((abs(p) for p in losing_trades), start=Decimal("0"))
 
     average_win = (
-        gross_wins / Decimal(winning_trade_count)
-        if winning_trade_count > 0
-        else Decimal("0")
+        gross_wins / Decimal(winning_trade_count) if winning_trade_count > 0 else Decimal("0")
     )
     average_loss = (
-        gross_losses / Decimal(losing_trade_count)
-        if losing_trade_count > 0
-        else Decimal("0")
+        gross_losses / Decimal(losing_trade_count) if losing_trade_count > 0 else Decimal("0")
     )
 
     if gross_losses > Decimal("0"):
