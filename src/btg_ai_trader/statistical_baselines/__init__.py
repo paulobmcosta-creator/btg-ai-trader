@@ -21,6 +21,11 @@ from btg_ai_trader.statistical_baselines.calibration import (
     CalibrationReport,
     compute_calibration,
 )
+from btg_ai_trader.statistical_baselines.comparison import (
+    Comparator,
+    ModelComparisonResult,
+    SearchFamily,
+)
 from btg_ai_trader.statistical_baselines.domain import (
     CandidateIdentity,
     EvaluationRole,
@@ -58,6 +63,7 @@ __all__ = [
     "CalibrationBin",
     "CalibrationReport",
     "CandidateIdentity",
+    "Comparator",
     "ConstantBaseline",
     "EmbargoPolicy",
     "EvaluationBoundary",
@@ -68,9 +74,11 @@ __all__ = [
     "HistoricalPriorProbabilityBaseline",
     "LastKnownClassBaseline",
     "MajorityClassBaseline",
+    "ModelComparisonResult",
     "PersistenceBaseline",
     "PredictionResult",
     "PurgePolicy",
+    "SearchFamily",
     "SplitPlanConfig",
     "StatisticalBaseline",
     "StatisticalEvaluationEngine",
