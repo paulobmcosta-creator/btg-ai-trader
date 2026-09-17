@@ -284,7 +284,7 @@ A promoção ao Sprint 2 não altera essas proibições.
 
 ## 8. Roadmap vigente
 
-### Sprint 2 — Data Platform & Causal Market Replay — PROPOSED CLOSED / PASS
+### Sprint 2 — Data Platform & Causal Market Replay — FORMALLY CLOSED / PASS
 
 Escopo executado e auditado:
 
@@ -308,9 +308,29 @@ Fora do Sprint 2:
 - custos, slippage e queue-fill como simulador econômico;
 - modelos preditivos operacionais.
 
-### Sprint 3 — Deterministic Economic Backtesting
+### Sprint 3 — Deterministic Economic Backtesting — CLOSURE_CANDIDATE / PROPOSED CLOSED / PASS
 
-Replay econômico determinístico, custos, spread, slippage, latência econômica, métricas e testes de leakage.
+Escopo executado e auditado:
+
+- kernel determinístico de economia de execução (`btg_ai_trader.backtesting`);
+- semântica de preço executável sensível ao lado (BUY -> Ask, SELL -> Bid);
+- modelos determinísticos de spread, slippage adverso e taxas explícitas sem RNG;
+- modelo de latência lógica não negativa sem dependência de wall-clock;
+- contabilidade de posição e P&L simulados com WACB e prevenção de dupla contagem;
+- métricas econômicas descritivas determinísticas (sem claims inferenciais ou promocionais);
+- testes estritos de invariância a eventos futuros (prevenção de vazamento / data leakage);
+- reproduzibilidade exata de 100 execuções e análise de monotonicidade de sensibilidade;
+- rastreabilidade criptográfica e manifestos de execução (`BacktestRunManifest`).
+
+Fora do Sprint 3:
+
+- envio de ordens a brokers ou plataformas;
+- Strategy ou Signal operacional;
+- Risk Engine operacional ou autorização de risco;
+- Paper trading operacional;
+- Live trading operacional;
+- mutação do `FinancialLedger` canônico futuro;
+- modelos de machine learning preditivos operacionais.
 
 ### Sprint 4 — Statistical Baselines
 
