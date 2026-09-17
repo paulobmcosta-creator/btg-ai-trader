@@ -25,6 +25,7 @@ from btg_ai_trader.statistical_baselines.comparison import (
     Comparator,
     EvaluationHistory,
     ModelComparisonResult,
+    ProtectedEvidenceConsumption,
     ProtectedEvidenceUse,
     SearchFamily,
 )
@@ -103,6 +104,7 @@ __all__ = [
     "PredictionInput",
     "PredictionResult",
     "ProtectedEvidenceReuseError",
+    "ProtectedEvidenceConsumption",
     "ProtectedEvidenceUse",
     "PurgePolicy",
     "SearchFamily",
