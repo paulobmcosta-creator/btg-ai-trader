@@ -62,7 +62,7 @@ All entry preconditions (`S4-EG-01..10`) were verified and satisfied:
 
 ## 3. Implementation Overview & Architectural Scope
 
-Sprint 4 implemented the **Prospective Temporal Evaluation & Deterministic Statistical Baselines Catalog** in `src/btg_ai_trader/statistical_baselines/` with 100% statement coverage (1,348/1,348 statements) and 100% branch coverage (456/456 branches) across all 10 modules and the S4 boundary checker, comprising 195 passed tests (115 statistical baselines unit/adversarial/remediation tests, 58 S4 boundary and security tests, 22 acceptance symbol verifier tests):
+Sprint 4 implemented the **Prospective Temporal Evaluation & Deterministic Statistical Baselines Catalog** in `src/btg_ai_trader/statistical_baselines/` with 100% statement coverage (1,377/1,377 statements) and 100% branch coverage (468/468 branches) across all 10 `statistical_baselines` modules, comprising 200 passed Sprint 4 test cases (120 statistical baselines unit/adversarial/remediation tests, 58 S4 boundary and security tests, 22 acceptance symbol verifier tests):
 
 1. **Domain & Types (`domain.py`):**
    - `TargetSemantics` (`CONTINUOUS`, `BINARY_PROBABILITY`, `CATEGORICAL`): Explicit semantic typing for model targets.
@@ -423,9 +423,9 @@ DRIFT_OR_PHANTOM_CITATIONS = 0
 
 ## 9. Test Coverage & Determinism Evidence
 
-- **Statement Coverage:** 1,348 / 1,348 statements (100%)
-- **Branch Coverage:** 456 / 456 branches (100%)
-- **Total S4 Test Count:** 195 passed tests (115 domain/kernel/adversarial/remediation tests + 58 boundary scanner tests + 22 acceptance symbol verifier tests)
+- **Statement Coverage:** 1,377 / 1,377 statements (100%)
+- **Branch Coverage:** 468 / 468 branches (100%)
+- **Total S4 Test Count:** 200 passed tests (120 domain/kernel/adversarial/remediation tests + 58 boundary scanner tests + 22 acceptance symbol verifier tests)
 - **Determinism:** 100 consecutive executions produce exact byte-for-byte identical SHA-256 manifests (`test_100_repetition_determinism`).
 - **Adversarial Invariance:** Explicit tests verify that future target tampering, interval overlap leaks, embargo bypasses, protected-test winner selections, and adaptation reuse on protected boundaries are strictly blocked fail-closed.
 
