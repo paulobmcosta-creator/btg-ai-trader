@@ -12,14 +12,26 @@ from btg_ai_trader.statistical_baselines.domain import (
     StatisticalSample,
     TargetSemantics,
 )
+from btg_ai_trader.statistical_baselines.splits import (
+    EmbargoPolicy,
+    PurgePolicy,
+    SplitPlanConfig,
+    WalkForwardPlanner,
+    WindowPolicy,
+)
 
 __all__ = [
     "CandidateIdentity",
+    "EmbargoPolicy",
     "EvaluationBoundary",
     "EvaluationRole",
     "PredictionResult",
+    "PurgePolicy",
+    "SplitPlanConfig",
     "StatisticalSample",
     "TargetSemantics",
     "TemporalFold",
     "WalkForwardPlan",
+    "WalkForwardPlanner",
+    "WindowPolicy",
 ]
