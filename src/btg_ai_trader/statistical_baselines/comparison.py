@@ -194,7 +194,7 @@ class EvaluationHistory:
                     f"parent {consumption.source_candidate_id}"
                 )
 
-        # Backward-compatible guard for records that explicitly marked adaptation at evaluation time.
+        # Backward-compatible guard for records that explicitly marked\n        # adaptation at evaluation time.
         for rec in self._records:
             if (
                 rec.protected_boundary_id == protected_boundary_id
