@@ -47,11 +47,18 @@ S3_ENTRY_GATE = PASS
 
 PROMOTION_TO_SPRINT_4_GATE = YES
 SPRINT_4_BRANCH = sprint/4-statistical-baselines
-SPRINT_4_LIFECYCLE = CLOSURE_CANDIDATE
+SPRINT_4_LIFECYCLE = FORMALLY_CLOSED
 SPRINT_4_FINAL_VERDICT = PASS
 SPRINT_4_SCOPE = STATISTICAL_BASELINES
 SPRINT_4_CANONICAL_BASE = 922adee625029c0cbd6c665f8906e7fd99cf71cb
-SPRINT_4_ISSUE = #73 (CLOSURE_CANDIDATE)
+SPRINT_4_CANONICAL_HEAD = 0786ace3e6a83ecb23a508af860f43a2fd5d64e8
+SPRINT_4_PR = #74
+SPRINT_4_ISSUE = #73
+SPRINT_4_INDEPENDENT_REAUDIT = PASS
+SPRINT_4_POST_MERGE_CI_RUN = 35304136357
+SPRINT_4_POST_MERGE_CI = PASS
+SPRINT_4_POST_MERGE_UPSTREAM_RUN = 35304136369
+SPRINT_4_POST_MERGE_UPSTREAM = PASS
 SPRINT_4_ENTRY_CONTRACT = docs/program/S4_ENTRY_CONTRACT.md
 SPRINT_4_DECISION_REGISTER = docs/program/S4_DECISION_REGISTER.md
 SPRINT_4_CAPABILITY_MATRIX = docs/program/S4_CAPABILITY_MATRIX.md
@@ -59,7 +66,8 @@ SPRINT_4_FINAL_ACCEPTANCE = docs/program/S4_FINAL_ACCEPTANCE.md
 S4_ENTRY_GATE = PASS
 S4_TASK_PACKET = docs/program/workstreams/S4-ANTIGRAVITY-FULL-SPRINT.md
 S4_WORK_BRANCH = s4/00-full-statistical-baselines
-PROMOTION_TO_SPRINT_5_GATE = NO_UNTIL_INDEPENDENT_REAUDIT
+PROMOTION_TO_SPRINT_5_GATE = YES
+SPRINT_5_ENTRY_GATE = AUTHORIZED
 SPRINT_5_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 
 OFFICIAL_CODEX_SECURITY_DIFF_SCAN = NOT_EXECUTED
@@ -141,13 +149,13 @@ predictive ML operacional
 external economic commitment
 ```
 
-## Sprint 4 — Statistical Baselines — Candidate Closure
+## Sprint 4 — Statistical Baselines — Formal Closure
 
 Sprint 4 has been fully implemented and verified under single-batch autonomous execution mode:
 
 - **Work Branch:** `s4/00-full-statistical-baselines`
 - **Canonical Target:** `sprint/4-statistical-baselines`
-- **Issue:** #73 (CLOSURE_CANDIDATE)
+- **Issue:** #73
 - **Artifact:** `docs/program/S4_FINAL_ACCEPTANCE.md`
 - **Scope:** Complete Prospective Temporal Evaluation & Deterministic Catalog (`btg_ai_trader.statistical_baselines`):
   - Domain, samples, and deterministic identities (`domain.py`)
@@ -160,14 +168,18 @@ Sprint 4 has been fully implemented and verified under single-batch autonomous e
   - Candidate comparison with strict protected-test rejection invariant (`comparison.py`)
   - Cryptographic input boundaries, manifests, and evaluation provenance (`provenance.py`)
 - **Verification:** 100% statement (1,377/1,377) and branch (468/468) coverage across all modules and boundary scanner, 200 passed tests, 100-repetition byte-identical determinism, adversarial leakage detection, zero lint errors, zero type errors.
-- **Verdict:** `PROPOSED_SPRINT_4_VERDICT = PASS`, `MERGE_RECOMMENDATION = NO (AWAITING INDEPENDENT AUDIT)`.
+- **Verdict:** `SPRINT_4_FINAL_VERDICT = PASS`, `SPRINT_4_LIFECYCLE = FORMALLY_CLOSED`.
+- **Independent re-audit:** PASS on PR #74 exact head `6473bd844ff69ded83f6a536397ff3e4fafffbb1`.
+- **Canonical merge:** `0786ace3e6a83ecb23a508af860f43a2fd5d64e8`.
+- **Post-merge validation:** Sprint 4 CI `35304136357` PASS 11/11; pinned upstream `35304136369` PASS 2/2; 957/957 repository tests; S4 package 1,377/1,377 statements and 468/468 branches.
 
 ## Promotion boundary — Sprint 5
 
-Sprint 4 does not authorize immediate transition to Sprint 5. Independent audit, clearance of the closure PR, and formal merge into `sprint/4-statistical-baselines` are required.
+Sprint 4 is formally closed. The next authorized step is exclusively the materialization, review, and approval process for the Sprint 5 Entry Gate.
 
 ```text
-PROMOTION_TO_SPRINT_5_GATE = NO_UNTIL_INDEPENDENT_REAUDIT
+PROMOTION_TO_SPRINT_5_GATE = YES
+SPRINT_5_ENTRY_GATE = AUTHORIZED
 SPRINT_5_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 ```
 
@@ -181,4 +193,4 @@ Issue #6 permanece aberta para a errata histórica 0F-F/QPI. `docs/protocols/qua
 
 ## Canonical next action
 
-O próximo trabalho autorizado é **auditoria independente do PR de fechamento do Sprint 4**. O merge permanece estritamente proibido nesta fase (`MERGE = FORBIDDEN`).
+O próximo trabalho autorizado é exclusivamente a **materialização e revisão do Sprint 5 Entry Gate**. Implementação funcional do Sprint 5 permanece proibida até aprovação formal desse gate.
