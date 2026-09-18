@@ -101,9 +101,9 @@ Feature-pipeline fitting and model fitting occur on the canonical training parti
 
 Protected evaluation requires the Sprint 4 `EvaluationHistory`. Adapted descendants informed by a protected boundary are not admissible against that same protected boundary; independent protected boundaries remain separately usable.
 
-`compare_with_baseline()` accepts a real Sprint 4 `AggregateEvaluationResult` and fails closed unless candidate and baseline evidence match on role, aggregation policy, numeric policy, target contract, fold identities, population/plan context and requested metric.
+`ModelEvaluationEngine.compare_with_baseline()` accepts a real Sprint 4 `AggregateEvaluationResult` and fails closed unless candidate and baseline evidence match on role, aggregation policy, numeric policy, target contract, fold identities, population/plan context and requested metric.
 
-`run_ablation()` performs validation-scope feature removal experiments. It does not claim permutation importance and does not use protected evidence for feature selection.
+`ModelEvaluationEngine.run_ablation()` performs validation-scope feature removal experiments. It does not claim permutation importance and does not use protected evidence for feature selection.
 
 ### Metrics, cards and registry
 
@@ -119,7 +119,7 @@ Sprint 5 provides deterministic Brier score, log loss, ROC AUC, calibration diag
 
 The Sprint 5 AST boundary verifier is `scripts/check_s5_boundary.py`.
 
-It prohibits, within the ML engine boundary, broker/MT5 operational APIs, order/execution authority, Strategy/Risk/Ledger operational symbols, live/paper execution capability, deep-learning frameworks, AutoML/search frameworks outside the authorized surface, network clients, process execution, wall-clock dependence in scientific code, entropy sources, and unsafe dynamic/deserialization calls including `eval()`, `exec()`, `__import__()`, `importlib.import_module()`, pickle/joblib/cloudpickle/dill loading surfaces.
+It prohibits, within the ML engine boundary, broker/MT5 operational APIs, order/execution authority, Strategy/Risk/Ledger operational symbols, live/paper execution capability, deep-learning frameworks, AutoML/search frameworks outside the authorized surface, network clients, process execution, wall-clock dependence in scientific code, entropy sources, and unsafe dynamic/deserialization calls including eval, exec, __import__, importlib dynamic imports, and pickle/joblib/cloudpickle/dill loading surfaces.
 
 The implementation therefore remains research-only and read-only with respect to financial authority.
 
