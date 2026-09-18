@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import objectpath  # type: ignore[import-not-found]
-
 import pytest
 
 from btg_ai_trader.ml_engine.registry import ModelRecord, ResearchModelRegistry
