@@ -78,7 +78,7 @@ def test_candidate_identity_and_deep_freeze() -> None:
     assert len(spec.spec_digest) == 64
     assert spec.to_canonical_dict()["code_revision"] == "rev"
     with pytest.raises(TypeError):
-        spec.hyperparameters["x"] = 1  # type: ignore[index]
+        spec.hyperparameters["x"] = 1
     with pytest.raises(ValueError, match="family"):
         MLCandidateSpec("", {}, contract, "pipe", None, DEFAULT_NUMERIC_POLICY, "rev")
     with pytest.raises(ValueError, match="code_revision"):
