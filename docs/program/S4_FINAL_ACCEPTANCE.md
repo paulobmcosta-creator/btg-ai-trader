@@ -477,26 +477,47 @@ The closure pull request must execute and pass the full suite of automated check
 
 ---
 
-## 13. Proposed Sprint 4 Verdict
+## 13. Final Sprint 4 Verdict
 
 Based on the conjunctive satisfaction of all thirty required positive capabilities (`S4-AC-01..30`), the complete satisfaction of all twenty-five negative capabilities (`S4-NC-01..25`), the trigger-based adjudication of all relevant decisions (Foundation DD-15, DD-16, DD-71, DD-72, DD-73, DD-75, DD-85..88, DD-90, DD-91 and local decisions S4-D-01..16), Protocols 0E-A, 0E-B, 0E-C, 0E-E compliance, 100% statement and branch coverage, 100-repetition exact-byte determinism, adversarial anti-leakage validation, and zero open blockers:
 
 ```text
-PROPOSED_SPRINT_4_VERDICT = PASS
-PROPOSED_SPRINT_4_LIFECYCLE = CLOSURE_CANDIDATE
-MERGE_AUTHORIZED = NO
-PROMOTION_TO_SPRINT_5_GATE = NO_UNTIL_INDEPENDENT_REAUDIT
-MERGE_RECOMMENDATION = NO (AWAITING INDEPENDENT AUDIT AND EXACT-HEAD VALIDATION)
+SPRINT_4_FINAL_VERDICT = PASS
+SPRINT_4_LIFECYCLE = FORMALLY_CLOSED
+INDEPENDENT_REAUDIT = PASS
+MERGE_COMPLETED = YES
+SPRINT_4_CANONICAL_HEAD = 0786ace3e6a83ecb23a508af860f43a2fd5d64e8
+SPRINT_4_POST_MERGE_CI_RUN = 35304136357
+SPRINT_4_POST_MERGE_CI = PASS
+SPRINT_4_POST_MERGE_UPSTREAM_RUN = 35304136369
+SPRINT_4_POST_MERGE_UPSTREAM = PASS
+PROMOTION_TO_SPRINT_5_GATE = YES
+SPRINT_5_ENTRY_GATE = AUTHORIZED
+SPRINT_5_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 ```
 
 ---
 
 ## 14. Promotion Boundary to Sprint 5
 
-> [!IMPORTANT]
-> `PROMOTION_TO_SPRINT_5_GATE = NO_UNTIL_INDEPENDENT_REAUDIT` establishes that Sprint 5 cannot be opened until independent re-audit clearance is formally issued. Upon independent audit approval, it authorizes exclusively the preparation, drafting, and review of the **Sprint 5 Entry Gate**.
+Post-merge closure evidence:
 
-It does **NOT** authorize immediate implementation of any Sprint 5 operational capabilities. The following remain strictly excluded until the Sprint 5 Entry Gate is formally materialized, reviewed, and approved:
+```text
+INDEPENDENT_REAUDIT_REVIEW = 5244023281
+PR_74_MERGE_SHA = 0786ace3e6a83ecb23a508af860f43a2fd5d64e8
+POST_MERGE_S4_CI_RUN = 35304136357
+POST_MERGE_S4_CI_JOBS = 11/11 PASS
+POST_MERGE_UPSTREAM_RUN = 35304136369
+POST_MERGE_UPSTREAM_JOBS = 2/2 PASS
+FULL_REPOSITORY_TESTS = 957/957 PASS
+S4_PACKAGE_STATEMENTS = 1377/1377
+S4_PACKAGE_BRANCHES = 468/468
+```
+
+> [!IMPORTANT]
+> Independent re-audit, canonical merge, and exact post-merge validation have all passed. `PROMOTION_TO_SPRINT_5_GATE = YES` authorizes exclusively the preparation, drafting, and review of the **Sprint 5 Entry Gate**.
+
+It does **NOT** authorize implementation of any Sprint 5 operational capabilities before the Sprint 5 Entry Gate is formally materialized, reviewed, and approved. The following remain strictly excluded until the Sprint 5 Entry Gate is formally materialized, reviewed, and approved:
 - Machine Learning models (LightGBM, XGBoost, PyTorch, scikit-learn);
 - Automated hyperparameter search engines or neural architecture search;
 - Operational Model Registry or online model serving;
