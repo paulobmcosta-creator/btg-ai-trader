@@ -332,7 +332,7 @@ Fora do Sprint 3:
 - mutação do `FinancialLedger` canônico futuro;
 - modelos de machine learning preditivos operacionais.
 
-### Sprint 4 — Statistical Baselines — FORMALLY_CLOSED / PASS (PROMOTION_TO_SPRINT_5_GATE = YES; SPRINT_5_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED)
+### Sprint 4 — Statistical Baselines — FORMALLY_CLOSED / PASS
 
 Escopo executado e auditado:
 
@@ -355,8 +355,8 @@ Fechamento canônico:
 - post-merge pinned upstream: `35304136369` PASS 2/2;
 - full repository: 957/957 tests PASS;
 - package S4: 1,377/1,377 statements e 468/468 branches;
-- autorizado exclusivamente: Sprint 5 Entry Gate;
-- implementação funcional do Sprint 5: NOT_AUTHORIZED.
+- no fechamento do Sprint 4, foi autorizado exclusivamente o Sprint 5 Entry Gate;
+- após o Entry Gate PASS, houve autorização humana explícita posterior para a implementação funcional de pesquisa do Sprint 5 em lote único.
 
 Fora do Sprint 4:
 
@@ -369,9 +369,9 @@ Fora do Sprint 4:
 - APIs de broker ou ordem;
 - dinheiro real.
 
-### Sprint 5 — ML Engine
+### Sprint 5 — ML Engine — CLOSURE_CANDIDATE
 
-Research ML Engine: feature pipeline causal, modelos preditivos determinísticos (Logistic Regression, Ridge, Random Forest, Gradient Boosting), rastreabilidade de RNG e sementes, fronteira de entrada e manifesto de treino, espaço de busca finito, histórico de multiplicidade, seleção estrita em validação, isolamento de teste protegido, paridade experimental com baselines S4, model cards com escopo explicitamente limitado a MODEL e registro de pesquisa local/imutável (`ResearchModelRegistry`).
+Research ML Engine implementado no PR #78: feature pipeline causal, seis famílias de modelos tabulares scikit-learn, RNG provenance factual, fronteira verificada de entrada e manifesto de treino, espaço de busca finito com proibição estrutural de best-seed, seleção restrita a validação, reutilização das partições/purge/embargo do Sprint 4, lineage de evidência protegida via `EvaluationHistory`, comparação com baselines S4 sob paridade experimental, model cards limitados a MODEL e registro de pesquisa imutável (`ResearchModelRegistry`). A implementação permanece sem authority financeira e aguarda auditoria independente e merge humano.
 
 ### Sprint 6 — Scenario Engine
 
@@ -459,7 +459,7 @@ Direção futura de produção continua separando Trading Node, Research/AI Node
 - `main` preserva deliberadamente a baseline histórica/public-readiness e não representa automaticamente o HEAD operacional de sprint;
 - branch canônica atual: `sprint/5-ml-engine`;
 - branch de trabalho: `s5/00-full-ml-engine`;
-- Sprint 4 formalmente fechado (`FORMALLY_CLOSED` / `PASS`), com Sprint 5 em execução sob autorização humana explícita em lote único.
+- Sprint 4 formalmente fechado (`FORMALLY_CLOSED` / `PASS`); Sprint 5 em `CLOSURE_CANDIDATE` no PR #78, após execução sob autorização humana explícita em lote único.
 
 ### 12.2. Segurança do repositório
 
@@ -532,7 +532,7 @@ Sprint 4 implementou a Avaliação Temporal Prospectiva e o Catálogo de Baselin
 
 ### 2026-09-18 — execução e submissão do Sprint 5
 
-Sprint 5 implementou o Motor de Pesquisa de Machine Learning Supervisionado (`src/btg_ai_trader/ml_engine/`), com contratos de target causal, pipelines de atributos sem vazamento, 6 famílias de modelos tabulares scikit-learn, métricas probabilísticas de calibração, avaliação walk-forward fora da amostra, cartões de modelo restritos e registro imutável sem aliases operacionais. Execução integral em lote único autônomo com 100% de aprovação nos testes e verificação de símbolos, submetido como `CLOSURE_CANDIDATE` para auditoria independente.
+Sprint 5 implementou o Motor de Pesquisa de Machine Learning Supervisionado (`src/btg_ai_trader/ml_engine/`), com contratos de target causal, pipelines de atributos sem vazamento, 6 famílias de modelos tabulares scikit-learn, métricas probabilísticas de calibração, avaliação walk-forward causal reutilizando purge/embargo do Sprint 4, lineage de evidência protegida, model cards restritos e registro imutável sem aliases operacionais. O implementation evidence head `7b5eb613cdfa4e39cbebf8ac6dae97bb9c9ce08d` registrou 1063 testes PASS no repositório, 100% de statements/branches no pacote S5 e upstream 2/2 PASS; o PR #78 segue como `CLOSURE_CANDIDATE` para auditoria independente.
 
 ---
 
