@@ -6,7 +6,7 @@ import hashlib
 import json
 from collections.abc import Sequence
 from decimal import Decimal, localcontext
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 from sklearn import __version__ as sklearn_version
@@ -530,4 +530,4 @@ def create_candidate(spec: MLCandidateSpec) -> PredictiveCandidate:
         candidate_type = mapping[spec.family]
     except KeyError as exc:
         raise ValueError(f"Unknown family '{spec.family}'") from exc
-    return candidate_type(spec)
+    return cast(PredictiveCandidate, candidate_type(spec))
