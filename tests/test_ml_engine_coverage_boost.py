@@ -1,5 +1,7 @@
 """Targeted branch coverage for safe failure paths in the Sprint 5 ML package."""
 
+# ruff: noqa: I001 -- explicit grouping retained for audit readability.
+
 from __future__ import annotations
 
 import dataclasses
@@ -15,7 +17,6 @@ from btg_ai_trader.ml_engine.domain import (
     FeatureType,
     MissingnessPolicy,
     MLCandidateSpec,
-    ModelNotFittedError,
     RNGContext,
 )
 from btg_ai_trader.ml_engine.features import (
@@ -48,7 +49,6 @@ from btg_ai_trader.statistical_baselines.metrics import DEFAULT_NUMERIC_POLICY
 from tests.ml_engine_helpers import (
     make_binary_samples,
     make_candidate_spec,
-    make_continuous_samples,
     make_pipeline,
 )
 
