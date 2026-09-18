@@ -7,6 +7,7 @@ from __future__ import annotations
 import dataclasses
 from datetime import datetime
 from decimal import Decimal
+from collections.abc import Sequence
 from typing import Any
 
 import numpy as np
@@ -14,6 +15,7 @@ import pytest
 
 import btg_ai_trader.ml_engine.evaluation as evaluation_module
 from btg_ai_trader.ml_engine.domain import (
+    FeatureType,
     MLCandidateSpec,
     ModelNotFittedError,
     RNGContext,
@@ -72,12 +74,20 @@ class _NullProbabilityCandidate:
     def __init__(self, spec: MLCandidateSpec) -> None:
         self.spec = spec
 
+    @property
+    def is_fitted(self) -> bool:
+        return True
+
+    @property
+    def model_state_digest(self) -> str:
+        return "fake-state"
+
     def fit(self, X: Any, y: Any) -> None:
         return None
 
     def predict(
         self,
-        inputs: list[PredictionInput],
+        inputs: Sequence[PredictionInput],
         fitted_pipeline: FittedFeaturePipeline,
     ) -> list[PredictionResult]:
         del fitted_pipeline
@@ -449,9 +459,9 @@ def test_ablation_missing_metric_branches(monkeypatch: pytest.MonkeyPatch) -> No
 
 
 def test_feature_remaining_fail_closed_branches() -> None:
-    numeric = FeatureSpec("x", evaluation_module.FeatureType.NUMERIC)
-    categorical = FeatureSpec("cat", evaluation_module.FeatureType.CATEGORICAL)
-    boolean = FeatureSpec("flag", evaluation_module.FeatureType.BOOLEAN)
+    numeric = FeatureSpec("x", FeatureType.NUMERIC)
+    categorical = FeatureSpec("cat", FeatureType.CATEGORICAL)
+    boolean = FeatureSpec("flag", FeatureType.BOOLEAN)
     assert len(FeatureSchema((numeric,))) == 1
 
     with pytest.raises(ValueError, match="empty inputs"):
@@ -506,12 +516,16 @@ def test_model_digest_optional_state_and_estimator_property_branches() -> None:
         TargetSemantics.BINARY_PROBABILITY,
     )
     candidate = create_candidate(spec)
-    assert candidate.estimator is not None  # type: ignore[attr-defined]
+    assert isinstance(candidate, BasePredictiveCandidate)
+    assert candidate.estimator is not None
     with pytest.raises(ModelNotFittedError):
-        candidate._matrix([], FittedFeaturePipeline.fit(  # type: ignore[attr-defined]
-            pipeline,
-            make_binary_samples()[:2],
-        ))
+        candidate._matrix(
+            [],
+            FittedFeaturePipeline.fit(
+                pipeline,
+                make_binary_samples()[:2],
+            ),
+        )
 
 
 def test_all_model_semantic_guards_and_rng_algorithm_guard() -> None:
