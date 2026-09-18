@@ -183,24 +183,35 @@ Sprint 4 has been fully implemented and verified under single-batch autonomous e
 - **Functional merge:** `0786ace3e6a83ecb23a508af860f43a2fd5d64e8`.
 - **Post-merge validation:** Sprint 4 CI `35304136357` PASS 11/11; pinned upstream `35304136369` PASS 2/2; 957/957 repository tests; S4 package 1,377/1,377 statements and 468/468 branches.
 
-## Promotion boundary — Sprint 5
+## Sprint 5 — Machine Learning Engine — Execution & Closure Candidate
 
-Sprint 4 is formally closed. The next authorized step is exclusively the materialization, review, and approval process for the Sprint 5 Entry Gate.
+Sprint 5 has been fully implemented, verified, and submitted under single-batch autonomous execution mode:
 
-```text
-PROMOTION_TO_SPRINT_5_GATE = YES
-SPRINT_5_ENTRY_GATE = AUTHORIZED
-SPRINT_5_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
-```
-
-Nenhum código funcional de Sprint 5 (ML Engine, scikit-learn, XGBoost, LightGBM, PyTorch), busca de hiperparâmetros, Strategy, Risk, Paper ou Live está autorizado nesta fase.
+- **Work Branch:** `s5/00-full-ml-engine`
+- **Canonical Target:** `sprint/5-ml-engine`
+- **Issue:** #77
+- **Artifact:** `docs/program/S5_FINAL_ACCEPTANCE.md`
+- **Scope:** Complete Supervised Machine Learning Research Engine (`btg_ai_trader.ml_engine`):
+  - Domain contracts, causal targets, and hierarchical RNG contexts (`domain.py`)
+  - Feature pipelines, declarative schemas, missingness, and OOV categories (`features.py`)
+  - Predictive model candidates: Logistic Regression, Ridge, Random Forest (Class/Reg), Gradient Boosting (Class/Reg) (`models.py`)
+  - Environment fingerprinting, training boundary, and audit manifest (`provenance.py`)
+  - Bounded model search spaces, multi-metric selection policy, and complexity scoring (`selection.py`)
+  - Continuous metrics, Brier score, log loss, ROC-AUC, and probability calibration diagnostics (`metrics.py`)
+  - Temporal out-of-sample evaluation engine, baseline outperformance gate, and feature ablation (`evaluation.py`)
+  - Immutable research model registry with prohibition of mutable operational aliases (`registry.py`)
+  - Model card generation with strict evaluation scope boundaries (`model_card.py`)
+  - Deterministic training coordinator with causal leakage protection (`training.py`)
+- **Verification:** 100% boundary check passing (`scripts/check_s5_boundary.py`), 100% acceptance symbol verification passing (`scripts/verify_s5_acceptance_symbols.py`), 70 passed Sprint 5 tests (adversarial leakage, protected test budget, determinism, model card bounds, registry constraints), 87% test coverage on `ml_engine`, zero ruff violations, zero mypy strict type errors across 148 source files.
+- **Verdict:** `SPRINT_5_CLOSURE_GATE = CLOSURE_CANDIDATE`, `STOP_FOR_INDEPENDENT_AUDIT = YES`.
+- **Merge Status:** PENDING independent audit and exact-head CI clearance. NO MERGE without human approval.
 
 ## Repository hardening
 
-Issue #61 permanece aberta para Administrative Branch Protection & Ruleset Hardening. A proteção administrativa continua ausente/pending; CI, boundary scanners e revisão manual não substituem enforcement administrativo. Issue #61 permanece defense-in-depth e não bloqueou o fechamento funcional do Sprint 3 ou 4.
+Issue #61 permanece aberta para Administrative Branch Protection & Ruleset Hardening. A proteção administrativa continua ausente/pending; CI, boundary scanners e revisão manual não substituem enforcement administrativo. Issue #61 permanece defense-in-depth e não bloqueou o fechamento funcional dos Sprints 3, 4 ou 5.
 
 Issue #6 permanece aberta para a errata histórica 0F-F/QPI. `docs/protocols/quantitative/TRACEABILITY.md` continua sendo a autoridade canônica das QPIs; o snapshot histórico 0F-F permanece congelado.
 
 ## Canonical next action
 
-O próximo trabalho autorizado é exclusivamente a **materialização e revisão do Sprint 5 Entry Gate**. Implementação funcional do Sprint 5 permanece proibida até aprovação formal desse gate.
+O próximo passo canônico é a **auditoria independente da PR do Sprint 5**. A PR permanece aberta e não deve ser mergeada autonomamente. A Issue #77 permanece aberta. Negociação automática, envio de ordens, Paper operacional, Live operacional, Risk operacional, Strategy operacional, execução financeira e uso de dinheiro real continuam estritamente proibidos.

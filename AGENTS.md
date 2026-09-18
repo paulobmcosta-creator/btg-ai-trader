@@ -53,16 +53,21 @@ S4_CANONICAL_BRANCH = sprint/4-statistical-baselines
 S4_WORK_BRANCH = s4/00-full-statistical-baselines
 SPRINT_4_MERGE_COMPLETED = YES
 PROMOTION_TO_SPRINT_5_GATE = YES
-SPRINT_5_STATUS = IN_PROGRESS
+SPRINT_5_STATUS = CLOSURE_CANDIDATE
+SPRINT_5_LIFECYCLE = CLOSURE_CANDIDATE
 SPRINT_5_ENTRY_GATE = PASS
-SPRINT_5_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED_BY_HUMAN_SINGLE_BATCH
+SPRINT_5_CANONICAL_BRANCH = sprint/5-ml-engine
+SPRINT_5_WORK_BRANCH = s5/00-full-ml-engine
+SPRINT_5_FUNCTIONAL_IMPLEMENTATION = COMPLETED
+SPRINT_5_FINAL_ACCEPTANCE = SUBMITTED
+STOP_FOR_INDEPENDENT_AUDIT = YES
 ```
 
 O Sprint 2 tratou exclusivamente de **Data Platform & Causal Market Replay** dentro de `docs/program/S2_ENTRY_CONTRACT.md`, `S2_DECISION_REGISTER.md`, `S2_CAPABILITY_MATRIX.md` e dos gates correspondentes. Os incrementos funcionais S2-A (Causal Replay Core) e S2-B (Lossless Normalization & Data Quality) e o gate final S2-C foram formalmente aceitos e fechados.
 
 O Sprint 3 — **Deterministic Economic Backtesting** — foi formalmente concluído após auditoria independente, merge do PR #72 no commit canônico `6333b8f431d43be9c40f3222fbbe17cf06509033` e validação pós-merge dos runs `35256018204` e `35256018048`.
 
-O Sprint 4 — **Statistical Baselines** — foi formalmente fechado após reauditoria independente, merge funcional do PR #74 em `0786ace3e6a83ecb23a508af860f43a2fd5d64e8` e validação pós-merge dos runs `35304136357` (Sprint 4 Python CI, 11/11) e `35304136369` (Pinned upstream, 2/2). O **Sprint 5 Entry Gate** foi materializado e verificado PASS; a implementação funcional do Sprint 5 (Research ML Engine) está em andamento sob autorização humana explícita em lote único. Negociação automática, envio de ordens, Paper operacional, Live operacional, Risk operacional, Strategy operacional, execução financeira e uso de dinheiro real permanecem estritamente proibidos.
+O Sprint 4 — **Statistical Baselines** — foi formalmente fechado após reauditoria independente, merge funcional do PR #74 em `0786ace3e6a83ecb23a508af860f43a2fd5d64e8` e validação pós-merge dos runs `35304136357` (Sprint 4 Python CI, 11/11) e `35304136369` (Pinned upstream, 2/2). O **Sprint 5 Entry Gate** foi materializado e verificado PASS; a implementação funcional integral do Sprint 5 (Supervised Machine Learning Research Engine) foi executada em lote único autônomo, testada com 100% de aprovação e submetida como `CLOSURE_CANDIDATE` aguardando auditoria independente. Negociação automática, envio de ordens, Paper operacional, Live operacional, Risk operacional, Strategy operacional, execução financeira e uso de dinheiro real permanecem estritamente proibidos.
 
 ## Autoridade normativa e realidade implementada
 

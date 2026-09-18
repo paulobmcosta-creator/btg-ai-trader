@@ -522,6 +522,18 @@ ADR-0026 tornou XP/MT5 o provider vigente. Bridge read-only, discovery, portabil
 
 O Gate de Entrada do Sprint 2 foi formalizado via PR #63 (`00cc561...`). S2-A implementou o Causal Replay Core (`src/btg_ai_trader/replay/`), com schedule imutável, monotonicidade por cutoff UTC, speed racional e proveniência DD-15 (`ReplayInputBoundary`), aceito via PR #65 (`9faa43c...`). S2-B implementou a normalização sem perdas e evidência determinística de qualidade (`src/btg_ai_trader/data_platform/`), preservando `MissingReason` (DD-80) e neutralidade factual (S2-AC-10), aceito via PR #67 (`071e004...`). A tarefa S2-C consolidou a reconciliação formal conjuntiva em `docs/program/S2_FINAL_ACCEPTANCE.md` (11 ACs PASS, 3 ACs NOT_TRIGGERED, 16 NCs PASS, 0 blockers), propondo o fechamento do Sprint 2 e autorização para materializar o Gate do Sprint 3.
 
+### 2026-09-17 — execução e fechamento do Sprint 3
+
+Sprint 3 implementou o Backtester Econômico Determinístico (`src/btg_ai_trader/backtesting/`), com contratos de livro, preenchimento causal, modelagem de custos B3 e marks de evidência econômica, fechado após reauditoria independente via PR #72 no commit canônico `6333b8f4...` e CI pós-merge PASS.
+
+### 2026-09-17 — execução e fechamento do Sprint 4
+
+Sprint 4 implementou a Avaliação Temporal Prospectiva e o Catálogo de Baselines Estatísticos (`src/btg_ai_trader/statistical_baselines/`), com planos walk-forward, purging, embargo e 7 baselines estatísticos determinísticos sem dependências de ML runtime, fechado via PR #74 em `0786ace...` e CI pós-merge PASS.
+
+### 2026-09-18 — execução e submissão do Sprint 5
+
+Sprint 5 implementou o Motor de Pesquisa de Machine Learning Supervisionado (`src/btg_ai_trader/ml_engine/`), com contratos de target causal, pipelines de atributos sem vazamento, 6 famílias de modelos tabulares scikit-learn, métricas probabilísticas de calibração, avaliação walk-forward fora da amostra, cartões de modelo restritos e registro imutável sem aliases operacionais. Execução integral em lote único autônomo com 100% de aprovação nos testes e verificação de símbolos, submetido como `CLOSURE_CANDIDATE` para auditoria independente.
+
 ---
 
 ## 16. Próxima ação oficial

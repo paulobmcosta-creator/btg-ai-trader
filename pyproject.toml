@@ -64,3 +64,16 @@ select = ["E", "F", "I", "B", "UP", "RUF"]
 python_version = "3.12"
 strict = true
 files = ["src", "tests"]
+
+[[tool.mypy.overrides]]
+module = [
+  "joblib",
+  "joblib.*",
+  "scipy",
+  "scipy.*",
+  "sklearn",
+  "sklearn.*",
+  "threadpoolctl",
+  "threadpoolctl.*",
+]
+ignore_missing_imports = true
