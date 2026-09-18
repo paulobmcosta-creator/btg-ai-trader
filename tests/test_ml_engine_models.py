@@ -1,5 +1,7 @@
 """Tests for all governed S5 scikit-learn candidate families."""
 
+# ruff: noqa: I001 -- explicit grouping retained for audit readability.
+
 from __future__ import annotations
 
 from decimal import Decimal
