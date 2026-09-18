@@ -1,5 +1,7 @@
 """Tests for immutable research registry evidence."""
 
+# ruff: noqa: I001 -- explicit grouping retained for audit readability.
+
 from __future__ import annotations
 
 import pytest
