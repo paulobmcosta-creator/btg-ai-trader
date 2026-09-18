@@ -332,7 +332,7 @@ Fora do Sprint 3:
 - mutação do `FinancialLedger` canônico futuro;
 - modelos de machine learning preditivos operacionais.
 
-### Sprint 4 — Statistical Baselines — CLOSURE_CANDIDATE / PROPOSED_PASS (MERGE_AUTHORIZED = NO; PROMOTION_TO_SPRINT_5_GATE = NO_UNTIL_INDEPENDENT_REAUDIT)
+### Sprint 4 — Statistical Baselines — FORMALLY_CLOSED / PASS (PROMOTION_TO_SPRINT_5_GATE = YES; SPRINT_5_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED)
 
 Escopo executado e auditado:
 
@@ -341,10 +341,22 @@ Escopo executado e auditado:
 - splitting walk-forward (rolling/expanding), purging de intervalos sobrepostos e embargo pós-evento (`splits.py`);
 - catálogo de 7 baselines estatísticos determinísticos sem RNG e sem frameworks de ML (`baselines.py`);
 - métricas contínuas e categóricas determinísticas padronizadas (`metrics.py`);
-- diagnósticos de calibração probabilística com ECE, MCE e Brier score (`calibration.py`);
+- diagnósticos de calibração probabilística com ECE/MCE (`calibration.py`), com Brier score mantido como métrica probabilística separada;
 - orquestração de avaliação temporal por fold preservando distribuições (`evaluation.py`);
 - comparador de modelos com invariante estrito de rejeição de seleção em `PROTECTED_TEST` (`comparison.py`);
 - limites de entrada criptográficos, registros de proveniência e manifestos auditáveis (`provenance.py`).
+
+Fechamento canônico:
+
+- reauditoria independente final: PASS;
+- PR #74: merged;
+- merge canônico: `0786ace3e6a83ecb23a508af860f43a2fd5d64e8`;
+- post-merge Sprint 4 Python CI: `35304136357` PASS 11/11;
+- post-merge pinned upstream: `35304136369` PASS 2/2;
+- full repository: 957/957 tests PASS;
+- package S4: 1,377/1,377 statements e 468/468 branches;
+- autorizado exclusivamente: Sprint 5 Entry Gate;
+- implementação funcional do Sprint 5: NOT_AUTHORIZED.
 
 Fora do Sprint 4:
 
