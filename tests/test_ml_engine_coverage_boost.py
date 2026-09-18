@@ -137,7 +137,7 @@ def test_direct_candidate_constructor_family_and_semantics_guards() -> None:
     )
     for constructor, spec in constructors:
         with pytest.raises(ValueError, match="Spec family"):
-            constructor(spec)  # type: ignore[arg-type]
+            constructor(spec)
 
     bad_base = MLCandidateSpec(
         family="not-supported",
@@ -167,7 +167,11 @@ def test_each_fit_wraps_estimator_failure(
     family: str, semantics: TargetSemantics
 ) -> None:
     pipeline = make_pipeline(two_features=False)
-    params = {"n_estimators": 2} if "forest" in family or "boosting" in family else {}
+    params: dict[str, object] = (
+        {"n_estimators": 2}
+        if "forest" in family or "boosting" in family
+        else {}
+    )
     spec = make_candidate_spec(family, pipeline, semantics, hyperparameters=params)
     candidate = create_candidate(spec)
     cast(Any, candidate)._estimator = _BoomEstimator()
