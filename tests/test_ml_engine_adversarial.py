@@ -1,5 +1,7 @@
 """Adversarial invariants for Sprint 5 research ML."""
 
+# ruff: noqa: I001 -- explicit grouping retained for audit readability.
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
