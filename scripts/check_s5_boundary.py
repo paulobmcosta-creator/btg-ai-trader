@@ -63,6 +63,20 @@ FORBIDDEN_OPERATIONAL_NAMES = {
     "positions_get",
 }
 
+FORBIDDEN_UNSAFE_CALLS = {
+    "__import__",
+    "eval",
+    "exec",
+    "importlib.import_module",
+    "pickle.load",
+    "pickle.loads",
+    "joblib.load",
+    "cloudpickle.load",
+    "cloudpickle.loads",
+    "dill.load",
+    "dill.loads",
+}
+
 FORBIDDEN_PROCESS_CALLS = {
     "subprocess.Popen",
     "subprocess.run",
@@ -325,7 +339,11 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
         elif isinstance(node, ast.Call):
             resolved_call = _resolve_expr(node.func, module_aliases, symbol_aliases)
             cname = resolved_call or _call_name(node)
-            if cname in WALL_CLOCK_CALLS:
+            if cname in FORBIDDEN_UNSAFE_CALLS:
+                findings.append(
+                    Finding(str_path, node.lineno, f"forbidden unsafe dynamic/deserialization call: {cname}")
+                )
+            elif cname in WALL_CLOCK_CALLS:
                 findings.append(
                     Finding(str_path, node.lineno, f"forbidden wall-clock call: {cname}")
                 )
