@@ -68,17 +68,18 @@ S4_TASK_PACKET = docs/program/workstreams/S4-ANTIGRAVITY-FULL-SPRINT.md
 S4_WORK_BRANCH = s4/00-full-statistical-baselines
 PROMOTION_TO_SPRINT_5_GATE = YES
 SPRINT_5_BRANCH = sprint/5-ml-engine
-SPRINT_5_LIFECYCLE = IN_PROGRESS
+SPRINT_5_LIFECYCLE = CLOSURE_CANDIDATE
 SPRINT_5_SCOPE = RESEARCH_ML_ENGINE
 SPRINT_5_CANONICAL_BASE = 560dd83cdfdd50084ae277083d9f8732e5296356
 SPRINT_5_WORK_BRANCH = s5/00-full-ml-engine
 SPRINT_5_ISSUE = #77
+SPRINT_5_PR = #78
 SPRINT_5_ENTRY_CONTRACT = docs/program/S5_ENTRY_CONTRACT.md
 SPRINT_5_DECISION_REGISTER = docs/program/S5_DECISION_REGISTER.md
 SPRINT_5_CAPABILITY_MATRIX = docs/program/S5_CAPABILITY_MATRIX.md
 S5_ENTRY_GATE = PASS
 S5_TASK_PACKET = docs/program/workstreams/S5-ANTIGRAVITY-FULL-SPRINT.md
-SPRINT_5_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED_BY_HUMAN_SINGLE_BATCH
+SPRINT_5_FUNCTIONAL_IMPLEMENTATION = COMPLETED
 
 OFFICIAL_CODEX_SECURITY_DIFF_SCAN = NOT_EXECUTED
 SPRINT1_GITHUB_NATIVE_SECURITY_GATE = PASS
@@ -202,7 +203,7 @@ Sprint 5 has been fully implemented, verified, and submitted under single-batch 
   - Immutable research model registry with prohibition of mutable operational aliases (`registry.py`)
   - Model card generation with strict evaluation scope boundaries (`model_card.py`)
   - Deterministic training coordinator with causal leakage protection (`training.py`)
-- **Verification:** 100% boundary check passing (`scripts/check_s5_boundary.py`), 100% acceptance symbol verification passing (`scripts/verify_s5_acceptance_symbols.py`), 70 passed Sprint 5 tests (adversarial leakage, protected test budget, determinism, model card bounds, registry constraints), 87% test coverage on `ml_engine`, zero ruff violations, zero mypy strict type errors across 148 source files.
+- **Verified implementation evidence (head `7b5eb613cdfa4e39cbebf8ac6dae97bb9c9ce08d`):** 1063/1063 repository tests PASS; Sprint 5 package coverage 1452/1452 statements and 468/468 branches (100%/100%); 87/87 dedicated S5 coverage tests PASS; Ruff PASS; strict mypy PASS across 151 source files; Foundation/S1-S4/diff/dependency gates PASS; pinned upstream run `35386727326` PASS 2/2. The stale acceptance-test symbol names found on that head were reconciled in the subsequent documentary commit and remain subject to exact-head CI.
 - **Verdict:** `SPRINT_5_CLOSURE_GATE = CLOSURE_CANDIDATE`, `STOP_FOR_INDEPENDENT_AUDIT = YES`.
 - **Merge Status:** PENDING independent audit and exact-head CI clearance. NO MERGE without human approval.
 
