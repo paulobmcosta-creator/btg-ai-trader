@@ -1,28 +1,46 @@
-"""Finite candidate search space, append-only history, and validation-only selection."""
+"""Finite search spaces, immutable search history, and validation-only selection."""
 
 from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
 
-from btg_ai_trader.ml_engine.domain import (
-    MetricDirection,
-    MLCandidateSpec,
-)
+from btg_ai_trader.ml_engine.domain import MetricDirection, MLCandidateSpec
+from btg_ai_trader.statistical_baselines.domain import EvaluationRole, _freeze_mapping
+
+
+def _seed_independent_key(candidate: MLCandidateSpec) -> str:
+    payload = {
+        "code_revision": candidate.code_revision,
+        "family": candidate.family,
+        "feature_pipeline_spec_digest": candidate.feature_pipeline_spec_digest,
+        "hyperparameters": dict(candidate.hyperparameters),
+        "numeric_policy": candidate.numeric_policy.to_canonical_dict(),
+        "target_contract_digest": candidate.target_contract.contract_digest,
+    }
+    serialized = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 
 @dataclass(frozen=True, slots=True)
 class ModelComplexityDescriptor:
-    """Factual complexity metrics for a candidate specification."""
+    """Factual complexity descriptors; no universal penalty is implied."""
 
     family: str
     feature_count: int
     parameter_count: int | None = None
     tree_count: int | None = None
     max_depth: int | None = None
+
+    def __post_init__(self) -> None:
+        if not self.family:
+            raise ValueError("family must be non-empty")
+        if self.feature_count < 0:
+            raise ValueError("feature_count cannot be negative")
 
     def to_canonical_dict(self) -> dict[str, Any]:
         return {
@@ -36,28 +54,47 @@ class ModelComplexityDescriptor:
 
 @dataclass(frozen=True, slots=True)
 class ModelSearchSpace:
-    """Predeclared, finite, content-addressed collection of candidate specifications."""
+    """Finite predeclared candidate set with structural best-seed rejection."""
 
     candidates: tuple[MLCandidateSpec, ...]
-    search_space_digest: str = field(init=False)
     max_candidates_limit: int = 100
+    search_space_digest: str = field(init=False)
 
     def __post_init__(self) -> None:
         if not self.candidates:
             raise ValueError("ModelSearchSpace cannot be empty")
+        if self.max_candidates_limit <= 0:
+            raise ValueError("max_candidates_limit must be positive")
         if len(self.candidates) > self.max_candidates_limit:
             raise ValueError(
-                f"Candidate count {len(self.candidates)} exceeds limit {self.max_candidates_limit}"
+                f"Candidate count {len(self.candidates)} exceeds limit "
+                f"{self.max_candidates_limit}"
+            )
+        ordered = tuple(sorted(self.candidates, key=lambda item: item.candidate_id))
+        candidate_ids = [candidate.candidate_id for candidate in ordered]
+        if len(candidate_ids) != len(set(candidate_ids)):
+            raise ValueError("ModelSearchSpace cannot contain duplicate candidates")
+
+        seed_groups: dict[str, set[int | None]] = {}
+        for candidate in ordered:
+            seed = candidate.rng_context.seed if candidate.rng_context else None
+            seed_groups.setdefault(_seed_independent_key(candidate), set()).add(seed)
+        if any(len(seeds) > 1 for seeds in seed_groups.values()):
+            raise ValueError(
+                "Search space attempts best-seed selection: candidates that differ only "
+                "by random seed are forbidden in Sprint 5"
             )
 
-        # Enforce canonical ordering by candidate_id
-        sorted_candidates = tuple(sorted(self.candidates, key=lambda c: c.candidate_id))
-        object.__setattr__(self, "candidates", sorted_candidates)
-
-        canonical_ids = [c.spec_digest for c in sorted_candidates]
-        serialized = json.dumps(canonical_ids, sort_keys=True, separators=(",", ":"))
-        digest = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
-        object.__setattr__(self, "search_space_digest", digest)
+        object.__setattr__(self, "candidates", ordered)
+        serialized = json.dumps(
+            [candidate.spec_digest for candidate in ordered],
+            separators=(",", ":"),
+        )
+        object.__setattr__(
+            self,
+            "search_space_digest",
+            hashlib.sha256(serialized.encode("utf-8")).hexdigest(),
+        )
 
     def __len__(self) -> int:
         return len(self.candidates)
@@ -65,21 +102,39 @@ class ModelSearchSpace:
 
 @dataclass(frozen=True, slots=True)
 class SearchAttemptRecord:
-    """Record of an individual candidate training and validation attempt."""
+    """Immutable evidence for one fit/evaluation attempt."""
 
     candidate_spec: MLCandidateSpec
-    fit_status: str  # "SUCCESS" or "FAILED"
+    fit_status: str
+    evaluation_role: EvaluationRole
+    evaluation_context_fingerprint: str
     failure_reason: str | None = None
-    validation_metrics: dict[str, Decimal] = field(default_factory=dict)
-    replicate_group_id: str | None = None
+    validation_metrics: Mapping[str, Decimal] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.fit_status not in {"SUCCESS", "FAILED"}:
+            raise ValueError("fit_status must be 'SUCCESS' or 'FAILED'")
+        if self.fit_status == "SUCCESS" and not self.evaluation_context_fingerprint:
+            raise ValueError(
+                "successful search records require evaluation_context_fingerprint"
+            )
+        object.__setattr__(
+            self,
+            "validation_metrics",
+            _freeze_mapping(dict(self.validation_metrics)),
+        )
 
 
 @dataclass(slots=True)
 class ModelSearchHistory:
-    """Append-only history tracking all explored candidates, configurations, and failures."""
+    """Append-only attempt history bound to one immutable search space."""
 
-    search_space_digest: str
+    search_space: ModelSearchSpace
     _records: list[SearchAttemptRecord] = field(default_factory=list)
+
+    @property
+    def search_space_digest(self) -> str:
+        return self.search_space.search_space_digest
 
     @property
     def records(self) -> tuple[SearchAttemptRecord, ...]:
@@ -87,23 +142,25 @@ class ModelSearchHistory:
 
     def record_attempt(
         self,
+        *,
         candidate_spec: MLCandidateSpec,
         fit_status: str,
+        evaluation_role: EvaluationRole,
+        evaluation_context_fingerprint: str = "",
         failure_reason: str | None = None,
-        validation_metrics: dict[str, Decimal] | None = None,
-        replicate_group_id: str | None = None,
+        validation_metrics: Mapping[str, Decimal] | None = None,
     ) -> None:
-        """Append an attempt to the history. Failures must never be discarded."""
-        if fit_status not in ("SUCCESS", "FAILED"):
-            raise ValueError(f"fit_status must be 'SUCCESS' or 'FAILED', got '{fit_status}'")
-
+        allowed_ids = {candidate.candidate_id for candidate in self.search_space.candidates}
+        if candidate_spec.candidate_id not in allowed_ids:
+            raise ValueError("candidate is not a member of the bound ModelSearchSpace")
         self._records.append(
             SearchAttemptRecord(
                 candidate_spec=candidate_spec,
                 fit_status=fit_status,
+                evaluation_role=evaluation_role,
+                evaluation_context_fingerprint=evaluation_context_fingerprint,
                 failure_reason=failure_reason,
-                validation_metrics=dict(validation_metrics) if validation_metrics else {},
-                replicate_group_id=replicate_group_id,
+                validation_metrics=dict(validation_metrics or {}),
             )
         )
 
@@ -113,20 +170,19 @@ class ModelSearchHistory:
 
     @property
     def successful_attempts(self) -> int:
-        return sum(1 for r in self._records if r.fit_status == "SUCCESS")
+        return sum(record.fit_status == "SUCCESS" for record in self._records)
 
     @property
     def failed_attempts(self) -> int:
-        return sum(1 for r in self._records if r.fit_status == "FAILED")
+        return sum(record.fit_status == "FAILED" for record in self._records)
 
 
 @dataclass(frozen=True, slots=True)
 class ModelSelectionPolicy:
-    """Policy governing candidate selection strictly on validation domain evidence."""
+    """Select a candidate only from validation-selection evidence."""
 
     metric_name: str
     direction: MetricDirection
-    penalize_complexity: bool = False
 
     def __post_init__(self) -> None:
         if not self.metric_name:
@@ -134,45 +190,36 @@ class ModelSelectionPolicy:
         if not isinstance(self.direction, MetricDirection):
             raise TypeError(f"direction must be MetricDirection, got {type(self.direction)}")
 
-    @staticmethod
-    def assert_no_best_seed_selection(search_space: ModelSearchSpace) -> None:
-        """Adversarial check: reject search space if identical candidates differ only by seed."""
-        configs: dict[str, list[int]] = {}
-        for cand in search_space.candidates:
-            # Hash configuration excluding seed
-            config_key = f"{cand.family}:{json.dumps(dict(cand.hyperparameters), sort_keys=True)}"
-            seed = cand.rng_context.seed if cand.rng_context else 0
-            configs.setdefault(config_key, []).append(seed)
-
-        for config_key, seeds in configs.items():
-            if len(seeds) > 1 and len(set(seeds)) > 1:
-                raise ValueError(
-                    f"Search space attempts to select best seed across identical "
-                    f"configuration {config_key}: seeds={seeds}. "
-                    f"Seed cherry-picking is strictly prohibited."
-                )
-
-    def select_best(
-        self,
-        history: ModelSearchHistory,
-    ) -> MLCandidateSpec:
-        """Select the best candidate from validation search history."""
-        successful_records = [
-            r
-            for r in history.records
-            if r.fit_status == "SUCCESS" and self.metric_name in r.validation_metrics
+    def select_best(self, history: ModelSearchHistory) -> MLCandidateSpec:
+        eligible = [
+            record
+            for record in history.records
+            if record.fit_status == "SUCCESS"
+            and self.metric_name in record.validation_metrics
         ]
-
-        if not successful_records:
+        if not eligible:
             raise ValueError(
-                f"No successful candidates in search history with metric '{self.metric_name}'"
+                f"No successful candidates with metric '{self.metric_name}'"
+            )
+        if any(
+            record.evaluation_role is not EvaluationRole.VALIDATION_SELECTION
+            for record in eligible
+        ):
+            raise ValueError(
+                "Model selection may use VALIDATION_SELECTION evidence only; "
+                "protected/training evidence is forbidden"
+            )
+        contexts = {
+            record.evaluation_context_fingerprint for record in eligible
+        }
+        if len(contexts) != 1:
+            raise ValueError(
+                "Model selection requires one identical validation experimental context"
             )
 
-        # Deterministic sorting: primary = metric value, secondary = candidate_id
-        def sort_key(rec: SearchAttemptRecord) -> tuple[Decimal, str]:
-            val = rec.validation_metrics[self.metric_name]
-            metric_order = val if self.direction is MetricDirection.MINIMIZE else -val
-            return (metric_order, rec.candidate_spec.candidate_id)
+        def sort_key(record: SearchAttemptRecord) -> tuple[Decimal, str]:
+            value = record.validation_metrics[self.metric_name]
+            ordered = value if self.direction is MetricDirection.MINIMIZE else -value
+            return (ordered, record.candidate_spec.candidate_id)
 
-        sorted_records = sorted(successful_records, key=sort_key)
-        return sorted_records[0].candidate_spec
+        return sorted(eligible, key=sort_key)[0].candidate_spec
