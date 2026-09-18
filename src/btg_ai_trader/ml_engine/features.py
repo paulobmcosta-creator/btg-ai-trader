@@ -22,7 +22,7 @@ from btg_ai_trader.statistical_baselines.domain import PredictionInput, Statisti
 
 def _finite_float(value: object, feature_name: str) -> float:
     try:
-        parsed = float(value)
+        parsed = float(str(value))
     except (TypeError, ValueError) as exc:
         raise ValueError(
             f"Invalid numeric value {value!r} for feature '{feature_name}'"
@@ -218,7 +218,7 @@ class FittedFeaturePipeline:
             if feature.feature_type is FeatureType.NUMERIC:
                 values: list[float] = []
                 for item in pred_inputs:
-                    raw = item.feature_metadata.get(feature.name)
+                    raw: object = item.feature_metadata.get(feature.name)
                     missing = raw is None or raw == ""
                     if missing:
                         if feature.missingness_policy is MissingnessPolicy.REJECT:
@@ -239,7 +239,7 @@ class FittedFeaturePipeline:
             elif feature.feature_type is FeatureType.CATEGORICAL:
                 categories: set[str] = set()
                 for item in pred_inputs:
-                    raw = item.feature_metadata.get(feature.name)
+                    raw: object = item.feature_metadata.get(feature.name)
                     missing = raw is None or raw == ""
                     if missing:
                         if feature.missingness_policy is MissingnessPolicy.REJECT:
@@ -265,7 +265,7 @@ class FittedFeaturePipeline:
                 output_names.append(feature.name)
             else:
                 for item in pred_inputs:
-                    raw = item.feature_metadata.get(feature.name)
+                    raw: object = item.feature_metadata.get(feature.name)
                     missing = raw is None or raw == ""
                     if missing:
                         if feature.missingness_policy is MissingnessPolicy.REJECT:
