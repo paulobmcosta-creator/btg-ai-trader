@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        check: [tests, lint, types, compile, dependencies, foundation, s1-boundary, s2-boundary, s3-boundary, s4-boundary, s5-boundary, diff]
+        check: [tests, s5-coverage, lint, types, compile, dependencies, foundation, s1-boundary, s2-boundary, s3-boundary, s4-boundary, s5-boundary, diff]
     steps:
       - name: Check out exact reviewed commit
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -48,6 +48,27 @@ jobs:
       - name: Run full regression tests with branch coverage
         if: matrix.check == 'tests'
         run: python -m pytest --cov=btg_ai_trader --cov-report=term-missing --cov-report=xml
+
+      - name: Enforce Sprint 5 package statement and branch coverage
+        if: matrix.check == 's5-coverage'
+        run: >
+          python -m pytest
+          tests/test_ml_engine_adversarial.py
+          tests/test_ml_engine_coverage_boost.py
+          tests/test_ml_engine_domain.py
+          tests/test_ml_engine_evaluation.py
+          tests/test_ml_engine_features.py
+          tests/test_ml_engine_metrics.py
+          tests/test_ml_engine_model_card.py
+          tests/test_ml_engine_models.py
+          tests/test_ml_engine_provenance.py
+          tests/test_ml_engine_registry.py
+          tests/test_ml_engine_selection.py
+          tests/test_ml_engine_training.py
+          --cov=btg_ai_trader.ml_engine
+          --cov-branch
+          --cov-fail-under=100
+          --cov-report=term-missing
 
       - name: Run Ruff
         if: matrix.check == 'lint'
