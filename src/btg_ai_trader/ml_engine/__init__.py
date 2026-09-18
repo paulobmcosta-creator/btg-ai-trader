@@ -14,6 +14,7 @@ from btg_ai_trader.ml_engine.domain import (
     RNGContext,
     TargetContract,
     TrainingFailureError,
+    UnknownCategoryPolicy,
 )
 from btg_ai_trader.ml_engine.evaluation import (
     AblationResult,
