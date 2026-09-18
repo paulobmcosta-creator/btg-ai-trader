@@ -6,13 +6,14 @@ from __future__ import annotations
 
 import pytest
 
+from btg_ai_trader.ml_engine.provenance import ModelTrainingManifest
 from btg_ai_trader.ml_engine.registry import ModelRecord, ResearchModelRegistry
 from btg_ai_trader.ml_engine.training import ModelTrainer
 from btg_ai_trader.statistical_baselines.domain import TargetSemantics
 from tests.ml_engine_helpers import make_binary_samples, make_candidate_spec, make_pipeline
 
 
-def _verified_manifest():
+def _verified_manifest() -> ModelTrainingManifest:
     pipeline = make_pipeline()
     spec = make_candidate_spec(
         "logistic_regression", pipeline, TargetSemantics.BINARY_PROBABILITY
