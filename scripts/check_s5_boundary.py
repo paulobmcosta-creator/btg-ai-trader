@@ -341,7 +341,11 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
             cname = resolved_call or _call_name(node)
             if cname in FORBIDDEN_UNSAFE_CALLS:
                 findings.append(
-                    Finding(str_path, node.lineno, f"forbidden unsafe dynamic/deserialization call: {cname}")
+                    Finding(
+                        str_path,
+                        node.lineno,
+                        f"forbidden unsafe dynamic/deserialization call: {cname}",
+                    )
                 )
             elif cname in WALL_CLOCK_CALLS:
                 findings.append(
