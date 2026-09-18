@@ -78,7 +78,7 @@ def test_candidate_identity_and_deep_freeze() -> None:
     assert len(spec.spec_digest) == 64
     assert spec.to_canonical_dict()["code_revision"] == "rev"
     with pytest.raises(TypeError):
-        spec.hyperparameters["x"] = 1
+        spec.hyperparameters["x"] = 1  # type: ignore[index]
     with pytest.raises(ValueError, match="family"):
         MLCandidateSpec("", {}, contract, "pipe", None, DEFAULT_NUMERIC_POLICY, "rev")
     with pytest.raises(ValueError, match="code_revision"):
@@ -91,7 +91,7 @@ def test_freeze_mapping_and_numeric_policy() -> None:
     frozen = freeze_mapping({"a": {"b": [1, 2]}})
     assert frozen["a"]["b"] == (1, 2)
     with pytest.raises(TypeError):
-        frozen["a"]["b"] = (3,)  # type: ignore[index]
+        frozen["a"]["b"] = (3,)
     value = apply_numeric_policy(
         Decimal("1.23456789"),
         NumericPolicy(precision=6, rounding_mode="ROUND_HALF_EVEN"),
