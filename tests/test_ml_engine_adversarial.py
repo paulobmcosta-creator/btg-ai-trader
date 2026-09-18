@@ -97,7 +97,9 @@ def test_adversarial_twenty_repeated_fits_are_digest_identical() -> None:
         [float(sample.target_value) for sample in continuous], dtype=np.float64
     )
 
-    cases = (
+    cases: tuple[
+        tuple[str, TargetSemantics, np.ndarray, np.ndarray, dict[str, object]], ...
+    ] = (
         ("logistic_regression", TargetSemantics.BINARY_PROBABILITY, X_binary, y_binary, {}),
         ("ridge_regression", TargetSemantics.CONTINUOUS, X_continuous, y_continuous, {}),
         (
