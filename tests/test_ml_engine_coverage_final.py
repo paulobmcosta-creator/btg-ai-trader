@@ -52,7 +52,6 @@ from btg_ai_trader.statistical_baselines.domain import (
     ParityViolationError,
     PredictionInput,
     PredictionResult,
-    StatisticalSample,
     TargetSemantics,
 )
 from btg_ai_trader.statistical_baselines.evaluation import (
@@ -61,6 +60,7 @@ from btg_ai_trader.statistical_baselines.evaluation import (
     StatisticalEvaluationEngine,
 )
 from btg_ai_trader.statistical_baselines.metrics import NumericPolicy
+from btg_ai_trader.statistical_baselines.splits import WalkForwardPlanner
 from tests.ml_engine_helpers import (
     make_binary_samples,
     make_candidate_spec,
@@ -217,7 +217,7 @@ def test_evaluation_partition_fail_closed_branches(
     protected = tuple(samples[12:])
 
     monkeypatch.setattr(
-        evaluation_module.WalkForwardPlanner,
+        WalkForwardPlanner,
         "partition_samples",
         staticmethod(lambda *args: ((), validation, protected)),
     )
@@ -225,7 +225,7 @@ def test_evaluation_partition_fail_closed_branches(
         engine.evaluate_candidate(create_candidate(spec), pipeline, plan, samples)
 
     monkeypatch.setattr(
-        evaluation_module.WalkForwardPlanner,
+        WalkForwardPlanner,
         "partition_samples",
         staticmethod(lambda *args: (train, None, protected)),
     )
@@ -233,7 +233,7 @@ def test_evaluation_partition_fail_closed_branches(
         engine.evaluate_candidate(create_candidate(spec), pipeline, plan, samples)
 
     monkeypatch.setattr(
-        evaluation_module.WalkForwardPlanner,
+        WalkForwardPlanner,
         "partition_samples",
         staticmethod(lambda *args: (train, (), protected)),
     )
