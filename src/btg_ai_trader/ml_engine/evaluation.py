@@ -377,8 +377,6 @@ class ModelEvaluationEngine:
                 )
             else:
                 weight = sum(count for _, count in pairs)
-                if weight <= 0:
-                    raise ValueError("SAMPLE_WEIGHTED aggregation has zero weight")
                 raw = sum(
                     (value * Decimal(count) for value, count in pairs), Decimal(0)
                 ) / Decimal(weight)
