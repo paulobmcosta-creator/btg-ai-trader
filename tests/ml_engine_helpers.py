@@ -8,12 +8,16 @@ from decimal import Decimal
 
 import sklearn
 
-from btg_ai_trader.ml_engine.domain import MLCandidateSpec, RNGContext, TargetContract
+from btg_ai_trader.ml_engine.domain import (
+    FeatureType,
+    MLCandidateSpec,
+    RNGContext,
+    TargetContract,
+)
 from btg_ai_trader.ml_engine.features import (
     FeaturePipelineSpec,
     FeatureSchema,
     FeatureSpec,
-    FeatureType,
 )
 from btg_ai_trader.statistical_baselines.boundaries import WalkForwardPlan
 from btg_ai_trader.statistical_baselines.domain import StatisticalSample, TargetSemantics
