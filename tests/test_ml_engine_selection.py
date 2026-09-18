@@ -1,5 +1,7 @@
 """Tests for finite model search and validation-only selection."""
 
+# ruff: noqa: I001 -- explicit grouping retained for audit readability.
+
 from decimal import Decimal
 
 import pytest
