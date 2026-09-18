@@ -1,120 +1,138 @@
-"""Tests for ModelTrainer, TrainingResult, and causal training boundaries."""
+"""Tests for the verified ModelTrainer orchestration."""
 
 from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
 
-from btg_ai_trader.ml_engine.domain import (
-    MLCandidateSpec,
-    RNGContext,
-    TargetContract,
-)
-from btg_ai_trader.ml_engine.features import (
-    FeaturePipelineSpec,
-    FeatureSchema,
-    FeatureSpec,
-    FeatureType,
-)
+from btg_ai_trader.ml_engine.domain import MLCandidateSpec
 from btg_ai_trader.ml_engine.training import ModelTrainer
 from btg_ai_trader.statistical_baselines.domain import (
     CausalLeakageError,
     StatisticalSample,
     TargetSemantics,
 )
-from btg_ai_trader.statistical_baselines.metrics import DEFAULT_NUMERIC_POLICY
-
-
-def _make_sample(
-    sample_id: str,
-    target_dt: datetime,
-    semantics: TargetSemantics = TargetSemantics.BINARY_PROBABILITY,
-    val: Decimal = Decimal(1),
-) -> StatisticalSample:
-    return StatisticalSample(
-        sample_id=sample_id,
-        feature_knowledge_time=target_dt,
-        target_knowledge_time=target_dt,
-        target_value=val,
-        target_semantics=semantics,
-        feature_metadata={"f1": "1.23"},
-    )
+from tests.ml_engine_helpers import (
+    make_binary_samples,
+    make_candidate_spec,
+    make_pipeline,
+)
 
 
 def test_model_trainer_end_to_end() -> None:
-    f1 = FeatureSpec(name="f1", feature_type=FeatureType.NUMERIC)
-    schema = FeatureSchema([f1])
-    pipe_spec = FeaturePipelineSpec(schema=schema)
-
-    contract = TargetContract(
-        target_name="direction",
-        target_semantics=TargetSemantics.BINARY_PROBABILITY,
-        forecast_horizon_steps=5,
+    pipeline = make_pipeline()
+    spec = make_candidate_spec(
+        "logistic_regression",
+        pipeline,
+        TargetSemantics.BINARY_PROBABILITY,
     )
-    cand_spec = MLCandidateSpec(
-        family="logistic_regression",
-        hyperparameters={},
-        target_contract=contract,
-        feature_pipeline_spec_digest=pipe_spec.spec_digest,
-        rng_context=RNGContext(algorithm="numpy_pcg64", seed=42),
-        numeric_policy=DEFAULT_NUMERIC_POLICY,
-        code_revision="rev_1",
+    result = ModelTrainer().fit(
+        candidate_spec=spec,
+        pipeline_spec=pipeline,
+        samples=make_binary_samples()[:8],
+        knowledge_cutoff=datetime(2025, 1, 1, 11, 0, tzinfo=UTC),
+        code_revision=spec.code_revision,
+        audit_metadata={"source": "test"},
     )
-
-    t1 = datetime(2025, 1, 1, 10, 0, tzinfo=UTC)
-    t2 = datetime(2025, 1, 1, 11, 0, tzinfo=UTC)
-    cutoff = datetime(2025, 1, 1, 12, 0, tzinfo=UTC)
-
-    samples = [
-        _make_sample("s1", t1, val=Decimal(0)),
-        _make_sample("s2", t2, val=Decimal(1)),
-    ]
-
-    trainer = ModelTrainer()
-    result = trainer.fit(
-        candidate_spec=cand_spec,
-        pipeline_spec=pipe_spec,
-        samples=samples,
-        knowledge_cutoff=cutoff,
-        code_revision="rev_1",
-    )
-
-    assert result.candidate_id == cand_spec.candidate_id
+    assert result.candidate_id == spec.candidate_id
     assert result.fitted_candidate.is_fitted
-    assert result.manifest is not None
-    assert result.boundary.knowledge_cutoff == cutoff
-    assert result.training_duration >= 0.0
+    assert result.boundary.is_verified
+    assert result.manifest.is_verified
+    assert result.training_duration == 0.0
 
 
-def test_model_trainer_causal_leakage_rejection() -> None:
-    f1 = FeatureSpec(name="f1", feature_type=FeatureType.NUMERIC)
-    pipe_spec = FeaturePipelineSpec(schema=FeatureSchema([f1]))
-    contract = TargetContract(
-        target_name="direction",
-        target_semantics=TargetSemantics.BINARY_PROBABILITY,
-        forecast_horizon_steps=5,
+def test_trainer_rejects_empty_pipeline_revision_semantics_and_future_labels() -> None:
+    pipeline = make_pipeline()
+    spec = make_candidate_spec(
+        "logistic_regression",
+        pipeline,
+        TargetSemantics.BINARY_PROBABILITY,
     )
-    cand_spec = MLCandidateSpec(
-        family="logistic_regression",
-        hyperparameters={},
-        target_contract=contract,
-        feature_pipeline_spec_digest=pipe_spec.spec_digest,
-        rng_context=None,
-        numeric_policy=DEFAULT_NUMERIC_POLICY,
-        code_revision="rev_1",
-    )
-
-    t_future = datetime(2025, 1, 1, 13, 0, tzinfo=UTC)
-    cutoff = datetime(2025, 1, 1, 12, 0, tzinfo=UTC)
-
-    samples = [_make_sample("s_future", t_future)]
     trainer = ModelTrainer()
-
-    with pytest.raises(CausalLeakageError, match="Future label leakage detected"):
+    with pytest.raises(ValueError, match="empty"):
         trainer.fit(
-            candidate_spec=cand_spec,
-            pipeline_spec=pipe_spec,
-            samples=samples,
-            knowledge_cutoff=cutoff,
-            code_revision="rev_1",
+            candidate_spec=spec,
+            pipeline_spec=pipeline,
+            samples=[],
+            knowledge_cutoff=datetime(2025, 1, 1, 11, 0, tzinfo=UTC),
+            code_revision=spec.code_revision,
+        )
+
+    other_pipeline = make_pipeline(two_features=False)
+    with pytest.raises(ValueError, match="feature_pipeline"):
+        trainer.fit(
+            candidate_spec=spec,
+            pipeline_spec=other_pipeline,
+            samples=make_binary_samples()[:8],
+            knowledge_cutoff=datetime(2025, 1, 1, 11, 0, tzinfo=UTC),
+            code_revision=spec.code_revision,
+        )
+    with pytest.raises(ValueError, match="code_revision"):
+        trainer.fit(
+            candidate_spec=spec,
+            pipeline_spec=pipeline,
+            samples=make_binary_samples()[:8],
+            knowledge_cutoff=datetime(2025, 1, 1, 11, 0, tzinfo=UTC),
+            code_revision="wrong",
+        )
+
+    sample = make_binary_samples()[0]
+    future = StatisticalSample(
+        sample_id="future",
+        feature_knowledge_time=sample.feature_knowledge_time,
+        target_knowledge_time=datetime(2025, 1, 1, 12, 0, tzinfo=UTC),
+        target_value=Decimal(1),
+        target_semantics=TargetSemantics.BINARY_PROBABILITY,
+        feature_metadata=dict(sample.feature_metadata),
+    )
+    with pytest.raises(CausalLeakageError):
+        trainer.fit(
+            candidate_spec=spec,
+            pipeline_spec=pipeline,
+            samples=[future],
+            knowledge_cutoff=datetime(2025, 1, 1, 11, 0, tzinfo=UTC),
+            code_revision=spec.code_revision,
+        )
+
+    continuous = StatisticalSample(
+        sample_id="continuous",
+        feature_knowledge_time=sample.feature_knowledge_time,
+        target_knowledge_time=sample.target_knowledge_time,
+        target_value=Decimal("1.2"),
+        target_semantics=TargetSemantics.CONTINUOUS,
+        feature_metadata=dict(sample.feature_metadata),
+    )
+    with pytest.raises(ValueError, match="TargetContract"):
+        trainer.fit(
+            candidate_spec=spec,
+            pipeline_spec=pipeline,
+            samples=[continuous],
+            knowledge_cutoff=datetime(2025, 1, 1, 11, 0, tzinfo=UTC),
+            code_revision=spec.code_revision,
+        )
+
+
+def test_candidate_spec_revision_mismatch_is_identity_failure() -> None:
+    pipeline = make_pipeline()
+    original = make_candidate_spec(
+        "logistic_regression",
+        pipeline,
+        TargetSemantics.BINARY_PROBABILITY,
+    )
+    mismatched = MLCandidateSpec(
+        family=original.family,
+        hyperparameters=original.hyperparameters,
+        target_contract=original.target_contract,
+        feature_pipeline_spec_digest=original.feature_pipeline_spec_digest,
+        rng_context=original.rng_context,
+        numeric_policy=original.numeric_policy,
+        code_revision="different",
+    )
+    with pytest.raises(ValueError, match="code_revision"):
+        ModelTrainer().fit(
+            candidate_spec=mismatched,
+            pipeline_spec=pipeline,
+            samples=make_binary_samples()[:8],
+            knowledge_cutoff=datetime(2025, 1, 1, 11, 0, tzinfo=UTC),
+            code_revision="rev-s5",
         )

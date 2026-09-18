@@ -1,15 +1,13 @@
-"""Tests for ML Engine provenance, environment fingerprinting, and training manifests."""
+"""Tests for verified S5 training provenance."""
 
-from datetime import UTC, datetime
+from __future__ import annotations
+
+import dataclasses
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
 
-from btg_ai_trader.ml_engine.domain import (
-    MLCandidateSpec,
-    RNGContext,
-    TargetContract,
-)
 from btg_ai_trader.ml_engine.provenance import (
     EnvironmentFingerprint,
     ModelTrainingInputBoundary,
@@ -20,100 +18,165 @@ from btg_ai_trader.statistical_baselines.domain import (
     StatisticalSample,
     TargetSemantics,
 )
-from btg_ai_trader.statistical_baselines.metrics import DEFAULT_NUMERIC_POLICY
+from tests.ml_engine_helpers import (
+    make_binary_samples,
+    make_candidate_spec,
+    make_pipeline,
+)
 
 
-def _make_sample(
-    sample_id: str,
-    target_dt: datetime,
-) -> StatisticalSample:
-    feat_dt = target_dt
-    return StatisticalSample(
-        sample_id=sample_id,
-        feature_knowledge_time=feat_dt,
-        target_knowledge_time=target_dt,
-        target_value=Decimal(1),
-        target_semantics=TargetSemantics.BINARY_PROBABILITY,
-    )
-
-
-def test_environment_fingerprint_capture() -> None:
+def test_environment_fingerprint_is_sanitized_and_stable_shape() -> None:
     env = EnvironmentFingerprint.capture()
-    assert env.python_version is not None
-    assert env.scikit_learn_version is not None
-    assert env.numpy_version is not None
-    assert env.fingerprint_digest is not None
+    data = env.to_canonical_dict()
     assert len(env.fingerprint_digest) == 64
+    assert data["python_version"]
+    assert data["python_implementation"]
+    assert data["platform_machine"] is not None
+    assert "fingerprint_digest" in data
+    assert "fingerprint_digest" not in env.to_canonical_dict(include_digest=False)
+    assert all("/" not in item for item in env.threadpool_signature)
 
-    d = env.to_canonical_dict()
-    assert d["sklearn_version"] == env.sklearn_version
 
-
-def test_model_training_input_boundary() -> None:
-    contract = TargetContract(
-        target_name="up",
-        target_semantics=TargetSemantics.BINARY_PROBABILITY,
-        forecast_horizon_steps=5,
+def test_verified_boundary_binds_full_dataset_and_cannot_be_forged() -> None:
+    pipeline = make_pipeline()
+    spec = make_candidate_spec(
+        "logistic_regression",
+        pipeline,
+        TargetSemantics.BINARY_PROBABILITY,
     )
-    spec = MLCandidateSpec(
-        family="logistic_regression",
-        hyperparameters={},
-        target_contract=contract,
-        feature_pipeline_spec_digest="pipe_d",
-        rng_context=None,
-        numeric_policy=DEFAULT_NUMERIC_POLICY,
-        code_revision="rev_1",
-    )
-
-    t1 = datetime(2025, 1, 1, 10, 0, tzinfo=UTC)
-    t2 = datetime(2025, 1, 1, 11, 0, tzinfo=UTC)
-    cutoff = datetime(2025, 1, 1, 12, 0, tzinfo=UTC)
-
-    samples = [_make_sample("s1", t1), _make_sample("s2", t2)]
-
+    samples = make_binary_samples()[:8]
+    env = EnvironmentFingerprint.capture()
+    cutoff = datetime(2025, 1, 1, 11, 0, tzinfo=UTC)
     boundary = ModelTrainingInputBoundary.create_and_verify(
         samples=samples,
-        target_contract=contract,
-        feature_schema_digest="schema_d",
+        target_contract=spec.target_contract,
+        feature_pipeline_spec_digest=pipeline.spec_digest,
         candidate_spec=spec,
         knowledge_cutoff=cutoff,
-        code_revision="rev_1",
+        environment=env,
+        code_revision=spec.code_revision,
     )
+    assert boundary.is_verified
+    forged = ModelTrainingInputBoundary(
+        ordered_sample_ids=boundary.ordered_sample_ids,
+        dataset_digest=boundary.dataset_digest,
+        source_lineage_digest=boundary.source_lineage_digest,
+        target_contract_digest=boundary.target_contract_digest,
+        feature_pipeline_spec_digest=boundary.feature_pipeline_spec_digest,
+        knowledge_cutoff=boundary.knowledge_cutoff,
+        candidate_spec_digest=boundary.candidate_spec_digest,
+        numeric_policy=boundary.numeric_policy,
+        environment_fingerprint_digest=boundary.environment_fingerprint_digest,
+        code_revision=boundary.code_revision,
+    )
+    assert not forged.is_verified
+    assert not dataclasses.replace(boundary).is_verified
 
-    assert boundary.boundary_digest is not None
-    assert boundary.ordered_sample_ids == ("s1", "s2")
+    changed = list(samples)
+    first = changed[0]
+    changed[0] = StatisticalSample(
+        sample_id=first.sample_id,
+        feature_knowledge_time=first.feature_knowledge_time,
+        target_knowledge_time=first.target_knowledge_time,
+        target_value=first.target_value,
+        target_semantics=first.target_semantics,
+        source_lineage=first.source_lineage,
+        feature_metadata={**dict(first.feature_metadata), "f1": "999"},
+    )
+    changed_boundary = ModelTrainingInputBoundary.create_and_verify(
+        samples=changed,
+        target_contract=spec.target_contract,
+        feature_pipeline_spec_digest=pipeline.spec_digest,
+        candidate_spec=spec,
+        knowledge_cutoff=cutoff,
+        environment=env,
+        code_revision=spec.code_revision,
+    )
+    assert changed_boundary.dataset_digest != boundary.dataset_digest
 
-    # Future leakage check
-    past_cutoff = datetime(2025, 1, 1, 10, 30, tzinfo=UTC)
-    with pytest.raises(CausalLeakageError, match="Future label leakage detected"):
+
+def test_boundary_rejects_leakage_and_identity_mismatch() -> None:
+    pipeline = make_pipeline()
+    spec = make_candidate_spec(
+        "logistic_regression",
+        pipeline,
+        TargetSemantics.BINARY_PROBABILITY,
+    )
+    samples = make_binary_samples()[:8]
+    env = EnvironmentFingerprint.capture()
+    cutoff = datetime(2025, 1, 1, 9, 1, tzinfo=UTC)
+    with pytest.raises(CausalLeakageError):
         ModelTrainingInputBoundary.create_and_verify(
             samples=samples,
-            target_contract=contract,
-            feature_schema_digest="schema_d",
+            target_contract=spec.target_contract,
+            feature_pipeline_spec_digest=pipeline.spec_digest,
             candidate_spec=spec,
-            knowledge_cutoff=past_cutoff,
-            code_revision="rev_1",
+            knowledge_cutoff=cutoff,
+            environment=env,
+            code_revision=spec.code_revision,
+        )
+    with pytest.raises(ValueError, match="feature_pipeline"):
+        ModelTrainingInputBoundary.create_and_verify(
+            samples=samples,
+            target_contract=spec.target_contract,
+            feature_pipeline_spec_digest="wrong",
+            candidate_spec=spec,
+            knowledge_cutoff=datetime(2025, 1, 1, 11, 0, tzinfo=UTC),
+            environment=env,
+            code_revision=spec.code_revision,
+        )
+    with pytest.raises(ValueError, match="code_revision"):
+        ModelTrainingInputBoundary.create_and_verify(
+            samples=samples,
+            target_contract=spec.target_contract,
+            feature_pipeline_spec_digest=pipeline.spec_digest,
+            candidate_spec=spec,
+            knowledge_cutoff=datetime(2025, 1, 1, 11, 0, tzinfo=UTC),
+            environment=env,
+            code_revision="other",
         )
 
 
-def test_model_training_manifest() -> None:
-    env = EnvironmentFingerprint.capture()
-    rng = RNGContext(algorithm="numpy_pcg64", seed=42)
-
-    manifest = ModelTrainingManifest(
-        candidate_id="ml:logistic_regression:abc123",
-        boundary_digest="boundary_digest_123",
-        model_state_digest="state_digest_123",
-        fitted_feature_pipeline_digest="pipe_digest_123",
-        target_contract_digest="contract_digest_123",
-        environment_fingerprint=env,
-        rng_context=rng,
-        code_revision="rev_1",
+def test_manifest_factory_verification_and_audit_immutability() -> None:
+    pipeline = make_pipeline()
+    spec = make_candidate_spec(
+        "logistic_regression",
+        pipeline,
+        TargetSemantics.BINARY_PROBABILITY,
     )
-
-    assert manifest.scientific_root_digest is not None
+    samples = make_binary_samples()[:8]
+    env = EnvironmentFingerprint.capture()
+    boundary = ModelTrainingInputBoundary.create_and_verify(
+        samples=samples,
+        target_contract=spec.target_contract,
+        feature_pipeline_spec_digest=pipeline.spec_digest,
+        candidate_spec=spec,
+        knowledge_cutoff=datetime(2025, 1, 1, 11, 0, tzinfo=UTC),
+        environment=env,
+        code_revision=spec.code_revision,
+    )
+    manifest = ModelTrainingManifest.create(
+        boundary=boundary,
+        candidate_spec=spec,
+        fitted_feature_pipeline_digest="fitted",
+        model_state_digest="state",
+        environment_fingerprint=env,
+        code_revision=spec.code_revision,
+        audit_metadata={"note": "x"},
+    )
+    assert manifest.is_verified
     assert len(manifest.scientific_root_digest) == 64
+    with pytest.raises(TypeError):
+        manifest.audit_metadata["note"] = "changed"  # type: ignore[index]
+    assert manifest.to_canonical_dict()["audit_metadata"] == {"note": "x"}
 
-    d = manifest.to_canonical_dict()
-    assert d["candidate_id"] == "ml:logistic_regression:abc123"
-    assert d["scientific_root_digest"] == manifest.scientific_root_digest
+    unverified_boundary = dataclasses.replace(boundary)
+    with pytest.raises(ValueError, match="verified"):
+        ModelTrainingManifest.create(
+            boundary=unverified_boundary,
+            candidate_spec=spec,
+            fitted_feature_pipeline_digest="fitted",
+            model_state_digest="state",
+            environment_fingerprint=env,
+            code_revision=spec.code_revision,
+        )

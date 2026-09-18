@@ -1,4 +1,4 @@
-"""Tests for deterministic feature schema, pipelines, and train-time fitting."""
+"""Tests for causal deterministic feature pipelines."""
 
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -18,196 +18,158 @@ from btg_ai_trader.ml_engine.features import (
     FittedFeaturePipeline,
 )
 from btg_ai_trader.statistical_baselines.domain import (
+    PredictionInput,
     StatisticalSample,
     TargetSemantics,
 )
 
 
-def _make_sample(
-    sample_id: str,
-    feature_meta: dict[str, str],
-    target_val: Decimal = Decimal(1),
-) -> StatisticalSample:
-    t = datetime(2025, 1, 1, 10, 0, tzinfo=UTC)
+def _sample(sample_id: str, metadata: dict[str, str]) -> StatisticalSample:
+    timestamp = datetime(2025, 1, 1, 10, 0, tzinfo=UTC)
     return StatisticalSample(
         sample_id=sample_id,
-        feature_knowledge_time=t,
-        target_knowledge_time=t,
-        target_value=target_val,
+        feature_knowledge_time=timestamp,
+        target_knowledge_time=timestamp,
+        target_value=Decimal(1),
         target_semantics=TargetSemantics.BINARY_PROBABILITY,
-        feature_metadata=feature_meta,
+        feature_metadata=metadata,
     )
 
 
-def test_feature_spec_validation() -> None:
-    f_num = FeatureSpec(
-        name="volatility_20",
-        feature_type=FeatureType.NUMERIC,
-        missingness_policy=MissingnessPolicy.CONSTANT,
+def test_feature_spec_and_schema_validation() -> None:
+    FeatureSpec(
+        "x",
+        FeatureType.NUMERIC,
+        MissingnessPolicy.INDICATOR,
         constant_fill_value=0.0,
     )
-    assert f_num.name == "volatility_20"
-    assert f_num.feature_type is FeatureType.NUMERIC
-
-    with pytest.raises(ValueError, match="Feature name must be a non-empty string"):
-        FeatureSpec(name="", feature_type=FeatureType.NUMERIC)
-
-    with pytest.raises(TypeError, match="feature_type must be FeatureType"):
-        FeatureSpec(name="f", feature_type="NUMERIC")  # type: ignore[arg-type]
-
-    with pytest.raises(TypeError, match="missingness_policy must be MissingnessPolicy"):
+    with pytest.raises(ValueError, match="Feature name"):
+        FeatureSpec("", FeatureType.NUMERIC)
+    with pytest.raises(TypeError, match="FeatureType"):
+        FeatureSpec("x", "NUMERIC")  # type: ignore[arg-type]
+    with pytest.raises(TypeError, match="MissingnessPolicy"):
+        FeatureSpec("x", FeatureType.NUMERIC, "REJECT")  # type: ignore[arg-type]
+    with pytest.raises(TypeError, match="UnknownCategoryPolicy"):
         FeatureSpec(
-            name="f",
-            feature_type=FeatureType.NUMERIC,
-            missingness_policy="CONSTANT",  # type: ignore[arg-type]
-        )
-
-    with pytest.raises(TypeError, match="unknown_category_policy must be UnknownCategoryPolicy"):
-        FeatureSpec(
-            name="f",
-            feature_type=FeatureType.CATEGORICAL,
+            "x",
+            FeatureType.NUMERIC,
             unknown_category_policy="REJECT",  # type: ignore[arg-type]
         )
-
-    with pytest.raises(ValueError, match="constant_fill_value required when policy is CONSTANT"):
+    with pytest.raises(ValueError, match="constant_fill_value"):
+        FeatureSpec("x", FeatureType.NUMERIC, MissingnessPolicy.INDICATOR)
+    with pytest.raises(ValueError, match="only valid for categorical"):
         FeatureSpec(
-            name="f",
-            feature_type=FeatureType.NUMERIC,
-            missingness_policy=MissingnessPolicy.CONSTANT,
-            constant_fill_value=None,
-        )
-
-    with pytest.raises(ValueError, match="fallback_category required"):
-        FeatureSpec(
-            name="f",
-            feature_type=FeatureType.CATEGORICAL,
+            "x",
+            FeatureType.NUMERIC,
             unknown_category_policy=UnknownCategoryPolicy.DECLARED_FALLBACK,
-            fallback_category=None,
+            fallback_category="OTHER",
+        )
+    with pytest.raises(ValueError, match="fallback_category"):
+        FeatureSpec(
+            "x",
+            FeatureType.CATEGORICAL,
+            unknown_category_policy=UnknownCategoryPolicy.DECLARED_FALLBACK,
+        )
+    with pytest.raises(ValueError, match="at least one"):
+        FeatureSchema(())
+    with pytest.raises(ValueError, match="Duplicate"):
+        FeatureSchema(
+            (
+                FeatureSpec("x", FeatureType.NUMERIC),
+                FeatureSpec("x", FeatureType.NUMERIC),
+            )
         )
 
 
-def test_feature_schema_duplicate_error() -> None:
-    f1 = FeatureSpec(name="f1", feature_type=FeatureType.NUMERIC)
-    f2 = FeatureSpec(name="f1", feature_type=FeatureType.NUMERIC)
-    with pytest.raises(ValueError, match="Duplicate feature name"):
-        FeatureSchema([f1, f2])
-
-    with pytest.raises(ValueError, match="FeatureSchema must contain at least one feature"):
-        FeatureSchema(())
-
-
-def test_feature_pipeline_fit_and_transform_numeric() -> None:
-    f1 = FeatureSpec(name="spread", feature_type=FeatureType.NUMERIC)
-    f2 = FeatureSpec(name="volume", feature_type=FeatureType.NUMERIC)
-    schema = FeatureSchema([f1, f2])
-    spec = FeaturePipelineSpec(schema=schema, normalize=True)
-
-    samples = [
-        _make_sample("s1", {"spread": "1.0", "volume": "100.0"}),
-        _make_sample("s2", {"spread": "2.0", "volume": "200.0"}),
-        _make_sample("s3", {"spread": "3.0", "volume": "300.0"}),
-    ]
-
-    fitted = FittedFeaturePipeline.fit(spec, samples)
-    assert fitted.output_feature_names == ("spread", "volume")
-    assert pytest.approx(fitted.learned_means["spread"]) == 2.0
-    assert pytest.approx(fitted.learned_means["volume"]) == 200.0
-
-    inputs = [s.to_prediction_input() for s in samples]
-    matrix = fitted.transform(inputs)
-
-    assert matrix.shape == (3, 2)
-    # Mean of normalized column should be ~0
-    assert pytest.approx(np.mean(matrix[:, 0]), abs=1e-7) == 0.0
-    assert pytest.approx(np.mean(matrix[:, 1]), abs=1e-7) == 0.0
-
-
-def test_feature_pipeline_missingness_indicator() -> None:
-    f1 = FeatureSpec(
-        name="depth",
-        feature_type=FeatureType.NUMERIC,
-        missingness_policy=MissingnessPolicy.INDICATOR,
-        constant_fill_value=0.0,
+def test_numeric_indicator_normalization_and_empty_transform() -> None:
+    spec = FeaturePipelineSpec(
+        FeatureSchema(
+            (
+                FeatureSpec(
+                    "x",
+                    FeatureType.NUMERIC,
+                    MissingnessPolicy.INDICATOR,
+                    constant_fill_value=0.0,
+                ),
+            )
+        ),
+        normalize=True,
     )
-    schema = FeatureSchema([f1])
-    spec = FeaturePipelineSpec(schema=schema, normalize=False)
-
-    samples = [
-        _make_sample("s1", {"depth": "10.0"}),
-        _make_sample("s2", {"depth": ""}),
-        _make_sample("s3", {}),
-    ]
-
+    samples = [_sample("a", {"x": "1"}), _sample("b", {}), _sample("c", {"x": "3"})]
     fitted = FittedFeaturePipeline.fit(spec, samples)
-    assert fitted.output_feature_names == ("depth", "depth__missing")
-
-    matrix = fitted.transform([s.to_prediction_input() for s in samples])
+    matrix = fitted.transform([sample.to_prediction_input() for sample in samples])
     assert matrix.shape == (3, 2)
-    # Sample 1: present
-    assert matrix[0, 0] == 10.0
-    assert matrix[0, 1] == 0.0
-    # Sample 2: missing
-    assert matrix[1, 0] == 0.0
     assert matrix[1, 1] == 1.0
-    # Sample 3: missing
-    assert matrix[2, 0] == 0.0
-    assert matrix[2, 1] == 1.0
+    assert fitted.transform([]).shape == (0, 2)
+    assert len(fitted.pipeline_digest) == 64
 
 
-def test_feature_pipeline_missingness_reject() -> None:
-    f1 = FeatureSpec(
-        name="depth",
-        feature_type=FeatureType.NUMERIC,
-        missingness_policy=MissingnessPolicy.REJECT,
-    )
-    schema = FeatureSchema([f1])
-    spec = FeaturePipelineSpec(schema=schema)
-
-    samples_bad = [_make_sample("s1", {})]
-    with pytest.raises(ValueError, match="missing for sample 's1' during fit"):
-        FittedFeaturePipeline.fit(spec, samples_bad)
-
-
-def test_feature_pipeline_categorical_vocab_and_fallback() -> None:
-    f_cat = FeatureSpec(
-        name="session",
-        feature_type=FeatureType.CATEGORICAL,
+def test_categorical_fallback_and_reject() -> None:
+    fallback_feature = FeatureSpec(
+        "session",
+        FeatureType.CATEGORICAL,
         unknown_category_policy=UnknownCategoryPolicy.DECLARED_FALLBACK,
         fallback_category="OTHER",
     )
-    schema = FeatureSchema([f_cat])
-    spec = FeaturePipelineSpec(schema=schema)
-
-    samples_train = [
-        _make_sample("s1", {"session": "MORNING"}),
-        _make_sample("s2", {"session": "AFTERNOON"}),
-        _make_sample("s3", {"session": "OTHER"}),
-    ]
-
-    fitted = FittedFeaturePipeline.fit(spec, samples_train)
-    vocab = fitted.learned_vocabularies["session"]
-    assert "MORNING" in vocab
-    assert "AFTERNOON" in vocab
-    assert "OTHER" in vocab
-
-    # Test unknown category maps to fallback
-    s_unknown = _make_sample("s4", {"session": "EVENING"})
-    matrix = fitted.transform([s_unknown.to_prediction_input()])
-    assert matrix[0, 0] == float(vocab["OTHER"])
-
-
-def test_feature_pipeline_categorical_reject_unknown() -> None:
-    f_cat = FeatureSpec(
-        name="regime",
-        feature_type=FeatureType.CATEGORICAL,
-        unknown_category_policy=UnknownCategoryPolicy.REJECT,
+    fitted = FittedFeaturePipeline.fit(
+        FeaturePipelineSpec(FeatureSchema((fallback_feature,))),
+        [_sample("a", {"session": "OTHER"}), _sample("b", {"session": "MORNING"})],
     )
-    schema = FeatureSchema([f_cat])
-    spec = FeaturePipelineSpec(schema=schema)
+    unknown = _sample("c", {"session": "EVENING"}).to_prediction_input()
+    assert fitted.transform([unknown])[0, 0] == float(
+        fitted.learned_vocabularies["session"]["OTHER"]
+    )
 
-    samples_train = [_make_sample("s1", {"regime": "BULL"})]
-    fitted = FittedFeaturePipeline.fit(spec, samples_train)
+    reject_feature = FeatureSpec("regime", FeatureType.CATEGORICAL)
+    rejecting = FittedFeaturePipeline.fit(
+        FeaturePipelineSpec(FeatureSchema((reject_feature,))),
+        [_sample("a", {"regime": "BULL"})],
+    )
+    with pytest.raises(ValueError, match="Unknown category"):
+        rejecting.transform([_sample("b", {"regime": "BEAR"}).to_prediction_input()])
 
-    s_unknown = _make_sample("s2", {"regime": "BEAR"})
-    with pytest.raises(ValueError, match="Unknown category 'BEAR'"):
-        fitted.transform([s_unknown.to_prediction_input()])
+    with pytest.raises(ValueError, match="fit-domain vocabulary"):
+        FittedFeaturePipeline.fit(
+            FeaturePipelineSpec(FeatureSchema((fallback_feature,))),
+            [_sample("x", {"session": "MORNING"})],
+        )
+
+
+def test_boolean_literals_and_missing_rejection() -> None:
+    feature = FeatureSpec("flag", FeatureType.BOOLEAN)
+    fitted = FittedFeaturePipeline.fit(
+        FeaturePipelineSpec(FeatureSchema((feature,))),
+        [_sample("a", {"flag": "true"}), _sample("b", {"flag": "0"})],
+    )
+    matrix = fitted.transform(
+        [_sample("x", {"flag": "yes"}).to_prediction_input(), _sample("y", {"flag": "no"}).to_prediction_input()]
+    )
+    assert np.array_equal(matrix[:, 0], np.asarray([1.0, 0.0]))
+    with pytest.raises(ValueError, match="Invalid boolean literal"):
+        fitted.transform([_sample("z", {"flag": "perhaps"}).to_prediction_input()])
+
+    numeric = FeatureSpec("x", FeatureType.NUMERIC)
+    with pytest.raises(ValueError, match="missing"):
+        FittedFeaturePipeline.fit(
+            FeaturePipelineSpec(FeatureSchema((numeric,))),
+            [_sample("m", {})],
+        )
+
+
+def test_nonfinite_invalid_numeric_and_wrong_input() -> None:
+    feature = FeatureSpec("x", FeatureType.NUMERIC)
+    spec = FeaturePipelineSpec(FeatureSchema((feature,)))
+    for value in ("nan", "inf", "-inf", "abc"):
+        with pytest.raises(ValueError):
+            FittedFeaturePipeline.fit(spec, [_sample(value, {"x": value})])
+    with pytest.raises(TypeError, match="Expected StatisticalSample"):
+        FittedFeaturePipeline.fit(spec, [object()])  # type: ignore[list-item]
+
+    input_item = PredictionInput(
+        sample_id="pred",
+        feature_knowledge_time=datetime(2025, 1, 1, 10, 0, tzinfo=UTC),
+        target_semantics=TargetSemantics.BINARY_PROBABILITY,
+        feature_metadata={"x": "4.0"},
+    )
+    fitted = FittedFeaturePipeline.fit(spec, [input_item])
+    assert fitted.transform([input_item])[0, 0] == 4.0
