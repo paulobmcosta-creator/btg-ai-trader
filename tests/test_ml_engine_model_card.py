@@ -1,5 +1,7 @@
 """Tests for deterministic research ModelCard boundaries."""
 
+# ruff: noqa: I001 -- explicit grouping retained for audit readability.
+
 from decimal import Decimal
 
 import pytest
