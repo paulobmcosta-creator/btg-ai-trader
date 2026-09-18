@@ -239,7 +239,7 @@ class FittedFeaturePipeline:
             elif feature.feature_type is FeatureType.CATEGORICAL:
                 categories: set[str] = set()
                 for item in pred_inputs:
-                    raw: object = item.feature_metadata.get(feature.name)
+                    raw = item.feature_metadata.get(feature.name)
                     missing = raw is None or raw == ""
                     if missing:
                         if feature.missingness_policy is MissingnessPolicy.REJECT:
@@ -265,7 +265,7 @@ class FittedFeaturePipeline:
                 output_names.append(feature.name)
             else:
                 for item in pred_inputs:
-                    raw: object = item.feature_metadata.get(feature.name)
+                    raw = item.feature_metadata.get(feature.name)
                     missing = raw is None or raw == ""
                     if missing:
                         if feature.missingness_policy is MissingnessPolicy.REJECT:
