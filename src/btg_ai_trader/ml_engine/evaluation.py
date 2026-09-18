@@ -1,8 +1,10 @@
-"""Temporal evaluation orchestrator, baseline parity comparison, and feature ablation."""
+"""Causal ML evaluation reusing Sprint 4 partitioning and protected-evidence semantics."""
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+import hashlib
+import json
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from decimal import Decimal
 
@@ -21,83 +23,178 @@ from btg_ai_trader.ml_engine.features import (
 from btg_ai_trader.ml_engine.metrics import (
     apply_numeric_policy,
     compute_brier_score,
+    compute_calibration_diagnostics,
     compute_continuous_metrics,
     compute_log_loss,
     compute_roc_auc,
 )
 from btg_ai_trader.ml_engine.models import create_candidate
-from btg_ai_trader.statistical_baselines.baselines import StatisticalBaseline
 from btg_ai_trader.statistical_baselines.boundaries import WalkForwardPlan
+from btg_ai_trader.statistical_baselines.comparison import EvaluationHistory
 from btg_ai_trader.statistical_baselines.domain import (
     EvaluationRole,
     ParityViolationError,
-    ProtectedEvidenceReuseError,
     StatisticalSample,
     TargetSemantics,
+    _freeze_mapping,
 )
+from btg_ai_trader.statistical_baselines.evaluation import (
+    AggregateEvaluationResult,
+    FoldAggregationPolicy,
+)
+from btg_ai_trader.statistical_baselines.metrics import NumericPolicy
+from btg_ai_trader.statistical_baselines.provenance import (
+    StatisticalEvaluationInputBoundary,
+    StatisticalEvaluationManifest,
+)
+from btg_ai_trader.statistical_baselines.splits import WalkForwardPlanner
 
 
 @dataclass(frozen=True, slots=True)
 class FoldModelEvaluation:
-    """Evaluation metrics for a single temporal fold."""
+    """Metrics for one canonical temporal fold."""
 
     fold_id: str
     role: EvaluationRole
-    metrics: dict[str, Decimal]
+    metrics: Mapping[str, Decimal]
     sample_count: int
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "metrics", _freeze_mapping(dict(self.metrics)))
 
 
 @dataclass(frozen=True, slots=True)
 class ModelEvaluationReport:
-    """Aggregate evaluation report across all folds of a walk-forward plan."""
+    """Aggregated model evidence with candidate-independent experimental context."""
 
     candidate_id: str
     evaluation_scope: EvaluationScope
     role: EvaluationRole
     target_semantics: TargetSemantics
     fold_evaluations: tuple[FoldModelEvaluation, ...]
-    mean_metrics: dict[str, Decimal]
+    mean_metrics: Mapping[str, Decimal]
+    aggregation_policy: FoldAggregationPolicy
+    numeric_policy: NumericPolicy
+    dataset_digest: str
+    plan_digest: str
+    target_contract_digest: str
+    experimental_context_fingerprint: str
     disposition: ModelEvaluationDisposition
-    consumed_protected_boundary: bool = False
+    protected_boundary_id: str = ""
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "mean_metrics", _freeze_mapping(dict(self.mean_metrics)))
 
 
 @dataclass(frozen=True, slots=True)
 class BaselineComparisonResult:
-    """Controlled comparison between ML candidate and S4 baseline under strict parity."""
+    """Real ML-vs-S4-baseline metric comparison under verified parity."""
 
     candidate_id: str
     baseline_id: str
     metric_name: str
     candidate_metric: Decimal
     baseline_metric: Decimal
-    improvement: Decimal  # Positive if candidate is better under declared direction
+    improvement: Decimal
     is_comparable: bool
-    parity_details: str = ""
+    candidate_context_fingerprint: str
+    baseline_context_fingerprint: str
 
 
 @dataclass(frozen=True, slots=True)
 class FeatureAblationSpec:
-    """Specification of an incremental feature ablation test."""
+    """One explicitly named feature-removal experiment."""
 
     ablated_feature_name: str
 
 
 @dataclass(frozen=True, slots=True)
 class AblationResult:
-    """Outcome of feature ablation confronting full candidate vs ablated candidate."""
+    """Full-vs-ablated validation evidence."""
 
     ablated_feature: str
     metric_name: str
     full_metric: Decimal
     ablated_metric: Decimal
-    delta: Decimal  # full_metric - ablated_metric
+    delta: Decimal
+
+
+def _experimental_context_fingerprint(
+    *,
+    samples: Sequence[StatisticalSample],
+    plan: WalkForwardPlan,
+    target_contract_digest: str,
+    role: EvaluationRole,
+    aggregation_policy: FoldAggregationPolicy,
+    numeric_policy: NumericPolicy,
+) -> tuple[str, str, str]:
+    dataset_digest = StatisticalEvaluationInputBoundary.compute_dataset_digest(samples)
+    source_lineage_digest = (
+        StatisticalEvaluationInputBoundary.compute_source_lineage_digest(samples)
+    )
+    plan_digest = StatisticalEvaluationManifest.compute_plan_digest(plan)
+    payload = {
+        "aggregation_policy": aggregation_policy.value,
+        "dataset_digest": dataset_digest,
+        "fold_ids": [fold.fold_id for fold in plan.folds],
+        "numeric_policy": numeric_policy.to_canonical_dict(),
+        "plan_digest": plan_digest,
+        "role": role.value,
+        "source_lineage_digest": source_lineage_digest,
+        "target_contract_digest": target_contract_digest,
+    }
+    serialized = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return (
+        hashlib.sha256(serialized.encode("utf-8")).hexdigest(),
+        dataset_digest,
+        plan_digest,
+    )
+
+
+def _expected_s4_context_fingerprint(
+    *,
+    baseline_result: AggregateEvaluationResult,
+    samples: Sequence[StatisticalSample],
+    plan: WalkForwardPlan,
+) -> str:
+    dataset_digest = StatisticalEvaluationInputBoundary.compute_dataset_digest(samples)
+    source_lineage_digest = (
+        StatisticalEvaluationInputBoundary.compute_source_lineage_digest(samples)
+    )
+    plan_digest = StatisticalEvaluationManifest.compute_plan_digest(plan)
+    metric_names = sorted(
+        {
+            name
+            for fold_result in baseline_result.fold_results
+            for name in fold_result.metrics
+        }
+    )
+    payload = {
+        "aggregation_policy": baseline_result.aggregation_policy.value,
+        "calibration_config": (
+            {"num_bins": 10}
+            if any(
+                fold_result.calibration_report is not None
+                for fold_result in baseline_result.fold_results
+            )
+            else {}
+        ),
+        "code_revision": baseline_result.code_revision,
+        "dataset_digest": dataset_digest,
+        "metric_names": metric_names,
+        "numeric_policy": baseline_result.numeric_policy.to_canonical_dict(),
+        "plan_digest": plan_digest,
+        "role": baseline_result.evaluation_role.value,
+        "source_lineage_digest": source_lineage_digest,
+        "target_contract_id": baseline_result.target_contract_id,
+        "target_semantics": samples[0].target_semantics.value if samples else "UNKNOWN",
+    }
+    serialized = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 
 class ModelEvaluationEngine:
-    """Engine executing temporal walk-forward evaluation, baseline parity, and ablation."""
-
-    def __init__(self) -> None:
-        self._consumed_protected_boundaries: set[str] = set()
+    """Evaluate predictive candidates using canonical S4 temporal partitions."""
 
     def evaluate_candidate(
         self,
@@ -106,230 +203,393 @@ class ModelEvaluationEngine:
         plan: WalkForwardPlan,
         samples: Sequence[StatisticalSample],
         role: EvaluationRole = EvaluationRole.VALIDATION_SELECTION,
+        *,
+        aggregation_policy: FoldAggregationPolicy = FoldAggregationPolicy.EQUAL_FOLD,
+        evaluation_history: EvaluationHistory | None = None,
+        protected_boundary_id: str | None = None,
+        parent_candidate_ids: Sequence[str] = (),
+        informed_adaptation: bool = False,
     ) -> ModelEvaluationReport:
-        """Evaluate an ML candidate over a walk-forward plan under explicit epistemological role."""
+        if role not in {
+            EvaluationRole.VALIDATION_SELECTION,
+            EvaluationRole.PROTECTED_TEST,
+        }:
+            raise ValueError(
+                "Model evaluation accepts VALIDATION_SELECTION or PROTECTED_TEST only"
+            )
         if not samples:
             raise ValueError("Cannot evaluate candidate on empty samples")
-        if not plan.folds:
-            raise ValueError("WalkForwardPlan must have at least one fold")
+        if plan.purge_policy is None or plan.embargo_policy is None:
+            raise ValueError(
+                "WalkForwardPlan must bind explicit purge_policy and embargo_policy"
+            )
+        StatisticalEvaluationInputBoundary.validate_dataset(samples)
+        if candidate.spec.feature_pipeline_spec_digest != pipeline_spec.spec_digest:
+            raise ValueError(
+                "candidate feature_pipeline_spec_digest does not match evaluation pipeline"
+            )
 
-        is_protected = role is EvaluationRole.PROTECTED_TEST
-        boundary_key = f"{plan.plan_id}:{candidate.spec.candidate_id}"
-
-        if is_protected:
-            if boundary_key in self._consumed_protected_boundaries:
-                raise ProtectedEvidenceReuseError(
-                    f"Protected evaluation boundary '{boundary_key}' has already been consumed. "
-                    f"Re-evaluating an adapted candidate on consumed test is strictly prohibited."
+        boundary_id = protected_boundary_id or f"{plan.plan_id}:protected"
+        if role is EvaluationRole.PROTECTED_TEST:
+            if evaluation_history is None:
+                raise ValueError(
+                    "PROTECTED_TEST evaluation requires EvaluationHistory"
                 )
+            evaluation_history.check_admissibility(
+                candidate_id=candidate.spec.candidate_id,
+                protected_boundary_id=boundary_id,
+                role=role,
+                parent_candidate_ids=tuple(parent_candidate_ids),
+            )
 
-        fold_evals: list[FoldModelEvaluation] = []
-        metrics_accumulator: dict[str, list[Decimal]] = {}
+        fold_results: list[FoldModelEvaluation] = []
+        metric_values: dict[str, list[tuple[Decimal, int]]] = {}
 
         for fold in plan.folds:
-            # Partition train samples: target_knowledge_time <= fold.knowledge_cutoff
-            train_samples = [
-                s
-                for s in samples
-                if s.feature_knowledge_time >= fold.training_boundary.start_time
-                and s.target_knowledge_time <= fold.knowledge_cutoff
-            ]
+            train_samples, validation_samples, protected_samples = (
+                WalkForwardPlanner.partition_samples(
+                    samples,
+                    fold,
+                    plan.purge_policy,
+                    plan.embargo_policy,
+                )
+            )
             if not train_samples:
-                raise ValueError(f"Fold '{fold.fold_id}' has zero training samples prior to cutoff")
-
-            # Fit feature pipeline strictly on train samples
-            fitted_pipe = FittedFeaturePipeline.fit(pipeline_spec, train_samples)
-
-            # Extract X_train and y_train
-            X_train = fitted_pipe.transform([s.to_prediction_input() for s in train_samples])
-            if (
-                candidate.spec.target_contract.target_semantics
-                == TargetSemantics.BINARY_PROBABILITY
-            ):
-                y_train = np.array([int(s.target_value) for s in train_samples], dtype=np.int64)
+                raise ValueError(
+                    f"Fold '{fold.fold_id}' has zero training samples after purge/embargo"
+                )
+            if role is EvaluationRole.VALIDATION_SELECTION:
+                if validation_samples is None:
+                    raise ValueError(
+                        f"Fold '{fold.fold_id}' has no validation boundary"
+                    )
+                evaluation_samples = validation_samples
             else:
-                y_train = np.array([float(s.target_value) for s in train_samples], dtype=np.float64)
+                evaluation_samples = protected_samples
 
-            # Fit fresh candidate on fold
-            fold_candidate = create_candidate(candidate.spec)
-            fold_candidate.fit(X_train, y_train)
-
-            # Partition evaluation samples
-            if role is EvaluationRole.PROTECTED_TEST:
-                eval_boundary = fold.protected_evaluation_boundary
-            elif role is EvaluationRole.VALIDATION_SELECTION:
-                eval_boundary = fold.validation_boundary or fold.protected_evaluation_boundary
-            else:
-                eval_boundary = fold.training_boundary
-
-            eval_samples = [
-                s for s in samples if eval_boundary.contains_timestamp(s.feature_knowledge_time)
-            ]
-            if not eval_samples:
+            if not evaluation_samples:
+                fold_results.append(
+                    FoldModelEvaluation(
+                        fold_id=fold.fold_id,
+                        role=role,
+                        metrics={},
+                        sample_count=0,
+                    )
+                )
                 continue
 
-            eval_inputs = [s.to_prediction_input() for s in eval_samples]
-            predictions = fold_candidate.predict(eval_inputs, fitted_pipe)
-
-            # Compute fold metrics
-            fold_metrics: dict[str, Decimal] = {}
-            if (
-                candidate.spec.target_contract.target_semantics
-                == TargetSemantics.BINARY_PROBABILITY
-            ):
-                y_true_binary = [int(s.target_value) for s in eval_samples]
-                probs = [
-                    p.predicted_probability
-                    for p in predictions
-                    if p.predicted_probability is not None
-                ]
-
-                brier = compute_brier_score(y_true_binary, probs, candidate.spec.numeric_policy)
-                log_loss = compute_log_loss(y_true_binary, probs, candidate.spec.numeric_policy)
-                fold_metrics["brier_score"] = brier
-                fold_metrics["log_loss"] = log_loss
-
-                classes = set(y_true_binary)
-                if len(classes) == 2:
-                    auc = compute_roc_auc(y_true_binary, probs, candidate.spec.numeric_policy)
-                    fold_metrics["roc_auc"] = auc
-            else:
-                y_true_cont = [Decimal(str(s.target_value)) for s in eval_samples]
-                preds_cont = [
-                    p.predicted_value for p in predictions if p.predicted_value is not None
-                ]
-                cont_rep = compute_continuous_metrics(
-                    y_true_cont, preds_cont, candidate.spec.numeric_policy
+            fitted_pipeline = FittedFeaturePipeline.fit(
+                pipeline_spec, train_samples
+            )
+            X_train = fitted_pipeline.transform(
+                [sample.to_prediction_input() for sample in train_samples]
+            )
+            semantics = candidate.spec.target_contract.target_semantics
+            if semantics is TargetSemantics.BINARY_PROBABILITY:
+                y_train = np.asarray(
+                    [int(sample.target_value) for sample in train_samples],
+                    dtype=np.int64,
                 )
-                fold_metrics["mae"] = cont_rep.mae
-                fold_metrics["mse"] = cont_rep.mse
-                fold_metrics["rmse"] = cont_rep.rmse
-                fold_metrics["mean_bias"] = cont_rep.mean_bias
-                if cont_rep.r2_score is not None:
-                    fold_metrics["r2_score"] = cont_rep.r2_score
+            else:
+                y_train = np.asarray(
+                    [float(sample.target_value) for sample in train_samples],
+                    dtype=np.float64,
+                )
 
-            for k, v in fold_metrics.items():
-                metrics_accumulator.setdefault(k, []).append(v)
+            fold_candidate = create_candidate(candidate.spec)
+            fold_candidate.fit(X_train, y_train)
+            predictions = fold_candidate.predict(
+                [sample.to_prediction_input() for sample in evaluation_samples],
+                fitted_pipeline,
+            )
+            metrics: dict[str, Decimal] = {}
 
-            fold_evals.append(
+            if semantics is TargetSemantics.BINARY_PROBABILITY:
+                probabilities = [
+                    prediction.predicted_probability for prediction in predictions
+                ]
+                if any(probability is None for probability in probabilities):
+                    raise ValueError(
+                        "Binary candidate produced prediction without probability"
+                    )
+                clean_probabilities = [
+                    probability
+                    for probability in probabilities
+                    if probability is not None
+                ]
+                y_true = [int(sample.target_value) for sample in evaluation_samples]
+                metrics["brier_score"] = compute_brier_score(
+                    y_true, clean_probabilities, candidate.spec.numeric_policy
+                )
+                metrics["log_loss"] = compute_log_loss(
+                    y_true, clean_probabilities, candidate.spec.numeric_policy
+                )
+                calibration = compute_calibration_diagnostics(
+                    y_true, clean_probabilities, candidate.spec.numeric_policy
+                )
+                metrics["ece"] = calibration.ece
+                metrics["mce"] = calibration.mce
+                if set(y_true) == {0, 1}:
+                    metrics["roc_auc"] = compute_roc_auc(
+                        y_true, clean_probabilities, candidate.spec.numeric_policy
+                    )
+            else:
+                predicted_values = [
+                    prediction.predicted_value for prediction in predictions
+                ]
+                if any(value is None for value in predicted_values):
+                    raise ValueError(
+                        "Continuous candidate produced prediction without value"
+                    )
+                report = compute_continuous_metrics(
+                    [Decimal(str(sample.target_value)) for sample in evaluation_samples],
+                    [value for value in predicted_values if value is not None],
+                    candidate.spec.numeric_policy,
+                )
+                metrics.update(
+                    {
+                        "mae": report.mae,
+                        "mean_bias": report.mean_bias,
+                        "mse": report.mse,
+                        "rmse": report.rmse,
+                    }
+                )
+                if report.r2_score is not None:
+                    metrics["r2_score"] = report.r2_score
+
+            sample_count = len(evaluation_samples)
+            fold_results.append(
                 FoldModelEvaluation(
                     fold_id=fold.fold_id,
                     role=role,
-                    metrics=fold_metrics,
-                    sample_count=len(eval_samples),
+                    metrics=metrics,
+                    sample_count=sample_count,
                 )
             )
+            for name, value in metrics.items():
+                metric_values.setdefault(name, []).append((value, sample_count))
 
-        if is_protected:
-            self._consumed_protected_boundaries.add(boundary_key)
-
-        mean_metrics: dict[str, Decimal] = {}
-        for k, v_list in metrics_accumulator.items():
-            mean_metrics[k] = apply_numeric_policy(
-                sum(v_list, Decimal(0)) / Decimal(len(v_list)),
-                candidate.spec.numeric_policy,
+        aggregate: dict[str, Decimal] = {}
+        for name, pairs in metric_values.items():
+            if aggregation_policy is FoldAggregationPolicy.EQUAL_FOLD:
+                raw = sum((value for value, _ in pairs), Decimal(0)) / Decimal(
+                    len(pairs)
+                )
+            else:
+                weight = sum(count for _, count in pairs)
+                if weight <= 0:
+                    raise ValueError("SAMPLE_WEIGHTED aggregation has zero weight")
+                raw = sum(
+                    (value * Decimal(count) for value, count in pairs), Decimal(0)
+                ) / Decimal(weight)
+            aggregate[name] = apply_numeric_policy(
+                raw, candidate.spec.numeric_policy
             )
 
-        # Default disposition is INCONCLUSIVE if no experiment thresholds are predeclared
-        disposition = ModelEvaluationDisposition.INCONCLUSIVE
+        context_fp, dataset_digest, plan_digest = _experimental_context_fingerprint(
+            samples=samples,
+            plan=plan,
+            target_contract_digest=candidate.spec.target_contract.contract_digest,
+            role=role,
+            aggregation_policy=aggregation_policy,
+            numeric_policy=candidate.spec.numeric_policy,
+        )
+
+        if role is EvaluationRole.PROTECTED_TEST:
+            assert evaluation_history is not None
+            evaluation_history.record_evaluation(
+                candidate_id=candidate.spec.candidate_id,
+                protected_boundary_id=boundary_id,
+                role=role,
+                informed_adaptation=informed_adaptation,
+                parent_candidate_ids=tuple(parent_candidate_ids),
+            )
 
         return ModelEvaluationReport(
             candidate_id=candidate.spec.candidate_id,
             evaluation_scope=EvaluationScope.MODEL,
             role=role,
             target_semantics=candidate.spec.target_contract.target_semantics,
-            fold_evaluations=tuple(fold_evals),
-            mean_metrics=mean_metrics,
-            disposition=disposition,
-            consumed_protected_boundary=is_protected,
+            fold_evaluations=tuple(fold_results),
+            mean_metrics=aggregate,
+            aggregation_policy=aggregation_policy,
+            numeric_policy=candidate.spec.numeric_policy,
+            dataset_digest=dataset_digest,
+            plan_digest=plan_digest,
+            target_contract_digest=candidate.spec.target_contract.contract_digest,
+            experimental_context_fingerprint=context_fp,
+            disposition=ModelEvaluationDisposition.INCONCLUSIVE,
+            protected_boundary_id=boundary_id if role is EvaluationRole.PROTECTED_TEST else "",
         )
 
     def compare_with_baseline(
         self,
+        *,
         candidate_report: ModelEvaluationReport,
-        baseline: StatisticalBaseline,
+        baseline_result: AggregateEvaluationResult,
         metric_name: str,
+        plan: WalkForwardPlan,
+        samples: Sequence[StatisticalSample],
         higher_is_better: bool = False,
     ) -> BaselineComparisonResult:
-        """Compare an ML candidate evaluation against an S4 baseline under strict parity."""
         if metric_name not in candidate_report.mean_metrics:
             raise ParityViolationError(
-                f"Metric '{metric_name}' not present in candidate evaluation report"
+                f"Metric '{metric_name}' not present in candidate report"
+            )
+        if baseline_result.evaluation_role is not candidate_report.role:
+            raise ParityViolationError("Candidate and baseline evaluation roles differ")
+        if baseline_result.aggregation_policy is not candidate_report.aggregation_policy:
+            raise ParityViolationError("Candidate and baseline aggregation policies differ")
+        if baseline_result.numeric_policy != candidate_report.numeric_policy:
+            raise ParityViolationError("Candidate and baseline numeric policies differ")
+        if baseline_result.target_contract_id != candidate_report.target_contract_digest:
+            raise ParityViolationError("Candidate and baseline target contracts differ")
+
+        candidate_fold_ids = [
+            fold.fold_id for fold in candidate_report.fold_evaluations
+        ]
+        baseline_fold_ids = [
+            fold.fold_id for fold in baseline_result.fold_results
+        ]
+        if candidate_fold_ids != baseline_fold_ids:
+            raise ParityViolationError("Candidate and baseline fold identities differ")
+
+        expected_baseline_fp = _expected_s4_context_fingerprint(
+            baseline_result=baseline_result,
+            samples=samples,
+            plan=plan,
+        )
+        if baseline_result.evaluation_context_fingerprint != expected_baseline_fp:
+            raise ParityViolationError(
+                "Baseline result does not match the supplied population/plan context"
             )
 
-        cand_val = candidate_report.mean_metrics[metric_name]
-        # In a real run, baseline_val is computed over identical folds under parity.
-        # Ensure parity requirements are satisfied
+        expected_candidate_fp, expected_dataset, expected_plan = (
+            _experimental_context_fingerprint(
+                samples=samples,
+                plan=plan,
+                target_contract_digest=candidate_report.target_contract_digest,
+                role=candidate_report.role,
+                aggregation_policy=candidate_report.aggregation_policy,
+                numeric_policy=candidate_report.numeric_policy,
+            )
+        )
+        if (
+            candidate_report.experimental_context_fingerprint
+            != expected_candidate_fp
+            or candidate_report.dataset_digest != expected_dataset
+            or candidate_report.plan_digest != expected_plan
+        ):
+            raise ParityViolationError(
+                "Candidate report does not match the supplied population/plan context"
+            )
+
+        prefix = (
+            "mean_"
+            if baseline_result.aggregation_policy is FoldAggregationPolicy.EQUAL_FOLD
+            else "weighted_mean_"
+        )
+        baseline_metric_name = f"{prefix}{metric_name}"
+        if baseline_metric_name not in baseline_result.aggregate_metrics:
+            raise ParityViolationError(
+                f"Metric '{baseline_metric_name}' not present in baseline result"
+            )
+
+        candidate_metric = candidate_report.mean_metrics[metric_name]
+        baseline_metric = baseline_result.aggregate_metrics[baseline_metric_name]
+        improvement = (
+            candidate_metric - baseline_metric
+            if higher_is_better
+            else baseline_metric - candidate_metric
+        )
         return BaselineComparisonResult(
             candidate_id=candidate_report.candidate_id,
-            baseline_id=baseline.identity.candidate_id,
+            baseline_id=baseline_result.candidate_id,
             metric_name=metric_name,
-            candidate_metric=cand_val,
-            baseline_metric=cand_val,  # Parity reference
-            improvement=Decimal(0),
+            candidate_metric=candidate_metric,
+            baseline_metric=baseline_metric,
+            improvement=improvement,
             is_comparable=True,
-            parity_details="Folds, population, and target contract verified identical.",
+            candidate_context_fingerprint=(
+                candidate_report.experimental_context_fingerprint
+            ),
+            baseline_context_fingerprint=baseline_result.evaluation_context_fingerprint,
         )
 
     def run_ablation(
         self,
+        *,
         candidate: PredictiveCandidate,
         full_pipeline_spec: FeaturePipelineSpec,
         ablation_spec: FeatureAblationSpec,
         plan: WalkForwardPlan,
         samples: Sequence[StatisticalSample],
         metric_name: str,
+        aggregation_policy: FoldAggregationPolicy = FoldAggregationPolicy.EQUAL_FOLD,
     ) -> AblationResult:
-        """Run feature ablation confronting full candidate vs ablated candidate."""
-        # 1. Evaluate full pipeline
+        names = {
+            feature.name for feature in full_pipeline_spec.schema.features
+        }
+        if ablation_spec.ablated_feature_name not in names:
+            raise ValueError(
+                f"Feature '{ablation_spec.ablated_feature_name}' is not in the schema"
+            )
+
         full_report = self.evaluate_candidate(
-            candidate, full_pipeline_spec, plan, samples, role=EvaluationRole.VALIDATION_SELECTION
+            candidate,
+            full_pipeline_spec,
+            plan,
+            samples,
+            role=EvaluationRole.VALIDATION_SELECTION,
+            aggregation_policy=aggregation_policy,
         )
-        full_metric = full_report.mean_metrics[metric_name]
+        if metric_name not in full_report.mean_metrics:
+            raise ValueError(
+                f"Metric '{metric_name}' not available for full candidate"
+            )
 
-        # 2. Build ablated schema
-        remaining_features = tuple(
-            f
-            for f in full_pipeline_spec.schema.features
-            if f.name != ablation_spec.ablated_feature_name
+        remaining = tuple(
+            feature
+            for feature in full_pipeline_spec.schema.features
+            if feature.name != ablation_spec.ablated_feature_name
         )
-        if len(remaining_features) == 0:
+        if not remaining:
             raise ValueError("Cannot ablate all features from schema")
-
-        ablated_schema = FeatureSchema(remaining_features)
-        ablated_pipeline_spec = FeaturePipelineSpec(
-            schema=ablated_schema,
+        ablated_pipeline = FeaturePipelineSpec(
+            schema=FeatureSchema(remaining),
             normalize=full_pipeline_spec.normalize,
         )
-
-        # 3. Create ablated candidate spec and candidate
-        ablated_spec = candidate.spec.__class__(
+        candidate_type = candidate.spec.__class__
+        ablated_spec = candidate_type(
             family=candidate.spec.family,
             hyperparameters=candidate.spec.hyperparameters,
             target_contract=candidate.spec.target_contract,
-            feature_pipeline_spec_digest=ablated_pipeline_spec.spec_digest,
+            feature_pipeline_spec_digest=ablated_pipeline.spec_digest,
             rng_context=candidate.spec.rng_context,
             numeric_policy=candidate.spec.numeric_policy,
             code_revision=candidate.spec.code_revision,
         )
         ablated_candidate = create_candidate(ablated_spec)
-
         ablated_report = self.evaluate_candidate(
             ablated_candidate,
-            ablated_pipeline_spec,
+            ablated_pipeline,
             plan,
             samples,
             role=EvaluationRole.VALIDATION_SELECTION,
+            aggregation_policy=aggregation_policy,
         )
+        if metric_name not in ablated_report.mean_metrics:
+            raise ValueError(
+                f"Metric '{metric_name}' not available for ablated candidate"
+            )
+        full_metric = full_report.mean_metrics[metric_name]
         ablated_metric = ablated_report.mean_metrics[metric_name]
-
-        delta = apply_numeric_policy(
-            full_metric - ablated_metric, candidate.spec.numeric_policy
-        )
         return AblationResult(
             ablated_feature=ablation_spec.ablated_feature_name,
             metric_name=metric_name,
             full_metric=full_metric,
             ablated_metric=ablated_metric,
-            delta=delta,
+            delta=apply_numeric_policy(
+                full_metric - ablated_metric, candidate.spec.numeric_policy
+            ),
         )

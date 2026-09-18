@@ -1,13 +1,15 @@
-"""Deterministic ML candidate model implementations and canonical model state extraction."""
+"""Deterministic scikit-learn candidate implementations and canonical learned-state digests."""
 
 from __future__ import annotations
 
 import hashlib
+import json
 from collections.abc import Sequence
 from decimal import Decimal, localcontext
 from typing import Any
 
 import numpy as np
+from sklearn import __version__ as sklearn_version
 from sklearn.ensemble import (
     GradientBoostingClassifier,
     GradientBoostingRegressor,
@@ -31,132 +33,139 @@ from btg_ai_trader.statistical_baselines.domain import (
 )
 from btg_ai_trader.statistical_baselines.metrics import NumericPolicy
 
-SUPPORTED_FAMILIES = {
-    "logistic_regression",
-    "ridge_regression",
-    "random_forest_classifier",
-    "random_forest_regressor",
-    "gradient_boosting_classifier",
-    "gradient_boosting_regressor",
-}
+SUPPORTED_FAMILIES = frozenset(
+    {
+        "gradient_boosting_classifier",
+        "gradient_boosting_regressor",
+        "logistic_regression",
+        "random_forest_classifier",
+        "random_forest_regressor",
+        "ridge_regression",
+    }
+)
 
-ALLOWED_HYPERPARAMETERS: dict[str, set[str]] = {
-    "logistic_regression": {"penalty", "C", "solver", "max_iter", "tol"},
-    "ridge_regression": {"alpha", "solver", "max_iter", "tol"},
-    "random_forest_classifier": {
-        "n_estimators",
-        "max_depth",
-        "min_samples_split",
-        "min_samples_leaf",
-        "max_features",
-    },
-    "random_forest_regressor": {
-        "n_estimators",
-        "max_depth",
-        "min_samples_split",
-        "min_samples_leaf",
-        "max_features",
-    },
-    "gradient_boosting_classifier": {
-        "n_estimators",
-        "learning_rate",
-        "max_depth",
-        "min_samples_split",
-        "min_samples_leaf",
-        "subsample",
-    },
-    "gradient_boosting_regressor": {
-        "n_estimators",
-        "learning_rate",
-        "max_depth",
-        "min_samples_split",
-        "min_samples_leaf",
-        "subsample",
-    },
+ALLOWED_HYPERPARAMETERS: dict[str, frozenset[str]] = {
+    "logistic_regression": frozenset({"penalty", "C", "solver", "max_iter", "tol"}),
+    "ridge_regression": frozenset({"alpha", "solver", "max_iter", "tol"}),
+    "random_forest_classifier": frozenset(
+        {"n_estimators", "max_depth", "min_samples_split", "min_samples_leaf", "max_features"}
+    ),
+    "random_forest_regressor": frozenset(
+        {"n_estimators", "max_depth", "min_samples_split", "min_samples_leaf", "max_features"}
+    ),
+    "gradient_boosting_classifier": frozenset(
+        {"n_estimators", "learning_rate", "max_depth", "min_samples_split", "min_samples_leaf", "subsample"}
+    ),
+    "gradient_boosting_regressor": frozenset(
+        {"n_estimators", "learning_rate", "max_depth", "min_samples_split", "min_samples_leaf", "subsample"}
+    ),
 }
 
 
-def _canonicalize_float(val: float) -> str:
-    """Format float into stable scientific notation string to eliminate formatting variances."""
-    if np.isnan(val):
-        return "NaN"
-    if np.isneginf(val):
-        return "-Infinity"
-    if np.isposinf(val):
-        return "Infinity"
-    return f"{val:.10e}"
+def _update_array_digest(hasher: Any, label: str, value: Any) -> None:
+    array = np.asarray(value)
+    hasher.update(label.encode("utf-8"))
+    hasher.update(b"\x00")
+    hasher.update(json.dumps(list(array.shape), separators=(",", ":")).encode("ascii"))
+    hasher.update(b"\x00")
+
+    if array.dtype.kind in {"O", "U", "S"}:
+        hasher.update(b"text")
+        values = np.asarray(array, dtype=str).tolist()
+        hasher.update(
+            json.dumps(values, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        )
+        return
+
+    canonical_dtype = array.dtype.newbyteorder("<")
+    canonical = np.ascontiguousarray(array.astype(canonical_dtype, copy=False))
+    hasher.update(canonical_dtype.str.encode("ascii"))
+    hasher.update(b"\x00")
+    hasher.update(canonical.tobytes(order="C"))
 
 
 def extract_model_state_digest(estimator: Any) -> str:
-    """Extract canonical SHA-256 digest from fitted scikit-learn estimator learned parameters."""
+    """Hash the supported estimator's learned state with explicit array metadata."""
+
     hasher = hashlib.sha256()
+    hasher.update(
+        f"{estimator.__class__.__module__}.{estimator.__class__.__qualname__}".encode("utf-8")
+    )
 
-    # Linear models
-    if hasattr(estimator, "coef_"):
-        coef = np.asarray(estimator.coef_, dtype=np.float64)
-        hasher.update(b"coef:")
-        hasher.update(coef.tobytes())
-
-    if hasattr(estimator, "intercept_"):
-        intercept = np.asarray(estimator.intercept_, dtype=np.float64)
-        hasher.update(b"intercept:")
-        hasher.update(intercept.tobytes())
-
-    if hasattr(estimator, "classes_"):
-        classes = np.asarray(estimator.classes_)
-        hasher.update(b"classes:")
-        hasher.update(classes.tobytes())
+    for name in ("coef_", "intercept_", "classes_", "train_score_", "feature_importances_"):
+        if hasattr(estimator, name):
+            _update_array_digest(hasher, name, getattr(estimator, name))
 
     if hasattr(estimator, "n_features_in_"):
-        hasher.update(f"n_features_in:{estimator.n_features_in_}".encode("ascii"))
+        hasher.update(
+            f"n_features_in_:{int(estimator.n_features_in_)}".encode("ascii")
+        )
 
-    # Tree ensemble models
     if hasattr(estimator, "estimators_"):
-        hasher.update(b"estimators:")
-        est_list = np.asarray(estimator.estimators_).ravel()
-        for idx, sub_tree in enumerate(est_list):
-            hasher.update(f"tree_{idx}:".encode("ascii"))
-            if hasattr(sub_tree, "tree_"):
-                tree_obj = sub_tree.tree_
-                hasher.update(tree_obj.feature.tobytes())
-                hasher.update(tree_obj.threshold.tobytes())
-                hasher.update(tree_obj.children_left.tobytes())
-                hasher.update(tree_obj.children_right.tobytes())
-                hasher.update(tree_obj.value.tobytes())
+        estimators = np.asarray(estimator.estimators_, dtype=object).ravel()
+        hasher.update(f"estimator_count:{len(estimators)}".encode("ascii"))
+        for index, sub_estimator in enumerate(estimators):
+            hasher.update(f"estimator:{index}".encode("ascii"))
+            if hasattr(sub_estimator, "tree_"):
+                tree = sub_estimator.tree_
+                for name in (
+                    "children_left",
+                    "children_right",
+                    "feature",
+                    "threshold",
+                    "value",
+                ):
+                    _update_array_digest(hasher, f"tree.{name}", getattr(tree, name))
 
-    # Gradient Boosting estimators have train_score_
-    if hasattr(estimator, "train_score_"):
-        train_score = np.asarray(estimator.train_score_, dtype=np.float64)
-        hasher.update(b"train_score:")
-        hasher.update(train_score.tobytes())
+    for scalar_name in ("n_classes_", "n_outputs_", "n_trees_per_iteration_"):
+        if hasattr(estimator, scalar_name):
+            value = getattr(estimator, scalar_name)
+            hasher.update(
+                f"{scalar_name}:{json.dumps(np.asarray(value).tolist(), separators=(',', ':'))}".encode(
+                    "utf-8"
+                )
+            )
 
     return hasher.hexdigest()
 
 
-def _convert_prediction_to_decimal(val: float, policy: NumericPolicy) -> Decimal:
-    """Convert a floating-point prediction to exact quantized Decimal via NumericPolicy."""
-    formatted = f"{val:.10f}"
+def _convert_prediction_to_decimal(value: float, policy: NumericPolicy) -> Decimal:
+    if not np.isfinite(value):
+        raise ValueError("Non-finite model prediction is forbidden")
     with localcontext(policy.get_context()):
-        return +Decimal(formatted)
+        return +Decimal(format(value, ".17g"))
 
+
+def _validate_rng(spec: MLCandidateSpec, required: bool) -> int | None:
+    context = spec.rng_context
+    if context is None:
+        if required:
+            raise ValueError(
+                f"Candidate family '{spec.family}' requires explicit RNGContext"
+            )
+        return None
+    if context.algorithm != "sklearn_random_state":
+        raise ValueError("RNGContext must describe sklearn_random_state semantics")
+    if context.library_version and context.library_version != sklearn_version:
+        raise ValueError(
+            "RNGContext library_version does not match installed scikit-learn"
+        )
+    return context.seed
 
 
 class BasePredictiveCandidate:
-    """Base class providing validation, threadpool control, and state management for ML models."""
+    """Common candidate validation and fitted-state surface."""
 
     def __init__(self, spec: MLCandidateSpec) -> None:
         if spec.family not in SUPPORTED_FAMILIES:
             raise ValueError(
                 f"Unsupported family '{spec.family}'. Must be one of {sorted(SUPPORTED_FAMILIES)}"
             )
-
-        allowed = ALLOWED_HYPERPARAMETERS[spec.family]
-        unknown = set(spec.hyperparameters.keys()) - allowed
+        unknown = set(spec.hyperparameters) - set(ALLOWED_HYPERPARAMETERS[spec.family])
         if unknown:
             raise ValueError(
                 f"Unknown hyperparameters for family '{spec.family}': {sorted(unknown)}"
             )
-
         self._spec = spec
         self._estimator: Any = None
         self._is_fitted = False
@@ -173,160 +182,136 @@ class BasePredictiveCandidate:
     @property
     def model_state_digest(self) -> str:
         if not self._is_fitted:
-            raise ModelNotFittedError("Model is not fitted; model_state_digest is unavailable")
+            raise ModelNotFittedError(
+                "Model is not fitted; model_state_digest is unavailable"
+            )
         return self._model_state_digest
 
     @property
     def estimator(self) -> Any:
         return self._estimator
 
+    def _finish_fit(self) -> None:
+        self._is_fitted = True
+        self._model_state_digest = extract_model_state_digest(self._estimator)
+
+    def _matrix(self, inputs: Sequence[PredictionInput], pipeline: FittedFeaturePipeline) -> np.ndarray:
+        if not self._is_fitted:
+            raise ModelNotFittedError("Cannot predict with unfitted model")
+        return pipeline.transform(inputs)
+
 
 class LogisticRegressionCandidate(BasePredictiveCandidate):
-    """Logistic Regression binary classification candidate."""
-
     def __init__(self, spec: MLCandidateSpec) -> None:
         if spec.family != "logistic_regression":
-            raise ValueError(f"Spec family must be 'logistic_regression', got '{spec.family}'")
-        if spec.target_contract.target_semantics != TargetSemantics.BINARY_PROBABILITY:
-            raise ValueError(
-                "LogisticRegressionCandidate requires BINARY_PROBABILITY target semantics"
-            )
+            raise ValueError("Spec family must be 'logistic_regression'")
+        if spec.target_contract.target_semantics is not TargetSemantics.BINARY_PROBABILITY:
+            raise ValueError("LogisticRegressionCandidate requires BINARY_PROBABILITY")
         super().__init__(spec)
-
-        kwargs: dict[str, Any] = dict(spec.hyperparameters)
+        kwargs = dict(spec.hyperparameters)
         kwargs.setdefault("solver", "lbfgs")
         kwargs.setdefault("max_iter", 1000)
         kwargs.setdefault("tol", 1e-4)
-        seed = spec.rng_context.seed if spec.rng_context else None
-        self._estimator = LogisticRegression(random_state=seed, **kwargs)
+        self._estimator = LogisticRegression(
+            random_state=_validate_rng(spec, required=False), **kwargs
+        )
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
         if len(X) == 0 or len(y) == 0:
             raise TrainingFailureError("Cannot fit LogisticRegression on empty data")
-        unique_classes = np.unique(y)
-        if len(unique_classes) < 2:
-            raise TrainingFailureError(
-                f"LogisticRegression requires at least 2 classes, got {len(unique_classes)}"
-            )
-
+        if len(np.unique(y)) < 2:
+            raise TrainingFailureError("LogisticRegression requires at least 2 classes")
         try:
             with threadpool_limits(limits=1):
                 self._estimator.fit(X, y)
-        except Exception as e:
-            raise TrainingFailureError(f"LogisticRegression fit failed: {e}") from e
-
-        self._is_fitted = True
-        self._model_state_digest = extract_model_state_digest(self._estimator)
+        except Exception as exc:
+            raise TrainingFailureError(f"LogisticRegression fit failed: {exc}") from exc
+        self._finish_fit()
 
     def predict(
-        self,
-        inputs: Sequence[PredictionInput],
-        fitted_pipeline: FittedFeaturePipeline,
+        self, inputs: Sequence[PredictionInput], fitted_pipeline: FittedFeaturePipeline
     ) -> list[PredictionResult]:
-        if not self._is_fitted:
-            raise ModelNotFittedError("Cannot predict with unfitted model")
         if not inputs:
+            if not self._is_fitted:
+                raise ModelNotFittedError("Cannot predict with unfitted model")
             return []
-
-        X = fitted_pipeline.transform(inputs)
+        X = self._matrix(inputs, fitted_pipeline)
         with threadpool_limits(limits=1):
-            probs = self._estimator.predict_proba(X)
-
-        # Class 1 probability
-        class_1_idx = 1 if 1 in self._estimator.classes_ else (len(self._estimator.classes_) - 1)
+            probabilities = self._estimator.predict_proba(X)
+        class_index = int(np.where(self._estimator.classes_ == 1)[0][0])
         results: list[PredictionResult] = []
-        for inp, p_row in zip(inputs, probs, strict=True):
-            p1 = float(p_row[class_1_idx])
-            prob_dec = _convert_prediction_to_decimal(p1, self._spec.numeric_policy)
+        for item, row in zip(inputs, probabilities, strict=True):
+            probability = _convert_prediction_to_decimal(
+                float(row[class_index]), self.spec.numeric_policy
+            )
             results.append(
                 PredictionResult(
-                    sample_id=inp.sample_id,
-                    prediction_time=inp.feature_knowledge_time,
-                    predicted_value=prob_dec,
-                    predicted_probability=prob_dec,
-                    predicted_class="1" if prob_dec >= Decimal("0.5") else "0",
-                    is_cold_start=False,
+                    sample_id=item.sample_id,
+                    prediction_time=item.feature_knowledge_time,
+                    predicted_value=probability,
+                    predicted_probability=probability,
+                    predicted_class="1" if probability >= Decimal("0.5") else "0",
                 )
             )
         return results
 
 
 class RidgeRegressionCandidate(BasePredictiveCandidate):
-    """Ridge Regression continuous target candidate."""
-
     def __init__(self, spec: MLCandidateSpec) -> None:
         if spec.family != "ridge_regression":
-            raise ValueError(f"Spec family must be 'ridge_regression', got '{spec.family}'")
-        if spec.target_contract.target_semantics != TargetSemantics.CONTINUOUS:
-            raise ValueError("RidgeRegressionCandidate requires CONTINUOUS target semantics")
+            raise ValueError("Spec family must be 'ridge_regression'")
+        if spec.target_contract.target_semantics is not TargetSemantics.CONTINUOUS:
+            raise ValueError("RidgeRegressionCandidate requires CONTINUOUS")
         super().__init__(spec)
-
-        kwargs: dict[str, Any] = dict(spec.hyperparameters)
+        kwargs = dict(spec.hyperparameters)
         kwargs.setdefault("alpha", 1.0)
-        seed = spec.rng_context.seed if spec.rng_context else None
-        self._estimator = Ridge(random_state=seed, **kwargs)
+        self._estimator = Ridge(
+            random_state=_validate_rng(spec, required=False), **kwargs
+        )
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
         if len(X) == 0 or len(y) == 0:
             raise TrainingFailureError("Cannot fit RidgeRegression on empty data")
-
         try:
             with threadpool_limits(limits=1):
                 self._estimator.fit(X, y)
-        except Exception as e:
-            raise TrainingFailureError(f"RidgeRegression fit failed: {e}") from e
-
-        self._is_fitted = True
-        self._model_state_digest = extract_model_state_digest(self._estimator)
+        except Exception as exc:
+            raise TrainingFailureError(f"RidgeRegression fit failed: {exc}") from exc
+        self._finish_fit()
 
     def predict(
-        self,
-        inputs: Sequence[PredictionInput],
-        fitted_pipeline: FittedFeaturePipeline,
+        self, inputs: Sequence[PredictionInput], fitted_pipeline: FittedFeaturePipeline
     ) -> list[PredictionResult]:
-        if not self._is_fitted:
-            raise ModelNotFittedError("Cannot predict with unfitted model")
         if not inputs:
+            if not self._is_fitted:
+                raise ModelNotFittedError("Cannot predict with unfitted model")
             return []
-
-        X = fitted_pipeline.transform(inputs)
+        X = self._matrix(inputs, fitted_pipeline)
         with threadpool_limits(limits=1):
-            preds = self._estimator.predict(X)
-
-        results: list[PredictionResult] = []
-        for inp, pred_val in zip(inputs, preds, strict=True):
-            val_dec = _convert_prediction_to_decimal(float(pred_val), self._spec.numeric_policy)
-            results.append(
-                PredictionResult(
-                    sample_id=inp.sample_id,
-                    prediction_time=inp.feature_knowledge_time,
-                    predicted_value=val_dec,
-                    predicted_probability=None,
-                    predicted_class=None,
-                    is_cold_start=False,
-                )
+            predictions = self._estimator.predict(X)
+        return [
+            PredictionResult(
+                sample_id=item.sample_id,
+                prediction_time=item.feature_knowledge_time,
+                predicted_value=_convert_prediction_to_decimal(
+                    float(value), self.spec.numeric_policy
+                ),
             )
-        return results
+            for item, value in zip(inputs, predictions, strict=True)
+        ]
 
 
 class RandomForestClassifierCandidate(BasePredictiveCandidate):
-    """Random Forest binary classification candidate."""
-
     def __init__(self, spec: MLCandidateSpec) -> None:
         if spec.family != "random_forest_classifier":
-            raise ValueError(f"Spec family must be 'random_forest_classifier', got '{spec.family}'")
-        if spec.target_contract.target_semantics != TargetSemantics.BINARY_PROBABILITY:
-            raise ValueError(
-                "RandomForestClassifierCandidate requires BINARY_PROBABILITY target semantics"
-            )
-        if not spec.rng_context:
-            raise ValueError("RandomForestClassifier requires an explicit RNGContext")
+            raise ValueError("Spec family must be 'random_forest_classifier'")
+        if spec.target_contract.target_semantics is not TargetSemantics.BINARY_PROBABILITY:
+            raise ValueError("RandomForestClassifierCandidate requires BINARY_PROBABILITY")
         super().__init__(spec)
-
-        kwargs: dict[str, Any] = dict(spec.hyperparameters)
-        kwargs.setdefault("n_estimators", 10)
+        kwargs = dict(spec.hyperparameters)
+        kwargs.setdefault("n_estimators", 100)
         self._estimator = RandomForestClassifier(
-            random_state=spec.rng_context.seed,
+            random_state=_validate_rng(spec, required=True),
             n_jobs=1,
             **kwargs,
         )
@@ -334,69 +319,54 @@ class RandomForestClassifierCandidate(BasePredictiveCandidate):
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
         if len(X) == 0 or len(y) == 0:
             raise TrainingFailureError("Cannot fit RandomForestClassifier on empty data")
-        unique_classes = np.unique(y)
-        if len(unique_classes) < 2:
-            raise TrainingFailureError(
-                f"RandomForestClassifier requires at least 2 classes, got {len(unique_classes)}"
-            )
-
+        if len(np.unique(y)) < 2:
+            raise TrainingFailureError("RandomForestClassifier requires at least 2 classes")
         try:
             with threadpool_limits(limits=1):
                 self._estimator.fit(X, y)
-        except Exception as e:
-            raise TrainingFailureError(f"RandomForestClassifier fit failed: {e}") from e
-
-        self._is_fitted = True
-        self._model_state_digest = extract_model_state_digest(self._estimator)
+        except Exception as exc:
+            raise TrainingFailureError(f"RandomForestClassifier fit failed: {exc}") from exc
+        self._finish_fit()
 
     def predict(
-        self,
-        inputs: Sequence[PredictionInput],
-        fitted_pipeline: FittedFeaturePipeline,
+        self, inputs: Sequence[PredictionInput], fitted_pipeline: FittedFeaturePipeline
     ) -> list[PredictionResult]:
-        if not self._is_fitted:
-            raise ModelNotFittedError("Cannot predict with unfitted model")
         if not inputs:
+            if not self._is_fitted:
+                raise ModelNotFittedError("Cannot predict with unfitted model")
             return []
-
-        X = fitted_pipeline.transform(inputs)
+        X = self._matrix(inputs, fitted_pipeline)
         with threadpool_limits(limits=1):
-            probs = self._estimator.predict_proba(X)
-
-        class_1_idx = 1 if 1 in self._estimator.classes_ else (len(self._estimator.classes_) - 1)
-        results: list[PredictionResult] = []
-        for inp, p_row in zip(inputs, probs, strict=True):
-            p1 = float(p_row[class_1_idx])
-            prob_dec = _convert_prediction_to_decimal(p1, self._spec.numeric_policy)
-            results.append(
+            probabilities = self._estimator.predict_proba(X)
+        class_index = int(np.where(self._estimator.classes_ == 1)[0][0])
+        output: list[PredictionResult] = []
+        for item, row in zip(inputs, probabilities, strict=True):
+            probability = _convert_prediction_to_decimal(
+                float(row[class_index]), self.spec.numeric_policy
+            )
+            output.append(
                 PredictionResult(
-                    sample_id=inp.sample_id,
-                    prediction_time=inp.feature_knowledge_time,
-                    predicted_value=prob_dec,
-                    predicted_probability=prob_dec,
-                    predicted_class="1" if prob_dec >= Decimal("0.5") else "0",
-                    is_cold_start=False,
+                    sample_id=item.sample_id,
+                    prediction_time=item.feature_knowledge_time,
+                    predicted_value=probability,
+                    predicted_probability=probability,
+                    predicted_class="1" if probability >= Decimal("0.5") else "0",
                 )
             )
-        return results
+        return output
 
 
 class RandomForestRegressorCandidate(BasePredictiveCandidate):
-    """Random Forest continuous target candidate."""
-
     def __init__(self, spec: MLCandidateSpec) -> None:
         if spec.family != "random_forest_regressor":
-            raise ValueError(f"Spec family must be 'random_forest_regressor', got '{spec.family}'")
-        if spec.target_contract.target_semantics != TargetSemantics.CONTINUOUS:
-            raise ValueError("RandomForestRegressorCandidate requires CONTINUOUS target semantics")
-        if not spec.rng_context:
-            raise ValueError("RandomForestRegressor requires an explicit RNGContext")
+            raise ValueError("Spec family must be 'random_forest_regressor'")
+        if spec.target_contract.target_semantics is not TargetSemantics.CONTINUOUS:
+            raise ValueError("RandomForestRegressorCandidate requires CONTINUOUS")
         super().__init__(spec)
-
-        kwargs: dict[str, Any] = dict(spec.hyperparameters)
-        kwargs.setdefault("n_estimators", 10)
+        kwargs = dict(spec.hyperparameters)
+        kwargs.setdefault("n_estimators", 100)
         self._estimator = RandomForestRegressor(
-            random_state=spec.rng_context.seed,
+            random_state=_validate_rng(spec, required=True),
             n_jobs=1,
             **kwargs,
         )
@@ -404,198 +374,144 @@ class RandomForestRegressorCandidate(BasePredictiveCandidate):
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
         if len(X) == 0 or len(y) == 0:
             raise TrainingFailureError("Cannot fit RandomForestRegressor on empty data")
-
         try:
             with threadpool_limits(limits=1):
                 self._estimator.fit(X, y)
-        except Exception as e:
-            raise TrainingFailureError(f"RandomForestRegressor fit failed: {e}") from e
-
-        self._is_fitted = True
-        self._model_state_digest = extract_model_state_digest(self._estimator)
+        except Exception as exc:
+            raise TrainingFailureError(f"RandomForestRegressor fit failed: {exc}") from exc
+        self._finish_fit()
 
     def predict(
-        self,
-        inputs: Sequence[PredictionInput],
-        fitted_pipeline: FittedFeaturePipeline,
+        self, inputs: Sequence[PredictionInput], fitted_pipeline: FittedFeaturePipeline
     ) -> list[PredictionResult]:
-        if not self._is_fitted:
-            raise ModelNotFittedError("Cannot predict with unfitted model")
         if not inputs:
+            if not self._is_fitted:
+                raise ModelNotFittedError("Cannot predict with unfitted model")
             return []
-
-        X = fitted_pipeline.transform(inputs)
+        X = self._matrix(inputs, fitted_pipeline)
         with threadpool_limits(limits=1):
-            preds = self._estimator.predict(X)
-
-        results: list[PredictionResult] = []
-        for inp, pred_val in zip(inputs, preds, strict=True):
-            val_dec = _convert_prediction_to_decimal(float(pred_val), self._spec.numeric_policy)
-            results.append(
-                PredictionResult(
-                    sample_id=inp.sample_id,
-                    prediction_time=inp.feature_knowledge_time,
-                    predicted_value=val_dec,
-                    predicted_probability=None,
-                    predicted_class=None,
-                    is_cold_start=False,
-                )
+            predictions = self._estimator.predict(X)
+        return [
+            PredictionResult(
+                sample_id=item.sample_id,
+                prediction_time=item.feature_knowledge_time,
+                predicted_value=_convert_prediction_to_decimal(
+                    float(value), self.spec.numeric_policy
+                ),
             )
-        return results
+            for item, value in zip(inputs, predictions, strict=True)
+        ]
 
 
 class GradientBoostingClassifierCandidate(BasePredictiveCandidate):
-    """Gradient Boosting binary classification candidate."""
-
     def __init__(self, spec: MLCandidateSpec) -> None:
         if spec.family != "gradient_boosting_classifier":
-            raise ValueError(
-                f"Spec family must be 'gradient_boosting_classifier', got '{spec.family}'"
-            )
-        if spec.target_contract.target_semantics != TargetSemantics.BINARY_PROBABILITY:
-            raise ValueError(
-                "GradientBoostingClassifierCandidate requires BINARY_PROBABILITY target semantics"
-            )
-        if not spec.rng_context:
-            raise ValueError("GradientBoostingClassifier requires an explicit RNGContext")
+            raise ValueError("Spec family must be 'gradient_boosting_classifier'")
+        if spec.target_contract.target_semantics is not TargetSemantics.BINARY_PROBABILITY:
+            raise ValueError("GradientBoostingClassifierCandidate requires BINARY_PROBABILITY")
         super().__init__(spec)
-
-        kwargs: dict[str, Any] = dict(spec.hyperparameters)
-        kwargs.setdefault("n_estimators", 10)
+        kwargs = dict(spec.hyperparameters)
+        kwargs.setdefault("n_estimators", 100)
         self._estimator = GradientBoostingClassifier(
-            random_state=spec.rng_context.seed,
-            **kwargs,
+            random_state=_validate_rng(spec, required=True), **kwargs
         )
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
         if len(X) == 0 or len(y) == 0:
             raise TrainingFailureError("Cannot fit GradientBoostingClassifier on empty data")
-        unique_classes = np.unique(y)
-        if len(unique_classes) < 2:
-            raise TrainingFailureError(
-                f"GradientBoostingClassifier requires at least 2 classes, got {len(unique_classes)}"
-            )
-
+        if len(np.unique(y)) < 2:
+            raise TrainingFailureError("GradientBoostingClassifier requires at least 2 classes")
         try:
             with threadpool_limits(limits=1):
                 self._estimator.fit(X, y)
-        except Exception as e:
-            raise TrainingFailureError(f"GradientBoostingClassifier fit failed: {e}") from e
-
-        self._is_fitted = True
-        self._model_state_digest = extract_model_state_digest(self._estimator)
+        except Exception as exc:
+            raise TrainingFailureError(f"GradientBoostingClassifier fit failed: {exc}") from exc
+        self._finish_fit()
 
     def predict(
-        self,
-        inputs: Sequence[PredictionInput],
-        fitted_pipeline: FittedFeaturePipeline,
+        self, inputs: Sequence[PredictionInput], fitted_pipeline: FittedFeaturePipeline
     ) -> list[PredictionResult]:
-        if not self._is_fitted:
-            raise ModelNotFittedError("Cannot predict with unfitted model")
         if not inputs:
+            if not self._is_fitted:
+                raise ModelNotFittedError("Cannot predict with unfitted model")
             return []
-
-        X = fitted_pipeline.transform(inputs)
+        X = self._matrix(inputs, fitted_pipeline)
         with threadpool_limits(limits=1):
-            probs = self._estimator.predict_proba(X)
-
-        class_1_idx = 1 if 1 in self._estimator.classes_ else (len(self._estimator.classes_) - 1)
-        results: list[PredictionResult] = []
-        for inp, p_row in zip(inputs, probs, strict=True):
-            p1 = float(p_row[class_1_idx])
-            prob_dec = _convert_prediction_to_decimal(p1, self._spec.numeric_policy)
-            results.append(
+            probabilities = self._estimator.predict_proba(X)
+        class_index = int(np.where(self._estimator.classes_ == 1)[0][0])
+        output: list[PredictionResult] = []
+        for item, row in zip(inputs, probabilities, strict=True):
+            probability = _convert_prediction_to_decimal(
+                float(row[class_index]), self.spec.numeric_policy
+            )
+            output.append(
                 PredictionResult(
-                    sample_id=inp.sample_id,
-                    prediction_time=inp.feature_knowledge_time,
-                    predicted_value=prob_dec,
-                    predicted_probability=prob_dec,
-                    predicted_class="1" if prob_dec >= Decimal("0.5") else "0",
-                    is_cold_start=False,
+                    sample_id=item.sample_id,
+                    prediction_time=item.feature_knowledge_time,
+                    predicted_value=probability,
+                    predicted_probability=probability,
+                    predicted_class="1" if probability >= Decimal("0.5") else "0",
                 )
             )
-        return results
+        return output
 
 
 class GradientBoostingRegressorCandidate(BasePredictiveCandidate):
-    """Gradient Boosting continuous target candidate."""
-
     def __init__(self, spec: MLCandidateSpec) -> None:
         if spec.family != "gradient_boosting_regressor":
-            raise ValueError(
-                f"Spec family must be 'gradient_boosting_regressor', got '{spec.family}'"
-            )
-        if spec.target_contract.target_semantics != TargetSemantics.CONTINUOUS:
-            raise ValueError(
-                "GradientBoostingRegressorCandidate requires CONTINUOUS target semantics"
-            )
-        if not spec.rng_context:
-            raise ValueError("GradientBoostingRegressor requires an explicit RNGContext")
+            raise ValueError("Spec family must be 'gradient_boosting_regressor'")
+        if spec.target_contract.target_semantics is not TargetSemantics.CONTINUOUS:
+            raise ValueError("GradientBoostingRegressorCandidate requires CONTINUOUS")
         super().__init__(spec)
-
-        kwargs: dict[str, Any] = dict(spec.hyperparameters)
-        kwargs.setdefault("n_estimators", 10)
+        kwargs = dict(spec.hyperparameters)
+        kwargs.setdefault("n_estimators", 100)
         self._estimator = GradientBoostingRegressor(
-            random_state=spec.rng_context.seed,
-            **kwargs,
+            random_state=_validate_rng(spec, required=True), **kwargs
         )
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
         if len(X) == 0 or len(y) == 0:
             raise TrainingFailureError("Cannot fit GradientBoostingRegressor on empty data")
-
         try:
             with threadpool_limits(limits=1):
                 self._estimator.fit(X, y)
-        except Exception as e:
-            raise TrainingFailureError(f"GradientBoostingRegressor fit failed: {e}") from e
-
-        self._is_fitted = True
-        self._model_state_digest = extract_model_state_digest(self._estimator)
+        except Exception as exc:
+            raise TrainingFailureError(f"GradientBoostingRegressor fit failed: {exc}") from exc
+        self._finish_fit()
 
     def predict(
-        self,
-        inputs: Sequence[PredictionInput],
-        fitted_pipeline: FittedFeaturePipeline,
+        self, inputs: Sequence[PredictionInput], fitted_pipeline: FittedFeaturePipeline
     ) -> list[PredictionResult]:
-        if not self._is_fitted:
-            raise ModelNotFittedError("Cannot predict with unfitted model")
         if not inputs:
+            if not self._is_fitted:
+                raise ModelNotFittedError("Cannot predict with unfitted model")
             return []
-
-        X = fitted_pipeline.transform(inputs)
+        X = self._matrix(inputs, fitted_pipeline)
         with threadpool_limits(limits=1):
-            preds = self._estimator.predict(X)
-
-        results: list[PredictionResult] = []
-        for inp, pred_val in zip(inputs, preds, strict=True):
-            val_dec = _convert_prediction_to_decimal(float(pred_val), self._spec.numeric_policy)
-            results.append(
-                PredictionResult(
-                    sample_id=inp.sample_id,
-                    prediction_time=inp.feature_knowledge_time,
-                    predicted_value=val_dec,
-                    predicted_probability=None,
-                    predicted_class=None,
-                    is_cold_start=False,
-                )
+            predictions = self._estimator.predict(X)
+        return [
+            PredictionResult(
+                sample_id=item.sample_id,
+                prediction_time=item.feature_knowledge_time,
+                predicted_value=_convert_prediction_to_decimal(
+                    float(value), self.spec.numeric_policy
+                ),
             )
-        return results
+            for item, value in zip(inputs, predictions, strict=True)
+        ]
 
 
 def create_candidate(spec: MLCandidateSpec) -> PredictiveCandidate:
-    """Factory creating a candidate instance from a validated specification."""
-    if spec.family == "logistic_regression":
-        return LogisticRegressionCandidate(spec)
-    elif spec.family == "ridge_regression":
-        return RidgeRegressionCandidate(spec)
-    elif spec.family == "random_forest_classifier":
-        return RandomForestClassifierCandidate(spec)
-    elif spec.family == "random_forest_regressor":
-        return RandomForestRegressorCandidate(spec)
-    elif spec.family == "gradient_boosting_classifier":
-        return GradientBoostingClassifierCandidate(spec)
-    elif spec.family == "gradient_boosting_regressor":
-        return GradientBoostingRegressorCandidate(spec)
-    else:
-        raise ValueError(f"Unknown family '{spec.family}'")
+    mapping: dict[str, type[BasePredictiveCandidate]] = {
+        "gradient_boosting_classifier": GradientBoostingClassifierCandidate,
+        "gradient_boosting_regressor": GradientBoostingRegressorCandidate,
+        "logistic_regression": LogisticRegressionCandidate,
+        "random_forest_classifier": RandomForestClassifierCandidate,
+        "random_forest_regressor": RandomForestRegressorCandidate,
+        "ridge_regression": RidgeRegressionCandidate,
+    }
+    try:
+        candidate_type = mapping[spec.family]
+    except KeyError as exc:
+        raise ValueError(f"Unknown family '{spec.family}'") from exc
+    return candidate_type(spec)
