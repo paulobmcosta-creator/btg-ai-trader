@@ -51,7 +51,7 @@ SPRINT_4_LIFECYCLE = FORMALLY_CLOSED
 SPRINT_4_FINAL_VERDICT = PASS
 SPRINT_4_SCOPE = STATISTICAL_BASELINES
 SPRINT_4_CANONICAL_BASE = 922adee625029c0cbd6c665f8906e7fd99cf71cb
-SPRINT_4_CANONICAL_HEAD = 0786ace3e6a83ecb23a508af860f43a2fd5d64e8
+SPRINT_4_FUNCTIONAL_MERGE = 0786ace3e6a83ecb23a508af860f43a2fd5d64e8
 SPRINT_4_PR = #74
 SPRINT_4_ISSUE = #73
 SPRINT_4_INDEPENDENT_REAUDIT = PASS
@@ -170,7 +170,7 @@ Sprint 4 has been fully implemented and verified under single-batch autonomous e
 - **Verification:** 100% statement (1,377/1,377) and branch (468/468) coverage across all modules and boundary scanner, 200 passed tests, 100-repetition byte-identical determinism, adversarial leakage detection, zero lint errors, zero type errors.
 - **Verdict:** `SPRINT_4_FINAL_VERDICT = PASS`, `SPRINT_4_LIFECYCLE = FORMALLY_CLOSED`.
 - **Independent re-audit:** PASS on PR #74 exact head `6473bd844ff69ded83f6a536397ff3e4fafffbb1`.
-- **Canonical merge:** `0786ace3e6a83ecb23a508af860f43a2fd5d64e8`.
+- **Functional merge:** `0786ace3e6a83ecb23a508af860f43a2fd5d64e8`.
 - **Post-merge validation:** Sprint 4 CI `35304136357` PASS 11/11; pinned upstream `35304136369` PASS 2/2; 957/957 repository tests; S4 package 1,377/1,377 statements and 468/468 branches.
 
 ## Promotion boundary — Sprint 5
