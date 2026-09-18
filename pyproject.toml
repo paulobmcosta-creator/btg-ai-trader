@@ -69,6 +69,8 @@ files = ["src", "tests"]
 module = [
   "joblib",
   "joblib.*",
+  "numpy",
+  "numpy.*",
   "scipy",
   "scipy.*",
   "sklearn",

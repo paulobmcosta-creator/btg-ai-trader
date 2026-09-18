@@ -270,4 +270,3 @@ def apply_numeric_policy(val: Decimal, policy: NumericPolicy) -> Decimal:
     """Normalize and round Decimal according to NumericPolicy context."""
     with localcontext(policy.get_context()):
         return +val
-
