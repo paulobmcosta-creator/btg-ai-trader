@@ -54,17 +54,31 @@ ALLOWED_HYPERPARAMETERS: dict[str, frozenset[str]] = {
         {"n_estimators", "max_depth", "min_samples_split", "min_samples_leaf", "max_features"}
     ),
     "gradient_boosting_classifier": frozenset(
-        {"n_estimators", "learning_rate", "max_depth", "min_samples_split", "min_samples_leaf", "subsample"}
+        {
+            "n_estimators",
+            "learning_rate",
+            "max_depth",
+            "min_samples_split",
+            "min_samples_leaf",
+            "subsample",
+        }
     ),
     "gradient_boosting_regressor": frozenset(
-        {"n_estimators", "learning_rate", "max_depth", "min_samples_split", "min_samples_leaf", "subsample"}
+        {
+            "n_estimators",
+            "learning_rate",
+            "max_depth",
+            "min_samples_split",
+            "min_samples_leaf",
+            "subsample",
+        }
     ),
 }
 
 
 def _update_array_digest(hasher: Any, label: str, value: Any) -> None:
     array = np.asarray(value)
-    hasher.update(label.encode("utf-8"))
+    hasher.update(label.encode())
     hasher.update(b"\x00")
     hasher.update(json.dumps(list(array.shape), separators=(",", ":")).encode("ascii"))
     hasher.update(b"\x00")
@@ -73,7 +87,7 @@ def _update_array_digest(hasher: Any, label: str, value: Any) -> None:
         hasher.update(b"text")
         values = np.asarray(array, dtype=str).tolist()
         hasher.update(
-            json.dumps(values, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+            json.dumps(values, ensure_ascii=False, separators=(",", ":")).encode()
         )
         return
 
@@ -89,7 +103,7 @@ def extract_model_state_digest(estimator: Any) -> str:
 
     hasher = hashlib.sha256()
     hasher.update(
-        f"{estimator.__class__.__module__}.{estimator.__class__.__qualname__}".encode("utf-8")
+        f"{estimator.__class__.__module__}.{estimator.__class__.__qualname__}".encode()
     )
 
     for name in ("coef_", "intercept_", "classes_", "train_score_", "feature_importances_"):
@@ -195,7 +209,9 @@ class BasePredictiveCandidate:
         self._is_fitted = True
         self._model_state_digest = extract_model_state_digest(self._estimator)
 
-    def _matrix(self, inputs: Sequence[PredictionInput], pipeline: FittedFeaturePipeline) -> np.ndarray:
+    def _matrix(
+        self, inputs: Sequence[PredictionInput], pipeline: FittedFeaturePipeline
+    ) -> np.ndarray:
         if not self._is_fitted:
             raise ModelNotFittedError("Cannot predict with unfitted model")
         return pipeline.transform(inputs)
