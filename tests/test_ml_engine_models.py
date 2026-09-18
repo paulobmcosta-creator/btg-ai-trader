@@ -42,7 +42,11 @@ def test_all_candidates_fit_predict_and_empty_prediction(
     family: str, semantics: TargetSemantics
 ) -> None:
     pipeline = make_pipeline(two_features=False)
-    params = {"n_estimators": 4} if "forest" in family or "boosting" in family else {}
+    params: dict[str, object] = (
+        {"n_estimators": 4}
+        if "forest" in family or "boosting" in family
+        else {}
+    )
     spec = make_candidate_spec(
         family, pipeline, semantics, hyperparameters=params
     )
@@ -165,7 +169,9 @@ def test_training_failure_and_unfitted_digest() -> None:
 
 def test_model_state_digest_binds_dtype_shape_and_text_values() -> None:
     class FakeEstimator:
-        pass
+        coef_: np.ndarray
+        classes_: np.ndarray
+        n_features_in_: int
 
     first = FakeEstimator()
     first.coef_ = np.asarray([[1.0, 2.0]], dtype=np.float64)
