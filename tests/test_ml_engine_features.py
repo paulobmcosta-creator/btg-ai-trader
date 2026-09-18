@@ -142,7 +142,7 @@ def test_boolean_literals_and_missing_rejection() -> None:
         [_sample("a", {"flag": "true"}), _sample("b", {"flag": "0"})],
     )
     matrix = fitted.transform(
-        [_sample("x", {"flag": "yes"}).to_prediction_input(), _sample("y", {"flag": "no"}).to_prediction_input()]
+        [\n            _sample("x", {"flag": "yes"}).to_prediction_input(),\n            _sample("y", {"flag": "no"}).to_prediction_input(),\n        ]
     )
     assert np.array_equal(matrix[:, 0], np.asarray([1.0, 0.0]))
     with pytest.raises(ValueError, match="Invalid boolean literal"):
