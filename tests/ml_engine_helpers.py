@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
@@ -135,7 +136,7 @@ def make_candidate_spec(
     *,
     code_revision: str = "rev-s5",
     seed: int = 42,
-    hyperparameters: dict[str, object] | None = None,
+    hyperparameters: Mapping[str, object] | None = None,
 ) -> MLCandidateSpec:
     stochastic = family.startswith("random_forest") or family.startswith(
         "gradient_boosting"
