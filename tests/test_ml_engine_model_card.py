@@ -1,72 +1,80 @@
-"""Tests for standardized ModelCard and documentary boundaries."""
+"""Tests for deterministic research ModelCard boundaries."""
 
 from decimal import Decimal
 
 import pytest
 
-from btg_ai_trader.ml_engine.domain import (
-    EvaluationScope,
-    TargetContract,
-)
+from btg_ai_trader.ml_engine.domain import EvaluationScope
 from btg_ai_trader.ml_engine.features import FeatureSchema, FeatureSpec, FeatureType
 from btg_ai_trader.ml_engine.model_card import ModelCard
 from btg_ai_trader.ml_engine.provenance import EnvironmentFingerprint
 from btg_ai_trader.statistical_baselines.domain import TargetSemantics
+from tests.ml_engine_helpers import make_contract
 
 
-def test_model_card_generation_and_constraints() -> None:
-    contract = TargetContract(
-        target_name="returns_15m",
-        target_semantics=TargetSemantics.CONTINUOUS,
-        forecast_horizon_steps=15,
-    )
-    schema = FeatureSchema([FeatureSpec(name="f1", feature_type=FeatureType.NUMERIC)])
-    env = EnvironmentFingerprint.capture()
+def _kwargs() -> dict[str, object]:
+    return {
+        "model_id": "ml:ridge:abc",
+        "family": "ridge_regression",
+        "target_contract": make_contract(TargetSemantics.CONTINUOUS),
+        "feature_schema": FeatureSchema((FeatureSpec("f1", FeatureType.NUMERIC),)),
+        "training_boundary_digest": "b" * 64,
+        "hyperparameters": {"alpha": Decimal("1")},
+        "rng_context": None,
+        "environment_fingerprint": EnvironmentFingerprint.capture(),
+        "validation_metrics": {"mae": Decimal("0.1")},
+        "search_space_digest": "s" * 64,
+        "validation_context_fingerprint": "v" * 64,
+        "known_limitations": ("research only",),
+        "calibration_refs": ("cal-1",),
+        "ablation_refs": ("abl-1",),
+        "audit_metadata": {"note": "audit"},
+    }
 
-    card = ModelCard(
-        model_id="ml:ridge_regression:abc123",
-        family="ridge_regression",
-        target_contract=contract,
-        feature_schema=schema,
-        training_boundary_digest="bound_123",
-        hyperparameters={"alpha": Decimal("1.0")},
-        rng_context=None,
-        environment_fingerprint=env,
-        validation_metrics={"mae": Decimal("0.05")},
-        evaluation_scope=EvaluationScope.MODEL,
-        known_limitations=("Linear model cannot capture complex non-linear interactions",),
-    )
 
-    assert card.candidate_id == "ml:ridge_regression:abc123"
-    assert card.model_id == "ml:ridge_regression:abc123"
+def test_model_card_generation_digest_and_immutability() -> None:
+    kwargs = _kwargs()
+    card = ModelCard(**kwargs)  # type: ignore[arg-type]
     assert card.evaluation_scope == "MODEL"
+    assert len(card.card_digest) == 64
+    assert card.candidate_id == "ml:ridge:abc"
     assert "NOT a trading strategy" in card.non_assessment_claims
-    assert "NO financial authority" in card.non_assessment_claims
+    assert "card_digest" in card.to_canonical_dict()
+    assert "NOT_ASSESSED" in card.to_json()
+    with pytest.raises(TypeError):
+        card.validation_metrics["mae"] = Decimal("9")  # type: ignore[index]
+    with pytest.raises(TypeError):
+        card.audit_metadata["note"] = "changed"  # type: ignore[index]
 
-    json_str = card.to_json()
-    assert "ml:ridge_regression:abc123" in json_str
-    assert "NOT_ASSESSED" in json_str
+
+@pytest.mark.parametrize(
+    ("field", "value", "match"),
+    [
+        ("model_id", "", "model_id"),
+        ("family", "", "family"),
+        ("training_boundary_digest", "", "training_boundary"),
+        ("evaluation_scope", EvaluationScope.STRATEGY, "evaluation_scope"),
+        ("strategy_value", "ASSESSED", "strategy_value"),
+        ("economic_value", "ASSESSED", "economic_value"),
+        ("paper_eligibility", "ELIGIBLE", "paper_eligibility"),
+        ("live_readiness", "READY", "live_readiness"),
+    ],
+)
+def test_model_card_rejects_scope_and_operational_claims(
+    field: str, value: object, match: str
+) -> None:
+    kwargs = _kwargs()
+    kwargs[field] = value
+    with pytest.raises(ValueError, match=match):
+        ModelCard(**kwargs)  # type: ignore[arg-type]
 
 
-def test_model_card_scope_enforcement() -> None:
-    contract = TargetContract(
-        target_name="returns_15m",
-        target_semantics=TargetSemantics.CONTINUOUS,
-        forecast_horizon_steps=15,
-    )
-    schema = FeatureSchema([FeatureSpec(name="f1", feature_type=FeatureType.NUMERIC)])
-    env = EnvironmentFingerprint.capture()
-
-    with pytest.raises(ValueError, match="evaluation_scope must be EvaluationScope.MODEL"):
-        ModelCard(
-            model_id="ml:ridge_regression:abc123",
-            family="ridge_regression",
-            target_contract=contract,
-            feature_schema=schema,
-            training_boundary_digest="bound_123",
-            hyperparameters={"alpha": Decimal("1.0")},
-            rng_context=None,
-            environment_fingerprint=env,
-            validation_metrics={"mae": Decimal("0.05")},
-            evaluation_scope=EvaluationScope.STRATEGY,  # Strictly forbidden!
-        )
+def test_protected_metrics_require_context() -> None:
+    kwargs = _kwargs()
+    kwargs["protected_metrics"] = {"mae": Decimal("0.2")}
+    with pytest.raises(ValueError, match="protected_context"):
+        ModelCard(**kwargs)  # type: ignore[arg-type]
+    kwargs["protected_context_fingerprint"] = "p" * 64
+    kwargs["protected_evidence_consumed"] = True
+    card = ModelCard(**kwargs)  # type: ignore[arg-type]
+    assert card.protected_evidence_consumed

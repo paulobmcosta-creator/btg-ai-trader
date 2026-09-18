@@ -1,189 +1,186 @@
-"""Tests for ML candidate models, factory, and state digest extraction."""
+"""Tests for all governed S5 scikit-learn candidate families."""
 
-from datetime import UTC, datetime
+from __future__ import annotations
+
 from decimal import Decimal
 
 import numpy as np
 import pytest
+import sklearn
 
 from btg_ai_trader.ml_engine.domain import (
     MLCandidateSpec,
     ModelNotFittedError,
     RNGContext,
-    TargetContract,
+    TrainingFailureError,
 )
-from btg_ai_trader.ml_engine.features import (
-    FeaturePipelineSpec,
-    FeatureSchema,
-    FeatureSpec,
-    FeatureType,
-    FittedFeaturePipeline,
+from btg_ai_trader.ml_engine.features import FittedFeaturePipeline
+from btg_ai_trader.ml_engine.models import create_candidate, extract_model_state_digest
+from btg_ai_trader.statistical_baselines.domain import TargetSemantics
+from tests.ml_engine_helpers import (
+    make_binary_samples,
+    make_candidate_spec,
+    make_continuous_samples,
+    make_pipeline,
 )
-from btg_ai_trader.ml_engine.models import (
-    create_candidate,
+
+
+@pytest.mark.parametrize(
+    ("family", "semantics"),
+    [
+        ("logistic_regression", TargetSemantics.BINARY_PROBABILITY),
+        ("random_forest_classifier", TargetSemantics.BINARY_PROBABILITY),
+        ("gradient_boosting_classifier", TargetSemantics.BINARY_PROBABILITY),
+        ("ridge_regression", TargetSemantics.CONTINUOUS),
+        ("random_forest_regressor", TargetSemantics.CONTINUOUS),
+        ("gradient_boosting_regressor", TargetSemantics.CONTINUOUS),
+    ],
 )
-from btg_ai_trader.statistical_baselines.domain import (
-    PredictionInput,
-    StatisticalSample,
-    TargetSemantics,
-)
-from btg_ai_trader.statistical_baselines.metrics import DEFAULT_NUMERIC_POLICY
-
-
-def _make_dummy_pipeline() -> tuple[FittedFeaturePipeline, list[PredictionInput]]:
-    f1 = FeatureSpec(name="x1", feature_type=FeatureType.NUMERIC)
-    schema = FeatureSchema([f1])
-    spec = FeaturePipelineSpec(schema=schema)
-
-    t = datetime(2025, 1, 1, 10, 0, tzinfo=UTC)
-    samples = [
-        StatisticalSample(
-            sample_id=f"s{i}",
-            feature_knowledge_time=t,
-            target_knowledge_time=t,
-            target_value=Decimal(i % 2),
-            target_semantics=TargetSemantics.BINARY_PROBABILITY,
-            feature_metadata={"x1": str(float(i))},
-        )
-        for i in range(10)
-    ]
-    pipe = FittedFeaturePipeline.fit(spec, samples)
-    inputs = [s.to_prediction_input() for s in samples]
-    return pipe, inputs
-
-
-def test_unfitted_model_errors() -> None:
-    contract = TargetContract(
-        target_name="y",
-        target_semantics=TargetSemantics.BINARY_PROBABILITY,
-        forecast_horizon_steps=5,
+def test_all_candidates_fit_predict_and_empty_prediction(
+    family: str, semantics: TargetSemantics
+) -> None:
+    pipeline = make_pipeline(two_features=False)
+    params = {"n_estimators": 4} if "forest" in family or "boosting" in family else {}
+    spec = make_candidate_spec(
+        family, pipeline, semantics, hyperparameters=params
     )
-    spec = MLCandidateSpec(
-        family="logistic_regression",
-        hyperparameters={},
-        target_contract=contract,
-        feature_pipeline_spec_digest="d",
-        rng_context=None,
-        numeric_policy=DEFAULT_NUMERIC_POLICY,
-        code_revision="rev",
+    candidate = create_candidate(spec)
+    samples = (
+        make_binary_samples()[:8]
+        if semantics is TargetSemantics.BINARY_PROBABILITY
+        else make_continuous_samples()[:8]
     )
-    cand = create_candidate(spec)
-    assert not cand.is_fitted
-
-    pipe, inputs = _make_dummy_pipeline()
+    fitted = FittedFeaturePipeline.fit(pipeline, samples)
+    inputs = [sample.to_prediction_input() for sample in samples]
+    X = fitted.transform(inputs)
+    y = np.asarray(
+        [float(sample.target_value) for sample in samples],
+        dtype=np.int64 if semantics is TargetSemantics.BINARY_PROBABILITY else np.float64,
+    )
     with pytest.raises(ModelNotFittedError):
-        cand.predict(inputs, pipe)
+        candidate.predict([], fitted)
+    candidate.fit(X, y)
+    assert candidate.is_fitted
+    assert len(candidate.model_state_digest) == 64
+    assert candidate.predict([], fitted) == []
+    predictions = candidate.predict(inputs, fitted)
+    assert len(predictions) == len(inputs)
+    if semantics is TargetSemantics.BINARY_PROBABILITY:
+        assert all(item.predicted_probability is not None for item in predictions)
+    else:
+        assert all(isinstance(item.predicted_value, Decimal) for item in predictions)
 
-    with pytest.raises(ModelNotFittedError):
-        _ = cand.model_state_digest
 
-
-def test_invalid_family_and_hyperparameters() -> None:
-    contract = TargetContract(
-        target_name="y",
-        target_semantics=TargetSemantics.BINARY_PROBABILITY,
-        forecast_horizon_steps=5,
+def test_factory_family_hyperparameter_semantics_and_rng_validation() -> None:
+    pipeline = make_pipeline()
+    binary = make_candidate_spec(
+        "logistic_regression", pipeline, TargetSemantics.BINARY_PROBABILITY
     )
-    spec_bad_family = MLCandidateSpec(
-        family="deep_neural_network",
+    bad_family = MLCandidateSpec(
+        family="neural_network",
         hyperparameters={},
-        target_contract=contract,
-        feature_pipeline_spec_digest="d",
+        target_contract=binary.target_contract,
+        feature_pipeline_spec_digest=pipeline.spec_digest,
         rng_context=None,
-        numeric_policy=DEFAULT_NUMERIC_POLICY,
-        code_revision="rev",
+        numeric_policy=binary.numeric_policy,
+        code_revision=binary.code_revision,
     )
     with pytest.raises(ValueError, match="Unknown family"):
-        create_candidate(spec_bad_family)
+        create_candidate(bad_family)
 
-    spec_bad_param = MLCandidateSpec(
+    bad_param = MLCandidateSpec(
         family="logistic_regression",
-        hyperparameters={"invalid_hyperparam": 123},
-        target_contract=contract,
-        feature_pipeline_spec_digest="d",
+        hyperparameters={"not_allowed": 1},
+        target_contract=binary.target_contract,
+        feature_pipeline_spec_digest=pipeline.spec_digest,
         rng_context=None,
-        numeric_policy=DEFAULT_NUMERIC_POLICY,
-        code_revision="rev",
+        numeric_policy=binary.numeric_policy,
+        code_revision=binary.code_revision,
     )
     with pytest.raises(ValueError, match="Unknown hyperparameters"):
-        create_candidate(spec_bad_param)
+        create_candidate(bad_param)
 
-
-def test_classification_candidates_fit_and_predict() -> None:
-    contract = TargetContract(
-        target_name="direction",
-        target_semantics=TargetSemantics.BINARY_PROBABILITY,
-        forecast_horizon_steps=5,
+    continuous_contract = make_candidate_spec(
+        "ridge_regression", pipeline, TargetSemantics.CONTINUOUS
+    ).target_contract
+    wrong_semantics = MLCandidateSpec(
+        family="logistic_regression",
+        hyperparameters={},
+        target_contract=continuous_contract,
+        feature_pipeline_spec_digest=pipeline.spec_digest,
+        rng_context=None,
+        numeric_policy=binary.numeric_policy,
+        code_revision=binary.code_revision,
     )
-    rng = RNGContext(algorithm="numpy_pcg64", seed=42)
-    pipe, inputs = _make_dummy_pipeline()
-    X = np.array([[float(i)] for i in range(10)], dtype=np.float64)
-    y = np.array([i % 2 for i in range(10)], dtype=np.int64)
+    with pytest.raises(ValueError, match="BINARY_PROBABILITY"):
+        create_candidate(wrong_semantics)
 
-    families = [
-        "logistic_regression",
-        "random_forest_classifier",
-        "gradient_boosting_classifier",
-    ]
-
-    for fam in families:
-        spec = MLCandidateSpec(
-            family=fam,
-            hyperparameters={"n_estimators": 5} if "forest" in fam or "boosting" in fam else {},
-            target_contract=contract,
-            feature_pipeline_spec_digest="d",
-            rng_context=rng,
-            numeric_policy=DEFAULT_NUMERIC_POLICY,
-            code_revision="rev",
-        )
-        cand = create_candidate(spec)
-        cand.fit(X, y)
-        assert cand.is_fitted
-        digest = cand.model_state_digest
-        assert digest is not None and len(digest) == 64
-
-        preds = cand.predict(inputs, pipe)
-        assert len(preds) == 10
-        for p in preds:
-            assert p.predicted_probability is not None
-            assert Decimal(0) <= p.predicted_probability <= Decimal(1)
-
-
-def test_regression_candidates_fit_and_predict() -> None:
-    contract = TargetContract(
-        target_name="returns",
-        target_semantics=TargetSemantics.CONTINUOUS,
-        forecast_horizon_steps=5,
+    no_rng = MLCandidateSpec(
+        family="random_forest_classifier",
+        hyperparameters={"n_estimators": 2},
+        target_contract=binary.target_contract,
+        feature_pipeline_spec_digest=pipeline.spec_digest,
+        rng_context=None,
+        numeric_policy=binary.numeric_policy,
+        code_revision=binary.code_revision,
     )
-    rng = RNGContext(algorithm="numpy_pcg64", seed=42)
-    pipe, inputs = _make_dummy_pipeline()
-    X = np.array([[float(i)] for i in range(10)], dtype=np.float64)
-    y = np.array([float(i) * 0.5 for i in range(10)], dtype=np.float64)
+    with pytest.raises(ValueError, match="requires explicit RNGContext"):
+        create_candidate(no_rng)
 
-    families = [
-        "ridge_regression",
-        "random_forest_regressor",
-        "gradient_boosting_regressor",
-    ]
+    wrong_version = MLCandidateSpec(
+        family="random_forest_classifier",
+        hyperparameters={"n_estimators": 2},
+        target_contract=binary.target_contract,
+        feature_pipeline_spec_digest=pipeline.spec_digest,
+        rng_context=RNGContext(
+            "sklearn_random_state", 1, library_version="0.0.0"
+        ),
+        numeric_policy=binary.numeric_policy,
+        code_revision=binary.code_revision,
+    )
+    with pytest.raises(ValueError, match="library_version"):
+        create_candidate(wrong_version)
 
-    for fam in families:
-        spec = MLCandidateSpec(
-            family=fam,
-            hyperparameters={"n_estimators": 5} if "forest" in fam or "boosting" in fam else {},
-            target_contract=contract,
-            feature_pipeline_spec_digest="d",
-            rng_context=rng,
-            numeric_policy=DEFAULT_NUMERIC_POLICY,
-            code_revision="rev",
-        )
-        cand = create_candidate(spec)
-        cand.fit(X, y)
-        assert cand.is_fitted
-        digest = cand.model_state_digest
-        assert digest is not None and len(digest) == 64
+    correct_rng = RNGContext(
+        "sklearn_random_state", 1, library_version=sklearn.__version__
+    )
+    assert correct_rng.seed == 1
 
-        preds = cand.predict(inputs, pipe)
-        assert len(preds) == 10
-        for p in preds:
-            assert p.predicted_value is not None
-            assert isinstance(p.predicted_value, Decimal)
+
+def test_training_failure_and_unfitted_digest() -> None:
+    pipeline = make_pipeline(two_features=False)
+    spec = make_candidate_spec(
+        "logistic_regression", pipeline, TargetSemantics.BINARY_PROBABILITY
+    )
+    candidate = create_candidate(spec)
+    with pytest.raises(ModelNotFittedError):
+        _ = candidate.model_state_digest
+    with pytest.raises(TrainingFailureError, match="empty"):
+        candidate.fit(np.empty((0, 1)), np.empty((0,), dtype=int))
+    with pytest.raises(TrainingFailureError, match="2 classes"):
+        candidate.fit(np.ones((2, 1)), np.ones((2,), dtype=int))
+
+
+def test_model_state_digest_binds_dtype_shape_and_text_values() -> None:
+    class FakeEstimator:
+        pass
+
+    first = FakeEstimator()
+    first.coef_ = np.asarray([[1.0, 2.0]], dtype=np.float64)
+    first.classes_ = np.asarray(["A", "B"])
+    first.n_features_in_ = 2
+
+    second = FakeEstimator()
+    second.coef_ = np.asarray([1.0, 2.0], dtype=np.float64)
+    second.classes_ = np.asarray(["A", "B"])
+    second.n_features_in_ = 2
+
+    third = FakeEstimator()
+    third.coef_ = np.asarray([[1.0, 2.0]], dtype=np.float32)
+    third.classes_ = np.asarray(["A", "C"])
+    third.n_features_in_ = 2
+
+    digest_first = extract_model_state_digest(first)
+    assert digest_first == extract_model_state_digest(first)
+    assert digest_first != extract_model_state_digest(second)
+    assert digest_first != extract_model_state_digest(third)

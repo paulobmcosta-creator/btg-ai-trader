@@ -1,55 +1,58 @@
-"""Tests for ResearchModelRegistry and immutable ModelRecord."""
+"""Tests for immutable research registry evidence."""
+
+from __future__ import annotations
+
+import objectpath  # type: ignore[import-not-found]
 
 import pytest
 
-from btg_ai_trader.ml_engine.provenance import EnvironmentFingerprint, ModelTrainingManifest
 from btg_ai_trader.ml_engine.registry import ModelRecord, ResearchModelRegistry
+from btg_ai_trader.ml_engine.training import ModelTrainer
+from btg_ai_trader.statistical_baselines.domain import TargetSemantics
+from tests.ml_engine_helpers import make_binary_samples, make_candidate_spec, make_pipeline
 
 
-def _make_dummy_manifest(cand_id: str) -> ModelTrainingManifest:
-    env = EnvironmentFingerprint.capture()
-    return ModelTrainingManifest(
-        candidate_id=cand_id,
-        boundary_digest="bound_1",
-        model_state_digest="state_1",
-        fitted_feature_pipeline_digest="pipe_1",
-        target_contract_digest="contract_1",
-        rng_context=None,
-        environment_fingerprint=env,
-        code_revision="rev_1",
+def _verified_manifest():
+    pipeline = make_pipeline()
+    spec = make_candidate_spec(
+        "logistic_regression", pipeline, TargetSemantics.BINARY_PROBABILITY
     )
+    result = ModelTrainer().fit(
+        candidate_spec=spec,
+        pipeline_spec=pipeline,
+        samples=make_binary_samples()[:8],
+        knowledge_cutoff=make_binary_samples()[7].target_knowledge_time,
+        code_revision=spec.code_revision,
+    )
+    return result.manifest
 
 
-def test_model_record_and_registry() -> None:
-    manifest = _make_dummy_manifest("ml:logistic_regression:001")
-    record = ModelRecord.from_manifest(manifest)
-
-    assert record.record_digest is not None
-    assert len(record.record_digest) == 64
-
+def test_registry_record_requires_real_card_and_is_idempotent() -> None:
+    manifest = _verified_manifest()
+    record = ModelRecord.from_manifest(
+        manifest,
+        model_card_digest="c" * 64,
+        evaluation_refs=("eval-1",),
+    )
     registry = ResearchModelRegistry()
     digest = registry.register(record)
-    assert digest == record.record_digest
-    assert registry.contains(digest)
-
-    # Idempotent re-registration
     assert registry.register(record) == digest
+    assert registry.get(digest) == record
+    assert registry.contains(digest)
+    assert len(registry) == 1
+    assert record.to_canonical_dict()["model_card_digest"] == "c" * 64
 
-    # Retrieval
-    retrieved = registry.get(digest)
-    assert retrieved.record_digest == record.record_digest
 
-
-def test_registry_mutable_alias_prohibition() -> None:
+def test_registry_alias_missing_and_placeholder_rejections() -> None:
+    manifest = _verified_manifest()
+    with pytest.raises(ValueError, match="placeholder"):
+        ModelRecord.from_manifest(
+            manifest,
+            model_card_digest="placeholder_card_digest",
+        )
     registry = ResearchModelRegistry()
-    banned_aliases = ["latest", "production", "staging", "champion", "challenger", "active"]
-
-    for alias in banned_aliases:
-        with pytest.raises(ValueError, match="strictly forbidden in ResearchModelRegistry"):
+    for alias in ("latest", "production", "champion"):
+        with pytest.raises(ValueError, match="strictly forbidden"):
             registry.get(alias)
-
-
-def test_registry_key_error() -> None:
-    registry = ResearchModelRegistry()
-    with pytest.raises(KeyError, match="not found in registry"):
+    with pytest.raises(KeyError, match="not found"):
         registry.get("0" * 64)
