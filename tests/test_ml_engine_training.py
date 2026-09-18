@@ -1,5 +1,7 @@
 """Tests for the verified ModelTrainer orchestration."""
 
+# ruff: noqa: I001 -- explicit grouping retained for audit readability.
+
 from datetime import UTC, datetime
 from decimal import Decimal
 
