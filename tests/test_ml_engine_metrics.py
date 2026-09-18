@@ -27,9 +27,9 @@ def test_binary_metrics_and_error_contracts() -> None:
 
     for function in (compute_brier_score, compute_log_loss, compute_roc_auc):
         with pytest.raises(ValueError, match="identical length"):
-            function([1], [], policy)  # type: ignore[arg-type]
+            function([1], [], policy)
         with pytest.raises(ValueError, match="empty"):
-            function([], [], policy)  # type: ignore[arg-type]
+            function([], [], policy)
     with pytest.raises(ValueError, match="single-class"):
         compute_roc_auc([1, 1], [Decimal("0.5"), Decimal("0.6")], policy)
     with pytest.raises(ValueError, match="epsilon"):
