@@ -152,6 +152,48 @@ def bad_func():
     assert any("forbidden operational name: order_send" in r for r in rules)
 
 
+def test_scan_ast_unsafe_deserialization_and_dynamic_loading(tmp_path: Path) -> None:
+    code = """
+import importlib
+import pickle
+import joblib
+import cloudpickle
+import dill
+
+def bad_loads(payload):
+    eval("1 + 1")
+    exec("x = 1")
+    __import__("some_dynamic_module")
+    importlib.import_module("dynamic_estimator")
+    pickle.loads(payload)
+    pickle.load(payload)
+    joblib.load(payload)
+    cloudpickle.loads(payload)
+    cloudpickle.load(payload)
+    dill.loads(payload)
+    dill.load(payload)
+"""
+    path = tmp_path / "unsafe.py"
+    tree = ast.parse(code)
+    findings = _scan_ast(path, tree)
+    rules = [finding.rule for finding in findings]
+    expected = (
+        "eval",
+        "exec",
+        "__import__",
+        "importlib.import_module",
+        "pickle.loads",
+        "pickle.load",
+        "joblib.load",
+        "cloudpickle.loads",
+        "cloudpickle.load",
+        "dill.loads",
+        "dill.load",
+    )
+    for name in expected:
+        assert any(name in rule for rule in rules), name
+
+
 def test_scan_tree_and_main(tmp_path: Path) -> None:
     clean_code = "import numpy as np\nprint('clean')\n"
     py_file = tmp_path / "clean.py"
