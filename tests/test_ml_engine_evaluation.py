@@ -1,10 +1,11 @@
 """Tests for canonical temporal ML evaluation and real baseline parity."""
 
+# ruff: noqa: I001 -- explicit grouping retained for audit readability.
+
 from __future__ import annotations
 
 import dataclasses
 from datetime import timedelta
-from decimal import Decimal
 
 import pytest
 
