@@ -55,6 +55,7 @@ jobs:
           python -m pytest
           tests/test_ml_engine_adversarial.py
           tests/test_ml_engine_coverage_boost.py
+          tests/test_ml_engine_coverage_final.py
           tests/test_ml_engine_domain.py
           tests/test_ml_engine_evaluation.py
           tests/test_ml_engine_features.py
