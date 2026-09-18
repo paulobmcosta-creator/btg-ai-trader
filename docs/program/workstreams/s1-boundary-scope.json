@@ -5,7 +5,7 @@
   "files": {
     ".python-version": "e4fba2183587225f216eeada4c78dfab6b2e65f5",
     "config/README.md": "099003f199b4f5af58476128e8fd1d12a60b4867",
-    "pyproject.toml": "6e0f917b189eaf23dd572ef39dfbd881a676950e",
+    "pyproject.toml": "2d842e693669fe1256fb6d65a77b916711b18f48",
     "src/btg_ai_trader/__init__.py": "51fe12b40527662de8a62ec04ce0ff39c5591c67",
     "src/btg_ai_trader/observer/__init__.py": "f1f98d389ddd7b205a6d2969cf8d0f455d728259",
     "src/btg_ai_trader/observer/admission.py": "372c0f20fb3361193a2b3154422d4990e48806fa",

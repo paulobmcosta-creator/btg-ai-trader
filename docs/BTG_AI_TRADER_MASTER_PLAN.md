@@ -371,7 +371,7 @@ Fora do Sprint 4:
 
 ### Sprint 5 — ML Engine
 
-Feature pipeline, model registry, treino/validação e comparação de modelos.
+Research ML Engine: feature pipeline causal, modelos preditivos determinísticos (Logistic Regression, Ridge, Random Forest, Gradient Boosting), rastreabilidade de RNG e sementes, fronteira de entrada e manifesto de treino, espaço de busca finito, histórico de multiplicidade, seleção estrita em validação, isolamento de teste protegido, paridade experimental com baselines S4, model cards com escopo explicitamente limitado a MODEL e registro de pesquisa local/imutável (`ResearchModelRegistry`).
 
 ### Sprint 6 — Scenario Engine
 
@@ -452,14 +452,14 @@ Direção futura de produção continua separando Trading Node, Research/AI Node
 
 ## 12. Git/GitHub
 
-### 12.1. Estado atual
+#### 12.1. Estado atual
 
 - repositório público;
 - licença proprietária source-visible;
 - `main` preserva deliberadamente a baseline histórica/public-readiness e não representa automaticamente o HEAD operacional de sprint;
-- branch canônica do Sprint 1: `sprint/1-market-observer`;
-- branch de fechamento: `s1/30-final-acceptance-github-security`;
-- Sprint 2 está autorizado a abrir a partir do head aceito do Sprint 1.
+- branch canônica atual: `sprint/5-ml-engine`;
+- branch de trabalho: `s5/00-full-ml-engine`;
+- Sprint 4 formalmente fechado (`FORMALLY_CLOSED` / `PASS`), com Sprint 5 em execução sob autorização humana explícita em lote único.
 
 ### 12.2. Segurança do repositório
 
@@ -526,6 +526,6 @@ O Gate de Entrada do Sprint 2 foi formalizado via PR #63 (`00cc561...`). S2-A im
 
 ## 16. Próxima ação oficial
 
-Aguardar a aprovação da reauditoria independente do Sprint 3 (PR #72) sobre o novo HEAD remediado, com CI completo e documentação reconciliada.
+Aguardar a auditoria independente do candidato a fechamento do Sprint 5 (Research ML Engine).
 
-A promoção para o Gate do Sprint 4 permanece condicionada à aprovação formal da reauditoria independente (`MERGE_AUTHORIZED = NO; PROMOTION_TO_SPRINT_4_GATE = NO_UNTIL_INDEPENDENT_REAUDIT`). Não há autorização para execução financeira, ordens, Strategy, Risk, Paper, Live ou uso de dinheiro real.
+Nenhuma execução real pode ser criada até aprovação explícita de todos os gates documentados. Não há autorização para negociação automática, envio de ordens, Strategy, Risk, Paper, Live ou uso de dinheiro real.
