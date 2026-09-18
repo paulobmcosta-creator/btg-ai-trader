@@ -44,9 +44,9 @@ def test_calibration_bins_and_errors() -> None:
         [1, 0, 1, 0],
         [Decimal("0.9"), Decimal("0.1"), Decimal("0.7"), Decimal("0.3")],
         policy,
-        n_bins=4,
+        n_bins=8,
     )
-    assert len(diagnostics.bins) == 4
+    assert len(diagnostics.bins) == 8
     assert diagnostics.ece >= 0
     assert diagnostics.mce >= 0
     assert any(item.sample_count == 0 for item in diagnostics.bins)
