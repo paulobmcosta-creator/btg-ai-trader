@@ -1,5 +1,7 @@
 """Verified training boundaries, manifests, and sanitized environment provenance."""
 
+# ruff: noqa: I001 -- explicit grouping retained for audit readability.
+
 from __future__ import annotations
 
 import dataclasses
