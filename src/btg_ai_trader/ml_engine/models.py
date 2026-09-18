@@ -134,11 +134,11 @@ def extract_model_state_digest(estimator: Any) -> str:
     for scalar_name in ("n_classes_", "n_outputs_", "n_trees_per_iteration_"):
         if hasattr(estimator, scalar_name):
             value = getattr(estimator, scalar_name)
-            hasher.update(
-                f"{scalar_name}:{json.dumps(np.asarray(value).tolist(), separators=(',', ':'))}".encode(
-                    "utf-8"
-                )
+            scalar_payload = json.dumps(
+                np.asarray(value).tolist(),
+                separators=(",", ":"),
             )
+            hasher.update(f"{scalar_name}:{scalar_payload}".encode())
 
     return hasher.hexdigest()
 
