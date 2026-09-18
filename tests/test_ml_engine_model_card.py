@@ -6,8 +6,8 @@ from decimal import Decimal
 
 import pytest
 
-from btg_ai_trader.ml_engine.domain import EvaluationScope
-from btg_ai_trader.ml_engine.features import FeatureSchema, FeatureSpec, FeatureType
+from btg_ai_trader.ml_engine.domain import EvaluationScope, FeatureType
+from btg_ai_trader.ml_engine.features import FeatureSchema, FeatureSpec
 from btg_ai_trader.ml_engine.model_card import ModelCard
 from btg_ai_trader.ml_engine.provenance import EnvironmentFingerprint
 from btg_ai_trader.statistical_baselines.domain import TargetSemantics
