@@ -190,7 +190,10 @@ def test_roots_reject_overlap_symlinks_and_aliases(tmp_path: Path) -> None:
                 archive_root=archive, journal_root=journal_root, max_record_bytes=8192
             )
     alias = tmp_path / "alias"
-    alias.symlink_to(archive, target_is_directory=True)
+    try:
+        alias.symlink_to(archive, target_is_directory=True)
+    except OSError:
+        pytest.skip("Symlink creation requires elevation/Developer Mode on Windows")
     with pytest.raises(ValueError, match="symlinks"):
         TechnicalEvidenceStore(archive_root=alias, journal_root=other, max_record_bytes=8192)
     with pytest.raises(ValueError, match="symlinks"):
@@ -215,7 +218,10 @@ def test_existing_symlink_or_malformed_file_never_counts_as_success(
     path = tmp_path / "archive" / (record.record_id.value + ".json")
     elsewhere = tmp_path / "outside"
     elsewhere.write_bytes(encode_record(record))
-    path.symlink_to(elsewhere)
+    try:
+        path.symlink_to(elsewhere)
+    except OSError:
+        pytest.skip("Symlink creation requires elevation/Developer Mode on Windows")
     with pytest.raises(StorageIntegrityError, match="regular file"):
         store.append_evidence(record)
     path.unlink()

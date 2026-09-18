@@ -53,15 +53,22 @@ S4_CANONICAL_BRANCH = sprint/4-statistical-baselines
 S4_WORK_BRANCH = s4/00-full-statistical-baselines
 SPRINT_4_MERGE_COMPLETED = YES
 PROMOTION_TO_SPRINT_5_GATE = YES
-SPRINT_5_ENTRY_GATE = AUTHORIZED
-SPRINT_5_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+SPRINT_5_STATUS = CLOSURE_CANDIDATE
+SPRINT_5_LIFECYCLE = CLOSURE_CANDIDATE
+SPRINT_5_ENTRY_GATE = PASS
+SPRINT_5_CANONICAL_BRANCH = sprint/5-ml-engine
+SPRINT_5_WORK_BRANCH = s5/00-full-ml-engine
+SPRINT_5_FUNCTIONAL_IMPLEMENTATION = COMPLETED
+SPRINT_5_FINAL_ACCEPTANCE = SUBMITTED
+SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+STOP_FOR_INDEPENDENT_AUDIT = YES
 ```
 
 O Sprint 2 tratou exclusivamente de **Data Platform & Causal Market Replay** dentro de `docs/program/S2_ENTRY_CONTRACT.md`, `S2_DECISION_REGISTER.md`, `S2_CAPABILITY_MATRIX.md` e dos gates correspondentes. Os incrementos funcionais S2-A (Causal Replay Core) e S2-B (Lossless Normalization & Data Quality) e o gate final S2-C foram formalmente aceitos e fechados.
 
 O Sprint 3 — **Deterministic Economic Backtesting** — foi formalmente concluído após auditoria independente, merge do PR #72 no commit canônico `6333b8f431d43be9c40f3222fbbe17cf06509033` e validação pós-merge dos runs `35256018204` e `35256018048`.
 
-O Sprint 4 — **Statistical Baselines** — foi formalmente fechado após reauditoria independente, merge funcional do PR #74 em `0786ace3e6a83ecb23a508af860f43a2fd5d64e8` e validação pós-merge dos runs `35304136357` (Sprint 4 Python CI, 11/11) e `35304136369` (Pinned upstream, 2/2). Está autorizada exclusivamente a materialização e revisão do **Sprint 5 Entry Gate**; implementação funcional do Sprint 5 (ML Engine), negociação automática, envio de ordens, Paper operacional, Live operacional, Risk operacional, Strategy operacional, execução financeira e uso de dinheiro real permanecem não autorizados.
+O Sprint 4 — **Statistical Baselines** — foi formalmente fechado após reauditoria independente, merge funcional do PR #74 em `0786ace3e6a83ecb23a508af860f43a2fd5d64e8` e validação pós-merge dos runs `35304136357` (Sprint 4 Python CI, 11/11) e `35304136369` (Pinned upstream, 2/2). O **Sprint 5 Entry Gate** foi materializado e verificado PASS; a implementação funcional integral do Sprint 5 (Supervised Machine Learning Research Engine) foi executada em lote único autônomo, testada com 100% de aprovação e submetida como `CLOSURE_CANDIDATE` aguardando auditoria independente. Negociação automática, envio de ordens, Paper operacional, Live operacional, Risk operacional, Strategy operacional, execução financeira e uso de dinheiro real permanecem estritamente proibidos.
 
 ## Autoridade normativa e realidade implementada
 
@@ -84,7 +91,7 @@ O Sprint 4 — **Statistical Baselines** — foi formalmente fechado após reaud
 - Não implementar Strategy operacional, Risk operacional, Paper ou machine learning operacional fora do sprint formalmente autorizado.
 - Não inserir credenciais, tokens, chaves, senhas, números de conta ou outros segredos no repositório, logs, documentação ou chat.
 - Não fazer deploy de infraestrutura financeira produtiva.
-- O Sprint 4 está FORMALLY_CLOSED/PASS. Está autorizada apenas a preparação e revisão do Sprint 5 Entry Gate; nenhuma implementação funcional de Sprint 5 (ML Engine), Strategy, Risk, Paper ou Live está autorizada antes da aprovação formal desse gate.
+- O Sprint 4 está FORMALLY_CLOSED/PASS. O Sprint 5 Entry Gate foi aprovado e a implementação funcional de pesquisa do Sprint 5 foi posteriormente autorizada por decisão humana em lote único; essa implementação está agora em CLOSURE_CANDIDATE. Sprint 6 funcional, Strategy, Risk, Paper e Live permanecem não autorizados.
 
 Qualquer mudança futura dessas restrições exige decisão humana explícita, decisão arquitetural/documental adequada e satisfação dos gates correspondentes. Ausência de proibição não equivale a autorização.
 
@@ -140,7 +147,7 @@ Integração em branches canônicas de sprint/staging exige testes, typing, lint
 
 O Sprint 1 preservou `READ_ONLY_BY_CONSTRUCTION` e `STRUCTURAL_ESCALATION`; os Sprints 2 e 3 herdaram essas barreiras e todas as negative financial capabilities. Dinheiro real, credenciais de negociação, ordens de broker e ativação financeira permanecem proibidos.
 
-Os Sprints 3 e 4 estão formalmente fechados. O Sprint 4 foi reaudited independently, integrado pelo merge funcional `0786ace3e6a83ecb23a508af860f43a2fd5d64e8` e validado pós-merge; o próximo trabalho autorizado é exclusivamente o Sprint 5 Entry Gate.
+Os Sprints 3 e 4 estão formalmente fechados. O Sprint 5 Entry Gate foi aprovado, a implementação Research ML Engine foi executada no branch `s5/00-full-ml-engine` e o PR #78 permanece aberto como CLOSURE_CANDIDATE para auditoria independente. Nenhum merge ou Sprint 6 funcional está autorizado.
 
 Arquitetura e dry-run de sprints futuros podem avançar isoladamente como pesquisa, mas promoção ou ativação exige gate próprio. Decisões in-sprint são registradas antes da primeira dependência material; mudanças arquiteturais materiais seguem ADR. A Issue #6 preserva a errata histórica do 0F-F e `TRACEABILITY.md` continua autoridade canônica das QPIs.
 

@@ -7,6 +7,8 @@ on:
       - "sprint/2-data-platform-replay"
       - "sprint/3-deterministic-economic-backtesting"
       - "sprint/4-statistical-baselines"
+      - "s5/**"
+      - "sprint/5-ml-engine"
   pull_request:
     branches:
       - "s11/**"
@@ -18,6 +20,7 @@ on:
       - "sprint/2-data-platform-replay"
       - "sprint/3-deterministic-economic-backtesting"
       - "sprint/4-statistical-baselines"
+      - "sprint/5-ml-engine"
 
 permissions:
   contents: read
