@@ -303,7 +303,7 @@ def test_registry_conflict_branch_is_fail_closed() -> None:
     first_card = make_model_card(result, pipeline)
     second_card = dataclasses.replace(
         first_card,
-        audit_metadata={"variant": "second"},
+        validation_metrics={"fixture_metric": Decimal("1")},
     )
     first = ModelRecord.from_manifest(
         result.manifest, model_card=first_card
