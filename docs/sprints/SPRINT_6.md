@@ -1,17 +1,21 @@
 # Sprint 6 — Scenario Engine
 
 ```text
-SPRINT_6_STATUS = ENTRY_GATE_CANDIDATE
-SPRINT_6_LIFECYCLE = ENTRY_GATE_ONLY
+SPRINT_6_STATUS = ENTRY_GATE_APPROVED
+SPRINT_6_LIFECYCLE = AWAITING_FUNCTIONAL_AUTHORIZATION
 SPRINT_6_REQUIRED_BASE_SHA = 9956f3a15d1fa2f87b347d436a26d684d50ba857
 CANONICAL_SPRINT_6_BRANCH = sprint/6-scenario-engine
 ENTRY_GATE_WORK_BRANCH = s6/00-entry-gate
 ISSUE = #79
 
-S6_ENTRY_GATE_ADJUDICATION = PASS_CANDIDATE
-S6_ENTRY_GATE_CANONICAL = PENDING_REVIEW_AND_MERGE
+S6_ENTRY_GATE_ADJUDICATION = PASS
+S6_ENTRY_GATE_CANONICAL = PASS
 SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 PROMOTION_TO_S6_FUNCTIONAL_IMPLEMENTATION = NO
+S6_ENTRY_GATE_MERGE_SHA = d74e632f47fafab9f441574acbacb3ae7f1a7a72
+S6_ENTRY_GATE_POST_MERGE_CI_RUN = 35474259990
+S6_ENTRY_GATE_POST_MERGE_UPSTREAM_RUN = 35474259986
+S6_ENTRY_GATE_INDEPENDENT_REVIEW = PASS
 
 FINANCIAL_AUTHORITY = ABSENT
 STRATEGY_OPERATIONAL_PATH = ABSENT
@@ -76,4 +80,12 @@ If later authorized, the initial implementation must be deterministic. It may us
 
 ## 6. Current stop condition
 
-After materialization, CI and independent review of the entry-gate PR, stop before merge unless human merge authorization is explicit. Even after a successful entry-gate merge, functional S6 implementation requires a separate explicit human authorization.
+The Entry Gate has been merged and validated on the exact merge SHA. Sprint 6 is now waiting at a separate human-authorization boundary.
+
+```text
+S6_ENTRY_GATE = PASS
+S6_ENTRY_GATE_CANONICAL = PASS
+SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+```
+
+No functional Scenario Engine implementation may begin until explicit human authorization is given for that distinct step.
