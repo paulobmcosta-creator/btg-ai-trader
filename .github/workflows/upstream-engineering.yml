@@ -9,6 +9,8 @@ on:
       - "sprint/4-statistical-baselines"
       - "s5/**"
       - "sprint/5-ml-engine"
+      - "s6/**"
+      - "sprint/6-scenario-engine"
   pull_request:
     branches:
       - "s11/**"
@@ -21,6 +23,7 @@ on:
       - "sprint/3-deterministic-economic-backtesting"
       - "sprint/4-statistical-baselines"
       - "sprint/5-ml-engine"
+      - "sprint/6-scenario-engine"
 
 permissions:
   contents: read
