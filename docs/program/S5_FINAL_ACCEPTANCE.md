@@ -111,7 +111,7 @@ Sprint 5 provides deterministic Brier score, log loss, ROC AUC, calibration diag
 
 `ModelCard` is restricted to `EvaluationScope.MODEL`. Strategy value, economic value, paper eligibility and live readiness must remain `NOT_ASSESSED`.
 
-`ResearchModelRegistry` is an immutable research catalog keyed by content digest. `ModelRecord.from_manifest()` requires a verified training manifest and a real model-card digest. Mutable operational aliases such as `latest`, `champion` and `production` are rejected.
+`ResearchModelRegistry` is an immutable research catalog keyed by content digest. `ModelRecord.from_manifest()` requires a verified training manifest and an actual `ModelCard`; the record derives `card_digest` from that object and fails closed unless candidate identity, training boundary, target contract, RNG context and environment fingerprint match the manifest. Direct `ModelRecord` construction also requires a canonical 64-character lowercase SHA-256 model-card digest. Mutable operational aliases such as `latest`, `champion` and `production` are rejected.
 
 ---
 

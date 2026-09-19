@@ -49,6 +49,7 @@ from btg_ai_trader.statistical_baselines.metrics import DEFAULT_NUMERIC_POLICY
 from tests.ml_engine_helpers import (
     make_binary_samples,
     make_candidate_spec,
+    make_model_card,
     make_pipeline,
 )
 
@@ -267,11 +268,12 @@ def test_boundary_required_fields_target_mismatch_and_manifest_mismatches() -> N
         code_revision=spec.code_revision,
     )
     manifest = result.manifest
+    card = make_model_card(result, pipeline)
     assert manifest.is_verified
     with pytest.raises(ValueError, match="verified"):
         ModelRecord.from_manifest(
             dataclasses.replace(manifest),
-            model_card_digest="c" * 64,
+            model_card=card,
         )
 
     other_env = dataclasses.replace(env, platform_machine=env.platform_machine + "-other")
@@ -298,11 +300,16 @@ def test_registry_conflict_branch_is_fail_closed() -> None:
         knowledge_cutoff=datetime(2025, 1, 1, 11, 0, tzinfo=UTC),
         code_revision=spec.code_revision,
     )
+    first_card = make_model_card(result, pipeline)
+    second_card = dataclasses.replace(
+        first_card,
+        audit_metadata={"variant": "second"},
+    )
     first = ModelRecord.from_manifest(
-        result.manifest, model_card_digest="a" * 64
+        result.manifest, model_card=first_card
     )
     second = ModelRecord.from_manifest(
-        result.manifest, model_card_digest="b" * 64
+        result.manifest, model_card=second_card
     )
     object.__setattr__(second, "record_digest", first.record_digest)
     registry = ResearchModelRegistry()

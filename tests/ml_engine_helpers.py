@@ -19,6 +19,8 @@ from btg_ai_trader.ml_engine.features import (
     FeatureSchema,
     FeatureSpec,
 )
+from btg_ai_trader.ml_engine.model_card import ModelCard
+from btg_ai_trader.ml_engine.training import TrainingResult
 from btg_ai_trader.statistical_baselines.boundaries import WalkForwardPlan
 from btg_ai_trader.statistical_baselines.domain import StatisticalSample, TargetSemantics
 from btg_ai_trader.statistical_baselines.metrics import DEFAULT_NUMERIC_POLICY
@@ -163,4 +165,25 @@ def make_candidate_spec(
         rng_context=rng,
         numeric_policy=DEFAULT_NUMERIC_POLICY,
         code_revision=code_revision,
+    )
+
+
+def make_model_card(
+    result: TrainingResult,
+    pipeline: FeaturePipelineSpec,
+) -> ModelCard:
+    """Build a real research ModelCard bound to one verified training result."""
+
+    spec = result.candidate.spec
+    return ModelCard(
+        model_id=spec.candidate_id,
+        family=spec.family,
+        target_contract=spec.target_contract,
+        feature_schema=pipeline.schema,
+        training_boundary_digest=result.manifest.boundary_digest,
+        hyperparameters=spec.hyperparameters,
+        rng_context=spec.rng_context,
+        environment_fingerprint=result.manifest.environment_fingerprint,
+        validation_metrics={"fixture_metric": Decimal("0")},
+        audit_metadata={"fixture": "tests.ml_engine_helpers"},
     )

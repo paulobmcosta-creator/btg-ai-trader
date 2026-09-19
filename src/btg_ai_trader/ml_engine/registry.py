@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
 from btg_ai_trader.ml_engine.domain import RNGContext
+from btg_ai_trader.ml_engine.model_card import ModelCard
 from btg_ai_trader.ml_engine.provenance import ModelTrainingManifest
 
 BANNED_ALIASES = {
@@ -54,8 +56,10 @@ class ModelRecord:
         for name, value in required.items():
             if not value:
                 raise ValueError(f"{name} must be non-empty")
-        if self.model_card_digest.startswith("placeholder"):
-            raise ValueError("placeholder model-card digests are forbidden")
+        if re.fullmatch(r"[0-9a-f]{64}", self.model_card_digest) is None:
+            raise ValueError(
+                "model_card_digest must be a 64-character lowercase SHA-256 hex digest"
+            )
         object.__setattr__(self, "evaluation_refs", tuple(self.evaluation_refs))
         payload = {
             "candidate_id": self.candidate_id,
@@ -80,11 +84,42 @@ class ModelRecord:
         cls,
         manifest: ModelTrainingManifest,
         *,
-        model_card_digest: str,
+        model_card: ModelCard,
         evaluation_refs: tuple[str, ...] = (),
     ) -> ModelRecord:
         if not manifest.is_verified:
             raise ValueError("ModelRecord requires a verified ModelTrainingManifest")
+        if not isinstance(model_card, ModelCard):
+            raise TypeError("model_card must be a ModelCard instance")
+
+        bindings: tuple[tuple[str, object, object], ...] = (
+            ("candidate identity", model_card.model_id, manifest.candidate_id),
+            (
+                "training boundary",
+                model_card.training_boundary_digest,
+                manifest.boundary_digest,
+            ),
+            (
+                "target contract",
+                model_card.target_contract.contract_digest,
+                manifest.target_contract_digest,
+            ),
+            ("RNG context", model_card.rng_context, manifest.rng_context),
+            (
+                "environment fingerprint",
+                model_card.environment_fingerprint.fingerprint_digest,
+                manifest.environment_fingerprint.fingerprint_digest,
+            ),
+        )
+        mismatches = tuple(
+            name for name, observed, expected in bindings if observed != expected
+        )
+        if mismatches:
+            raise ValueError(
+                "ModelCard does not match ModelTrainingManifest for: "
+                + ", ".join(mismatches)
+            )
+
         return cls(
             candidate_id=manifest.candidate_id,
             model_state_digest=manifest.model_state_digest,
@@ -97,7 +132,7 @@ class ModelRecord:
             ),
             training_manifest_digest=manifest.scientific_root_digest,
             evaluation_refs=evaluation_refs,
-            model_card_digest=model_card_digest,
+            model_card_digest=model_card.card_digest,
             code_revision=manifest.code_revision,
         )
 
