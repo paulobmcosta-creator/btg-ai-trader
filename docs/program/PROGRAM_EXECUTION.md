@@ -68,7 +68,7 @@ S4_TASK_PACKET = docs/program/workstreams/S4-ANTIGRAVITY-FULL-SPRINT.md
 S4_WORK_BRANCH = s4/00-full-statistical-baselines
 PROMOTION_TO_SPRINT_5_GATE = YES
 SPRINT_5_BRANCH = sprint/5-ml-engine
-SPRINT_5_LIFECYCLE = CLOSURE_CANDIDATE
+SPRINT_5_LIFECYCLE = FORMALLY_CLOSED
 SPRINT_5_SCOPE = RESEARCH_ML_ENGINE
 SPRINT_5_CANONICAL_BASE = 560dd83cdfdd50084ae277083d9f8732e5296356
 SPRINT_5_WORK_BRANCH = s5/00-full-ml-engine
@@ -80,6 +80,17 @@ SPRINT_5_CAPABILITY_MATRIX = docs/program/S5_CAPABILITY_MATRIX.md
 S5_ENTRY_GATE = PASS
 S5_TASK_PACKET = docs/program/workstreams/S5-ANTIGRAVITY-FULL-SPRINT.md
 SPRINT_5_FUNCTIONAL_IMPLEMENTATION = COMPLETED
+SPRINT_5_FINAL_VERDICT = PASS
+SPRINT_5_INDEPENDENT_REAUDIT = PASS
+SPRINT_5_MERGE_SHA = 8b09a34ecc7c3b0b180e30ada0702d22d61d96d2
+SPRINT_5_POST_MERGE_CI_RUN = 35473144900
+SPRINT_5_POST_MERGE_CI = PASS
+SPRINT_5_POST_MERGE_UPSTREAM_RUN = 35473144855
+SPRINT_5_POST_MERGE_UPSTREAM = PASS
+SPRINT_5_ISSUE_STATUS = CLOSED_COMPLETED
+PROMOTION_TO_SPRINT_6_GATE = YES
+SPRINT_6_ENTRY_GATE = AUTHORIZED
+SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 
 OFFICIAL_CODEX_SECURITY_DIFF_SCAN = NOT_EXECUTED
 SPRINT1_GITHUB_NATIVE_SECURITY_GATE = PASS
@@ -184,28 +195,34 @@ Sprint 4 has been fully implemented and verified under single-batch autonomous e
 - **Functional merge:** `0786ace3e6a83ecb23a508af860f43a2fd5d64e8`.
 - **Post-merge validation:** Sprint 4 CI `35304136357` PASS 11/11; pinned upstream `35304136369` PASS 2/2; 957/957 repository tests; S4 package 1,377/1,377 statements and 468/468 branches.
 
-## Sprint 5 — Machine Learning Engine — Execution & Closure Candidate
+## Sprint 5 — Machine Learning Engine — FORMALLY CLOSED / PASS
 
-Sprint 5 has been fully implemented, verified, and submitted under single-batch autonomous execution mode:
+Sprint 5 is formally closed after independent re-audit, human-authorized merge of PR #78, and exact post-merge validation.
 
-- **Work Branch:** `s5/00-full-ml-engine`
-- **Canonical Target:** `sprint/5-ml-engine`
-- **Issue:** #77
-- **Artifact:** `docs/program/S5_FINAL_ACCEPTANCE.md`
-- **Scope:** Complete Supervised Machine Learning Research Engine (`btg_ai_trader.ml_engine`):
-  - Domain contracts, causal targets, and hierarchical RNG contexts (`domain.py`)
-  - Feature pipelines, declarative schemas, missingness, and OOV categories (`features.py`)
-  - Predictive model candidates: Logistic Regression, Ridge, Random Forest (Class/Reg), Gradient Boosting (Class/Reg) (`models.py`)
-  - Environment fingerprinting, training boundary, and audit manifest (`provenance.py`)
-  - Bounded model search spaces, multi-metric selection policy, and complexity scoring (`selection.py`)
-  - Continuous metrics, Brier score, log loss, ROC-AUC, and probability calibration diagnostics (`metrics.py`)
-  - Temporal out-of-sample evaluation engine, baseline outperformance gate, and feature ablation (`evaluation.py`)
-  - Immutable research model registry with prohibition of mutable operational aliases (`registry.py`)
-  - Model card generation with strict evaluation scope boundaries (`model_card.py`)
-  - Deterministic training coordinator with causal leakage protection (`training.py`)
-- **Verified implementation evidence (head `7b5eb613cdfa4e39cbebf8ac6dae97bb9c9ce08d`):** 1063/1063 repository tests PASS; Sprint 5 package coverage 1452/1452 statements and 468/468 branches (100%/100%); 87/87 dedicated S5 coverage tests PASS; Ruff PASS; strict mypy PASS across 151 source files; Foundation/S1-S4/diff/dependency gates PASS; pinned upstream run `35386727326` PASS 2/2. The stale acceptance-test symbol names found on that head were reconciled in the subsequent documentary commit and remain subject to exact-head CI.
-- **Verdict:** `SPRINT_5_CLOSURE_GATE = CLOSURE_CANDIDATE`, `STOP_FOR_INDEPENDENT_AUDIT = YES`.
-- **Merge Status:** PENDING independent audit and exact-head CI clearance. NO MERGE without human approval.
+- **Canonical branch:** `sprint/5-ml-engine`
+- **Work branch:** `s5/00-full-ml-engine`
+- **Issue:** #77 — CLOSED / completed
+- **PR:** #78 — MERGED
+- **Independent re-audit:** PASS on `bcbf48c232dc0ae7e60d2570ea4012a495e2584e`
+- **Merge SHA:** `8b09a34ecc7c3b0b180e30ada0702d22d61d96d2`
+- **Post-merge S5 Python CI:** run `35473144900` — PASS 13/13
+- **Post-merge pinned upstream:** run `35473144855` — PASS 2/2
+- **Full repository:** 1064 tests PASS, 0 failed
+- **S5 dedicated suite:** 88 tests PASS
+- **S5 package coverage:** 1460/1460 statements and 472/472 branches = 100.00%
+- **Financial authority:** absent
+- **Strategy/Risk/Paper/Live/broker order:** absent
+
+The accepted research surface remains the supervised tabular ML engine described by `docs/program/S5_FINAL_ACCEPTANCE.md`. Model evaluation remains distinct from strategy evaluation and no economic, paper or live readiness claim is created by this closure.
+
+```text
+SPRINT_5_LIFECYCLE = FORMALLY_CLOSED
+SPRINT_5_FINAL_VERDICT = PASS
+OPEN_BLOCKERS = 0
+PROMOTION_TO_SPRINT_6_GATE = YES
+SPRINT_6_ENTRY_GATE = AUTHORIZED
+SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+```
 
 ## Repository hardening
 
@@ -215,4 +232,4 @@ Issue #6 permanece aberta para a errata histórica 0F-F/QPI. `docs/protocols/qua
 
 ## Canonical next action
 
-O próximo passo canônico é a **auditoria independente da PR do Sprint 5**. A PR permanece aberta e não deve ser mergeada autonomamente. A Issue #77 permanece aberta. Negociação automática, envio de ordens, Paper operacional, Live operacional, Risk operacional, Strategy operacional, execução financeira e uso de dinheiro real continuam estritamente proibidos.
+O próximo passo canônico é exclusivamente a materialização, revisão e adjudicação do **Sprint 6 Entry Gate — Scenario Engine**. A implementação funcional do Sprint 6 permanece `NOT_AUTHORIZED` até aprovação formal desse gate e nova autorização explícita. Negociação automática, envio de ordens, Paper operacional, Live operacional, Risk operacional, Strategy operacional, execução financeira e uso de dinheiro real continuam estritamente proibidos.

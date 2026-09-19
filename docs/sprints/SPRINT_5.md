@@ -1,17 +1,23 @@
 # Sprint 5 — ML Engine
 
 ```text
-SPRINT_5_STATUS = CLOSURE_CANDIDATE
-SPRINT_5_LIFECYCLE = CLOSURE_CANDIDATE
+SPRINT_5_STATUS = FORMALLY_CLOSED
+SPRINT_5_LIFECYCLE = FORMALLY_CLOSED
 SPRINT_5_ENTRY_GATE = PASS
-SPRINT_5_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED_BY_HUMAN_SINGLE_BATCH
-PROPOSED_SPRINT_5_VERDICT = PASS
+SPRINT_5_FUNCTIONAL_IMPLEMENTATION = COMPLETED
+SPRINT_5_FINAL_VERDICT = PASS
 CANONICAL_SPRINT_5_BRANCH = sprint/5-ml-engine
 WORK_BRANCH = s5/00-full-ml-engine
 CANONICAL_BASE_SHA = 560dd83cdfdd50084ae277083d9f8732e5296356
 ISSUE = #77
 PR = #78
-MERGE_AUTHORIZED = NO
+MERGE_COMPLETED = YES
+CANONICAL_MERGE_SHA = 8b09a34ecc7c3b0b180e30ada0702d22d61d96d2
+POST_MERGE_S5_CI_RUN = 35473144900
+POST_MERGE_UPSTREAM_RUN = 35473144855
+INDEPENDENT_REAUDIT = PASS
+PROMOTION_TO_SPRINT_6_GATE = YES
+SPRINT_6_ENTRY_GATE = AUTHORIZED
 SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 ```
 
@@ -95,3 +101,24 @@ O Sprint 5 constrói uma camada de pesquisa para estimar e avaliar modelos de Ma
 3. **Causalidade Estrita de Labels (Protocolo 0E-B, Protocolo 0E-C):** Alvos futuros nunca são acessíveis no momento de previsão.
 4. **Determinismo Numérico e de Replay (ADR-0017, DD-16):** Repetições idênticas produzem saídas e manifestos idênticos.
 5. **Custo Adicional Zero:** Nenhuma dependência paga ou serviço comercial.
+
+
+---
+
+## 4. Fechamento formal
+
+O Sprint 5 foi reaudited independentemente com `PASS` no HEAD `bcbf48c232dc0ae7e60d2570ea4012a495e2584e`. Após autorização humana explícita, o PR #78 foi integrado em `sprint/5-ml-engine` pelo merge commit `8b09a34ecc7c3b0b180e30ada0702d22d61d96d2`.
+
+A validação pós-merge no SHA exato confirmou o run `35473144900` do Sprint 5 Python CI com 13/13 jobs PASS, 1064 testes de repositório PASS, 88 testes dedicados S5 PASS e cobertura do pacote ML de 1460/1460 statements e 472/472 branches. O pinned upstream run `35473144855` passou integralmente.
+
+```text
+SPRINT_5_STATUS = FORMALLY_CLOSED
+SPRINT_5_LIFECYCLE = FORMALLY_CLOSED
+SPRINT_5_FINAL_VERDICT = PASS
+OPEN_BLOCKERS = 0
+PROMOTION_TO_SPRINT_6_GATE = YES
+SPRINT_6_ENTRY_GATE = AUTHORIZED
+SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+```
+
+A promoção autoriza exclusivamente o Gate de Entrada do Sprint 6 — Scenario Engine. Não autoriza implementação funcional do Scenario Engine nem altera as proibições de Strategy, Risk, Paper, Live, broker order ou dinheiro real.

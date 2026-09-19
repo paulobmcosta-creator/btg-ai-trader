@@ -18,8 +18,13 @@ RISK_OPERATIONAL_PATH = ABSENT
 PAPER_TRADING = FORBIDDEN
 LIVE_TRADING = FORBIDDEN
 REAL_MONEY = FORBIDDEN
-SPRINT_5_LIFECYCLE = CLOSURE_CANDIDATE
-MERGE_STATUS = PROHIBITED_PENDING_INDEPENDENT_AUDIT
+SPRINT_5_LIFECYCLE = FORMALLY_CLOSED
+SPRINT_5_FINAL_VERDICT = PASS
+INDEPENDENT_CHATGPT_REAUDIT = PASS
+MERGE_STATUS = MERGED_AND_POST_MERGE_VALIDATED
+MERGE_SHA = 8b09a34ecc7c3b0b180e30ada0702d22d61d96d2
+POST_MERGE_S5_CI_RUN = 35473144900
+POST_MERGE_UPSTREAM_RUN = 35473144855
 ```
 
 Sprint 5 remains a research-only machine-learning layer. It does not create an operational strategy, risk authorization, order authority, paper execution path, live execution path, or financial-ledger mutation capability.
@@ -32,7 +37,7 @@ The canonical entry-gate and decision documents remain:
 - `docs/program/S5_ENTRY_GATE.md`
 - `docs/program/workstreams/S5-ANTIGRAVITY-FULL-SPRINT.md`
 
-This reconciliation is not a merge authorization. Exact-head CI and pinned upstream evidence must be green on the current PR head at the time of independent audit.
+The independent re-audit passed on the final PR head, human merge authorization was granted, PR #78 was merged, and exact post-merge validation passed on the merge SHA. This document now records the formal closure of Sprint 5.
 
 ---
 
@@ -141,44 +146,56 @@ The current suite includes explicit evidence for the material audit findings:
 
 ---
 
-## 5. Verified implementation evidence before documentary reconciliation
+## 5. Final verified evidence and post-merge validation
 
-The implementation evidence head immediately preceding this documentary reconciliation was:
+The final independently audited PR head was:
 
 ```text
-IMPLEMENTATION_EVIDENCE_HEAD = 7b5eb613cdfa4e39cbebf8ac6dae97bb9c9ce08d
-SPRINT_5_PYTHON_CI_RUN = 35386732738
-PINNED_UPSTREAM_RUN = 35386727326
+AUDITED_PR_HEAD = bcbf48c232dc0ae7e60d2570ea4012a495e2584e
+INDEPENDENT_CHATGPT_REAUDIT = PASS
+OPEN_BLOCKERS = 0
 ```
 
-Verified results on that implementation head:
+PR #78 was merged by explicit human authorization. The exact merge commit on `sprint/5-ml-engine` is:
 
 ```text
-FULL_REPOSITORY_TESTS = 1063 PASSED
+MERGE_SHA = 8b09a34ecc7c3b0b180e30ada0702d22d61d96d2
+```
+
+Exact post-merge validation on that SHA:
+
+```text
+SPRINT_5_PYTHON_CI_RUN = 35473144900
+SPRINT_5_PYTHON_CI = PASS
+SPRINT_5_CI_JOBS = 13 / 13 PASS
+
+FULL_REPOSITORY_TESTS = 1064 PASSED
 FULL_REPOSITORY_TEST_FAILURES = 0
 FULL_REPOSITORY_WARNINGS = 1
 
-S5_COVERAGE_TESTS = 87 PASSED
-S5_PACKAGE_STATEMENTS = 1452 / 1452
-S5_PACKAGE_BRANCHES = 468 / 468
+S5_COVERAGE_TESTS = 88 PASSED
+S5_PACKAGE_STATEMENTS = 1460 / 1460
+S5_PACKAGE_BRANCHES = 472 / 472
 S5_PACKAGE_COVERAGE = 100.00%
 
-RUFF = PASS
-MYPY_STRICT = PASS (151 source files)
-COMPILE = PASS
-DEPENDENCIES = PASS
+PINNED_UPSTREAM_RUN = 35473144855
+PINNED_UPSTREAM_DOCS = PASS
+PINNED_UPSTREAM_CI = PASS
+
 FOUNDATION_GATE = PASS
 S1_BOUNDARY = PASS
 S2_BOUNDARY = PASS
 S3_BOUNDARY = PASS
 S4_BOUNDARY = PASS
+S5_BOUNDARY = PASS
 DIFF_GATE = PASS
-
-PINNED_UPSTREAM_DOCS = PASS
-PINNED_UPSTREAM_CI = PASS
+RUFF = PASS
+MYPY_STRICT = PASS
+COMPILE = PASS
+DEPENDENCIES = PASS
 ```
 
-On that head, the only failing S5 CI matrix job was the acceptance-symbol verifier because this document still cited six superseded test names. This reconciliation removes those stale references. The current PR head must be revalidated after this documentary commit; no prior run is treated as evidence for a later SHA.
+The warning observed in the full repository run is non-blocking and does not represent a Sprint 5 test failure.
 
 ---
 
@@ -209,13 +226,17 @@ A predictive model ranking is not an economic-strategy ranking and is not a prom
 SPRINT_5_ENTRY_GATE = PASS
 SPRINT_5_FUNCTIONAL_SCOPE = IMPLEMENTED
 SPRINT_5_NEGATIVE_CAPABILITY_BOUNDARY = ENFORCED
-SPRINT_5_IMPLEMENTATION_EVIDENCE = GREEN_EXCEPT_PRE_RECONCILIATION_DOC_SYMBOL_JOB
-SPRINT_5_CLOSURE_GATE = CLOSURE_CANDIDATE
-INDEPENDENT_CHATGPT_REAUDIT = REQUIRED
-MERGE_RECOMMENDATION = NO
-MERGE_AUTHORIZED = NO
-SPRINT_5_FORMALLY_CLOSED = NO
-PROMOTION_TO_SPRINT_6_GATE = NO
+SPRINT_5_INDEPENDENT_REAUDIT = PASS
+SPRINT_5_MERGE_COMPLETED = YES
+SPRINT_5_POST_MERGE_VALIDATION = PASS
+SPRINT_5_LIFECYCLE = FORMALLY_CLOSED
+SPRINT_5_FINAL_VERDICT = PASS
+OPEN_BLOCKERS = 0
+
+PROMOTION_TO_SPRINT_6_GATE = YES
+SPRINT_6_ENTRY_GATE = AUTHORIZED
+SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 ```
 
-The next valid action is exact-head CI/upstream verification followed by independent reauditing of PR #78. Only after an independent PASS and explicit human merge authorization may Sprint 5 be merged and formally closed.
+Sprint 5 is formally closed. Authorization extends only to materialization, review and adjudication of the Sprint 6 Entry Gate. Scenario Engine functional implementation remains prohibited until that gate is explicitly approved and subsequently authorized.
+

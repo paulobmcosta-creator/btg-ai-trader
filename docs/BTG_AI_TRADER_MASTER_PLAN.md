@@ -2,7 +2,7 @@
 
 **Documento de referência transversal do projeto**
 **Status:** ativo e evolutivo
-**Última consolidação:** 2026-09-16
+**Última consolidação:** 2026-09-19
 **Repositório:** `paulobmcosta-creator/btg-ai-trader`
 **Visibilidade:** pública, source-visible, licença proprietária
 
@@ -369,9 +369,15 @@ Fora do Sprint 4:
 - APIs de broker ou ordem;
 - dinheiro real.
 
-### Sprint 5 — ML Engine — CLOSURE_CANDIDATE
+### Sprint 5 — ML Engine — FORMALLY_CLOSED / PASS
 
-Research ML Engine implementado no PR #78: feature pipeline causal, seis famílias de modelos tabulares scikit-learn, RNG provenance factual, fronteira verificada de entrada e manifesto de treino, espaço de busca finito com proibição estrutural de best-seed, seleção restrita a validação, reutilização das partições/purge/embargo do Sprint 4, lineage de evidência protegida via `EvaluationHistory`, comparação com baselines S4 sob paridade experimental, model cards limitados a MODEL e registro de pesquisa imutável (`ResearchModelRegistry`). A implementação permanece sem authority financeira e aguarda auditoria independente e merge humano.
+Research ML Engine formalmente fechado após reauditoria independente PASS, merge humano do PR #78 e validação pós-merge no SHA `8b09a34ecc7c3b0b180e30ada0702d22d61d96d2`. O run S5 `35473144900` passou 13/13 jobs, com 1064 testes de repositório PASS; o pacote S5 atingiu 1460/1460 statements e 472/472 branches, e o pinned upstream `35473144855` passou 2/2. Permanecem ausentes Strategy/Risk/Paper/Live, APIs de ordem, FinancialLedger mutation e dinheiro real.
+
+```text
+PROMOTION_TO_SPRINT_6_GATE = YES
+SPRINT_6_ENTRY_GATE = AUTHORIZED
+SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+```
 
 ### Sprint 6 — Scenario Engine
 
@@ -459,7 +465,7 @@ Direção futura de produção continua separando Trading Node, Research/AI Node
 - `main` preserva deliberadamente a baseline histórica/public-readiness e não representa automaticamente o HEAD operacional de sprint;
 - branch canônica atual: `sprint/5-ml-engine`;
 - branch de trabalho: `s5/00-full-ml-engine`;
-- Sprint 4 formalmente fechado (`FORMALLY_CLOSED` / `PASS`); Sprint 5 em `CLOSURE_CANDIDATE` no PR #78, após execução sob autorização humana explícita em lote único.
+- Sprints 4 e 5 formalmente fechados (`FORMALLY_CLOSED` / `PASS`); o próximo estágio autorizado é exclusivamente o Sprint 6 Entry Gate.
 
 ### 12.2. Segurança do repositório
 
@@ -530,14 +536,20 @@ Sprint 3 implementou o Backtester Econômico Determinístico (`src/btg_ai_trader
 
 Sprint 4 implementou a Avaliação Temporal Prospectiva e o Catálogo de Baselines Estatísticos (`src/btg_ai_trader/statistical_baselines/`), com planos walk-forward, purging, embargo e 7 baselines estatísticos determinísticos sem dependências de ML runtime, fechado via PR #74 em `0786ace...` e CI pós-merge PASS.
 
-### 2026-09-18 — execução e submissão do Sprint 5
+### 2026-09-18 a 2026-09-19 — execução e fechamento do Sprint 5
 
-Sprint 5 implementou o Motor de Pesquisa de Machine Learning Supervisionado (`src/btg_ai_trader/ml_engine/`), com contratos de target causal, pipelines de atributos sem vazamento, 6 famílias de modelos tabulares scikit-learn, métricas probabilísticas de calibração, avaliação walk-forward causal reutilizando purge/embargo do Sprint 4, lineage de evidência protegida, model cards restritos e registro imutável sem aliases operacionais. O implementation evidence head `7b5eb613cdfa4e39cbebf8ac6dae97bb9c9ce08d` registrou 1063 testes PASS no repositório, 100% de statements/branches no pacote S5 e upstream 2/2 PASS; o PR #78 segue como `CLOSURE_CANDIDATE` para auditoria independente.
+Sprint 5 implementou o Motor de Pesquisa de Machine Learning Supervisionado (`src/btg_ai_trader/ml_engine/`) e passou por auditoria independente, remediação e reauditoria final. O PR #78 foi mergeado por autorização humana em `8b09a34ecc7c3b0b180e30ada0702d22d61d96d2`. A validação pós-merge registrou Sprint 5 Python CI `35473144900` PASS 13/13, 1064 testes de repositório PASS, cobertura S5 100%/100% e pinned upstream `35473144855` PASS 2/2. Sprint 5 foi então formalmente fechado com veredito PASS.
 
 ---
 
 ## 16. Próxima ação oficial
 
-Aguardar a auditoria independente do candidato a fechamento do Sprint 5 (Research ML Engine).
+Materializar, revisar e adjudicar exclusivamente o **Sprint 6 Entry Gate — Scenario Engine**.
+
+```text
+PROMOTION_TO_SPRINT_6_GATE = YES
+SPRINT_6_ENTRY_GATE = AUTHORIZED
+SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+```
 
 Nenhuma execução real pode ser criada até aprovação explícita de todos os gates documentados. Não há autorização para negociação automática, envio de ordens, Strategy, Risk, Paper, Live ou uso de dinheiro real.
