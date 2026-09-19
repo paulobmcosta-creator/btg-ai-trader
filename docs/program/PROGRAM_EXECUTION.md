@@ -89,7 +89,12 @@ SPRINT_5_POST_MERGE_UPSTREAM_RUN = 35473144855
 SPRINT_5_POST_MERGE_UPSTREAM = PASS
 SPRINT_5_ISSUE_STATUS = CLOSED_COMPLETED
 PROMOTION_TO_SPRINT_6_GATE = YES
-SPRINT_6_ENTRY_GATE = AUTHORIZED
+SPRINT_6_STATUS = ENTRY_GATE_CANDIDATE
+SPRINT_6_LIFECYCLE = ENTRY_GATE_ONLY
+SPRINT_6_BRANCH = sprint/6-scenario-engine
+SPRINT_6_WORK_BRANCH = s6/00-entry-gate
+SPRINT_6_ISSUE = #79
+SPRINT_6_ENTRY_GATE = CANDIDATE_PASS_PENDING_INDEPENDENT_REVIEW
 SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 
 OFFICIAL_CODEX_SECURITY_DIFF_SCAN = NOT_EXECUTED
@@ -230,6 +235,26 @@ Issue #61 permanece aberta para Administrative Branch Protection & Ruleset Harde
 
 Issue #6 permanece aberta para a errata histórica 0F-F/QPI. `docs/protocols/quantitative/TRACEABILITY.md` continua sendo a autoridade canônica das QPIs; o snapshot histórico 0F-F permanece congelado.
 
+## Sprint 6 — Scenario Engine — ENTRY GATE CANDIDATE
+
+The Sprint 6 Entry Gate has been materialized on `s6/00-entry-gate` from the exact Sprint 5 final canonical head `9956f3a15d1fa2f87b347d436a26d684d50ba857`.
+
+Current gate scope:
+- causal market-regime semantics under point-in-time knowledge;
+- retrospective regime segmentation explicitly exploratory-only;
+- deterministic predeclared scenario/stress specifications;
+- finite scenario grids with search-history preservation;
+- empirical distribution, downside and path diagnostics without Risk authority;
+- explicit separation of stress scenarios from probability forecasts;
+- zero additional recurring cost;
+- no functional Scenario Engine code in the gate PR.
+
+```text
+S6_ENTRY_GATE_CANDIDATE = PASS
+S6_ENTRY_GATE_CANONICAL = PENDING_INDEPENDENT_REVIEW_AND_MERGE
+SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+```
+
 ## Canonical next action
 
-O próximo passo canônico é exclusivamente a materialização, revisão e adjudicação do **Sprint 6 Entry Gate — Scenario Engine**. A implementação funcional do Sprint 6 permanece `NOT_AUTHORIZED` até aprovação formal desse gate e nova autorização explícita. Negociação automática, envio de ordens, Paper operacional, Live operacional, Risk operacional, Strategy operacional, execução financeira e uso de dinheiro real continuam estritamente proibidos.
+Validate the exact S6 entry-gate PR head, perform independent review, and stop before merge without explicit human authorization. Even after a successful gate merge, functional Scenario Engine implementation requires a separate explicit human authorization. Strategy, Risk, Paper, Live, broker-order, FinancialLedger mutation and real-money authority remain prohibited.
