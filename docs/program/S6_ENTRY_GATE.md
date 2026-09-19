@@ -55,7 +55,7 @@ NEW_MANDATORY_RUNTIME_DEPENDENCIES = 0
 | **S6-EG-10** | Functional implementation absent | CI requires no `src/` or `tests/` change | PENDING_EXACT_HEAD_CI |
 | **S6-EG-11** | Dependency surface unchanged | CI requires no `pyproject.toml` change | PENDING_EXACT_HEAD_CI |
 | **S6-EG-12** | Zero additional recurring cost | no paid service/dependency introduced | PASS |
-| **S6-EG-13** | Entry-gate CI workflow present | `.github/workflows/s6-entry-gate-ci.yml` | PENDING_MATERIALIZATION |
+| **S6-EG-13** | Entry-gate CI workflow present | `.github/workflows/s6-entry-gate-ci.yml` | PASS |
 | **S6-EG-14** | Branch-protection limitation acknowledged | Issue #61 remains defense-in-depth | PASS |
 
 ## Candidate conclusion
