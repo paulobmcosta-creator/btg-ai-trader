@@ -239,4 +239,3 @@ SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 ```
 
 Sprint 5 is formally closed. Authorization extends only to materialization, review and adjudication of the Sprint 6 Entry Gate. Scenario Engine functional implementation remains prohibited until that gate is explicitly approved and subsequently authorized.
-
