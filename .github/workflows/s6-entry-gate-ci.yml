@@ -64,7 +64,31 @@ jobs:
           done
 
           grep -F "SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED" docs/program/S6_ENTRY_GATE.md
-          grep -F "S6_ENTRY_GATE_CANDIDATE = PASS" docs/program/S6_ENTRY_GATE.md
+          grep -Eq '^S6_ENTRY_GATE(_CANDIDATE)? = PASS
+          grep -F "DD-89" docs/program/S6_DECISION_REGISTER.md
+          grep -F "STRESS_SCENARIO != FORECAST" docs/program/S6_ENTRY_CONTRACT.md
+
+          git diff --quiet "${S5_BASE_SHA}" HEAD -- src tests pyproject.toml
+          test ! -e src/btg_ai_trader/scenario_engine
+
+      - name: Check diff whitespace
+        shell: bash
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+          INITIAL_BASE_SHA: 9956f3a15d1fa2f87b347d436a26d684d50ba857
+        run: |
+          set -euo pipefail
+          if [[ -n "${PR_BASE_SHA}" ]]; then
+            comparison_base="${PR_BASE_SHA}"
+          elif [[ -n "${PUSH_BEFORE_SHA}" && ! "${PUSH_BEFORE_SHA}" =~ ^0+$ ]]; then
+            comparison_base="${PUSH_BEFORE_SHA}"
+          else
+            comparison_base="${INITIAL_BASE_SHA}"
+          fi
+          git cat-file -e "${comparison_base}^{commit}"
+          git diff --check "${comparison_base}" HEAD
+ docs/program/S6_ENTRY_GATE.md
           grep -F "DD-89" docs/program/S6_DECISION_REGISTER.md
           grep -F "STRESS_SCENARIO != FORECAST" docs/program/S6_ENTRY_CONTRACT.md
 
