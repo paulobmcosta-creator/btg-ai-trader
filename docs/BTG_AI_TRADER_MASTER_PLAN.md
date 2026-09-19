@@ -379,12 +379,16 @@ SPRINT_6_ENTRY_GATE = AUTHORIZED
 SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 ```
 
-### Sprint 6 — Scenario Engine — ENTRY_GATE_CANDIDATE
+### Sprint 6 — Scenario Engine — ENTRY_GATE_APPROVED / PASS
 
 O Gate de Entrada do Sprint 6 foi materializado a partir do head canônico final do Sprint 5. O escopo futuro proposto é research-only: regimes causalmente mensuráveis, segmentação retrospectiva apenas exploratória, cenários/stress determinísticos predeclarados e análise de distribuições empíricas/downside/path sem autoridade de risco.
 
 ```text
-S6_ENTRY_GATE_CANDIDATE = PASS
+S6_ENTRY_GATE = PASS
+S6_ENTRY_GATE_CANONICAL = PASS
+S6_ENTRY_GATE_MERGE_SHA = d74e632f47fafab9f441574acbacb3ae7f1a7a72
+S6_ENTRY_GATE_POST_MERGE_CI_RUN = 35474259990
+S6_ENTRY_GATE_POST_MERGE_UPSTREAM_RUN = 35474259986
 SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 ```
 
@@ -470,9 +474,10 @@ Direção futura de produção continua separando Trading Node, Research/AI Node
 - repositório público;
 - licença proprietária source-visible;
 - `main` preserva deliberadamente a baseline histórica/public-readiness e não representa automaticamente o HEAD operacional de sprint;
-- branch canônica atual: `sprint/5-ml-engine`;
-- branch de trabalho: `s5/00-full-ml-engine`;
-- Sprints 4 e 5 formalmente fechados (`FORMALLY_CLOSED` / `PASS`); o próximo estágio autorizado é exclusivamente o Sprint 6 Entry Gate.
+- branch canônica atual: `sprint/6-scenario-engine`;
+- Entry Gate do Sprint 6: canônico / PASS;
+- implementação funcional do Sprint 6: `NOT_AUTHORIZED`;
+- Sprints 4 e 5 permanecem formalmente fechados (`FORMALLY_CLOSED` / `PASS`).
 
 ### 12.2. Segurança do repositório
 
@@ -549,18 +554,19 @@ Sprint 5 implementou o Motor de Pesquisa de Machine Learning Supervisionado (`sr
 
 ### 2026-09-19 — materialização do Sprint 6 Entry Gate
 
-Foi aberto o tracking Issue #79 e materializado o candidato ao Gate de Entrada do Scenario Engine nos branches `sprint/6-scenario-engine` e `s6/00-entry-gate`. O gate resolve o desenho de DD-89 por regime causal determinístico baseado em thresholds explícitos, separa regimes post-hoc como exploração, define stress determinístico não probabilístico e mantém a implementação funcional do Sprint 6 como `NOT_AUTHORIZED`.
+Foi aberto o tracking Issue #79 e materializado o Gate de Entrada do Scenario Engine nos branches `sprint/6-scenario-engine` e `s6/00-entry-gate`. Após revisão independente PASS, o PR #80 foi mergeado no SHA `d74e632f47fafab9f441574acbacb3ae7f1a7a72`; os runs pós-merge `35474259990` (Sprint 6 Entry Gate CI) e `35474259986` (Pinned upstream) passaram integralmente. O gate resolve o desenho de DD-89 por regime causal determinístico baseado em thresholds explícitos, separa regimes post-hoc como exploração, define stress determinístico não probabilístico e mantém a implementação funcional do Sprint 6 como `NOT_AUTHORIZED`.
 
 ---
 
 ## 16. Próxima ação oficial
 
-Revisar independentemente o candidato do **Sprint 6 Entry Gate — Scenario Engine** no branch `s6/00-entry-gate`, com validação exata de CI/upstream, e não fazer merge sem autorização humana explícita.
+O próximo limite de governança é uma decisão humana separada sobre a **implementação funcional do Sprint 6 — Scenario Engine** sob o Entry Gate já aprovado.
 
 ```text
 PROMOTION_TO_SPRINT_6_GATE = YES
-SPRINT_6_ENTRY_GATE = CANDIDATE_PASS_PENDING_INDEPENDENT_REVIEW
+SPRINT_6_ENTRY_GATE = PASS
+SPRINT_6_ENTRY_GATE_CANONICAL = PASS
 SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 ```
 
-Mesmo após eventual aprovação canônica do Gate de Entrada, a implementação funcional do Sprint 6 exigirá nova autorização humana. Não há autorização para negociação automática, envio de ordens, Strategy, Risk, Paper, Live ou uso de dinheiro real.
+Sem autorização humana explícita adicional, nenhuma implementação funcional do Scenario Engine deve começar. Não há autorização para negociação automática, envio de ordens, Strategy, Risk, Paper, Live ou uso de dinheiro real.
