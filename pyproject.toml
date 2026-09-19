@@ -28,6 +28,13 @@ dev = [
   "pytest-cov==6.0.0",
   "ruff==0.11.0",
 ]
+ml = [
+  "joblib==1.6.0",
+  "numpy==2.5.3",
+  "scikit-learn==1.9.1",
+  "scipy==1.18.1",
+  "threadpoolctl==3.7.0",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/btg_ai_trader"]
@@ -57,3 +64,18 @@ select = ["E", "F", "I", "B", "UP", "RUF"]
 python_version = "3.12"
 strict = true
 files = ["src", "tests"]
+
+[[tool.mypy.overrides]]
+module = [
+  "joblib",
+  "joblib.*",
+  "numpy",
+  "numpy.*",
+  "scipy",
+  "scipy.*",
+  "sklearn",
+  "sklearn.*",
+  "threadpoolctl",
+  "threadpoolctl.*",
+]
+ignore_missing_imports = true

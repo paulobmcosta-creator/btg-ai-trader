@@ -332,7 +332,7 @@ Fora do Sprint 3:
 - mutação do `FinancialLedger` canônico futuro;
 - modelos de machine learning preditivos operacionais.
 
-### Sprint 4 — Statistical Baselines — FORMALLY_CLOSED / PASS (PROMOTION_TO_SPRINT_5_GATE = YES; SPRINT_5_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED)
+### Sprint 4 — Statistical Baselines — FORMALLY_CLOSED / PASS
 
 Escopo executado e auditado:
 
@@ -355,8 +355,8 @@ Fechamento canônico:
 - post-merge pinned upstream: `35304136369` PASS 2/2;
 - full repository: 957/957 tests PASS;
 - package S4: 1,377/1,377 statements e 468/468 branches;
-- autorizado exclusivamente: Sprint 5 Entry Gate;
-- implementação funcional do Sprint 5: NOT_AUTHORIZED.
+- no fechamento do Sprint 4, foi autorizado exclusivamente o Sprint 5 Entry Gate;
+- após o Entry Gate PASS, houve autorização humana explícita posterior para a implementação funcional de pesquisa do Sprint 5 em lote único.
 
 Fora do Sprint 4:
 
@@ -369,9 +369,9 @@ Fora do Sprint 4:
 - APIs de broker ou ordem;
 - dinheiro real.
 
-### Sprint 5 — ML Engine
+### Sprint 5 — ML Engine — CLOSURE_CANDIDATE
 
-Feature pipeline, model registry, treino/validação e comparação de modelos.
+Research ML Engine implementado no PR #78: feature pipeline causal, seis famílias de modelos tabulares scikit-learn, RNG provenance factual, fronteira verificada de entrada e manifesto de treino, espaço de busca finito com proibição estrutural de best-seed, seleção restrita a validação, reutilização das partições/purge/embargo do Sprint 4, lineage de evidência protegida via `EvaluationHistory`, comparação com baselines S4 sob paridade experimental, model cards limitados a MODEL e registro de pesquisa imutável (`ResearchModelRegistry`). A implementação permanece sem authority financeira e aguarda auditoria independente e merge humano.
 
 ### Sprint 6 — Scenario Engine
 
@@ -452,14 +452,14 @@ Direção futura de produção continua separando Trading Node, Research/AI Node
 
 ## 12. Git/GitHub
 
-### 12.1. Estado atual
+#### 12.1. Estado atual
 
 - repositório público;
 - licença proprietária source-visible;
 - `main` preserva deliberadamente a baseline histórica/public-readiness e não representa automaticamente o HEAD operacional de sprint;
-- branch canônica do Sprint 1: `sprint/1-market-observer`;
-- branch de fechamento: `s1/30-final-acceptance-github-security`;
-- Sprint 2 está autorizado a abrir a partir do head aceito do Sprint 1.
+- branch canônica atual: `sprint/5-ml-engine`;
+- branch de trabalho: `s5/00-full-ml-engine`;
+- Sprint 4 formalmente fechado (`FORMALLY_CLOSED` / `PASS`); Sprint 5 em `CLOSURE_CANDIDATE` no PR #78, após execução sob autorização humana explícita em lote único.
 
 ### 12.2. Segurança do repositório
 
@@ -522,10 +522,22 @@ ADR-0026 tornou XP/MT5 o provider vigente. Bridge read-only, discovery, portabil
 
 O Gate de Entrada do Sprint 2 foi formalizado via PR #63 (`00cc561...`). S2-A implementou o Causal Replay Core (`src/btg_ai_trader/replay/`), com schedule imutável, monotonicidade por cutoff UTC, speed racional e proveniência DD-15 (`ReplayInputBoundary`), aceito via PR #65 (`9faa43c...`). S2-B implementou a normalização sem perdas e evidência determinística de qualidade (`src/btg_ai_trader/data_platform/`), preservando `MissingReason` (DD-80) e neutralidade factual (S2-AC-10), aceito via PR #67 (`071e004...`). A tarefa S2-C consolidou a reconciliação formal conjuntiva em `docs/program/S2_FINAL_ACCEPTANCE.md` (11 ACs PASS, 3 ACs NOT_TRIGGERED, 16 NCs PASS, 0 blockers), propondo o fechamento do Sprint 2 e autorização para materializar o Gate do Sprint 3.
 
+### 2026-09-17 — execução e fechamento do Sprint 3
+
+Sprint 3 implementou o Backtester Econômico Determinístico (`src/btg_ai_trader/backtesting/`), com contratos de livro, preenchimento causal, modelagem de custos B3 e marks de evidência econômica, fechado após reauditoria independente via PR #72 no commit canônico `6333b8f4...` e CI pós-merge PASS.
+
+### 2026-09-17 — execução e fechamento do Sprint 4
+
+Sprint 4 implementou a Avaliação Temporal Prospectiva e o Catálogo de Baselines Estatísticos (`src/btg_ai_trader/statistical_baselines/`), com planos walk-forward, purging, embargo e 7 baselines estatísticos determinísticos sem dependências de ML runtime, fechado via PR #74 em `0786ace...` e CI pós-merge PASS.
+
+### 2026-09-18 — execução e submissão do Sprint 5
+
+Sprint 5 implementou o Motor de Pesquisa de Machine Learning Supervisionado (`src/btg_ai_trader/ml_engine/`), com contratos de target causal, pipelines de atributos sem vazamento, 6 famílias de modelos tabulares scikit-learn, métricas probabilísticas de calibração, avaliação walk-forward causal reutilizando purge/embargo do Sprint 4, lineage de evidência protegida, model cards restritos e registro imutável sem aliases operacionais. O implementation evidence head `7b5eb613cdfa4e39cbebf8ac6dae97bb9c9ce08d` registrou 1063 testes PASS no repositório, 100% de statements/branches no pacote S5 e upstream 2/2 PASS; o PR #78 segue como `CLOSURE_CANDIDATE` para auditoria independente.
+
 ---
 
 ## 16. Próxima ação oficial
 
-Aguardar a aprovação da reauditoria independente do Sprint 3 (PR #72) sobre o novo HEAD remediado, com CI completo e documentação reconciliada.
+Aguardar a auditoria independente do candidato a fechamento do Sprint 5 (Research ML Engine).
 
-A promoção para o Gate do Sprint 4 permanece condicionada à aprovação formal da reauditoria independente (`MERGE_AUTHORIZED = NO; PROMOTION_TO_SPRINT_4_GATE = NO_UNTIL_INDEPENDENT_REAUDIT`). Não há autorização para execução financeira, ordens, Strategy, Risk, Paper, Live ou uso de dinheiro real.
+Nenhuma execução real pode ser criada até aprovação explícita de todos os gates documentados. Não há autorização para negociação automática, envio de ordens, Strategy, Risk, Paper, Live ou uso de dinheiro real.

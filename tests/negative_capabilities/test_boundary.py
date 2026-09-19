@@ -132,7 +132,10 @@ def test_scope_rejects_symlink_files(fixture_root: Path) -> None:
     original = fixture_root / PATH
     target = fixture_root / "source-copy.py"
     original.rename(target)
-    original.symlink_to(target)
+    try:
+        original.symlink_to(target)
+    except OSError:
+        pytest.skip("Symlink creation requires elevation/Developer Mode on Windows")
     assert any(f.rule == "scope-symlink" for f in verify(fixture_root))
 
 
