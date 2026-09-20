@@ -1,0 +1,122 @@
+name: Sprint 6 Preauthorization Remediation CI
+
+on:
+  push:
+    branches:
+      - "s6/01-preauth-remediation"
+  pull_request:
+    branches:
+      - "sprint/6-scenario-engine"
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: s6-preauth-remediation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  foundation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out exact reviewed commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+      - name: Verify frozen Foundation contracts
+        run: python scripts/check_foundation_contract.py
+
+  preauth-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out exact reviewed commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify remediation scope and contract
+        shell: bash
+        env:
+          PREAUTH_BASE_SHA: 616849f8e77ecf3624b2b9362c1ef42c7fb9bcc1
+        run: |
+          set -euo pipefail
+
+          required=(
+            docs/program/S6_ENTRY_CONTRACT.md
+            docs/program/S6_DECISION_REGISTER.md
+            docs/program/S6_CAPABILITY_MATRIX.md
+            docs/program/S6_ENTRY_GATE.md
+            docs/sprints/SPRINT_6.md
+            docs/program/workstreams/S6-PREAUTH-REMEDIATION.md
+          )
+          for path in "${required[@]}"; do
+            test -f "${path}"
+          done
+
+          # No functional implementation or dependency changes in this remediation.
+          git diff --quiet "${PREAUTH_BASE_SHA}" HEAD -- src tests pyproject.toml
+          git diff --quiet "${PREAUTH_BASE_SHA}" HEAD -- docs/foundation docs/protocols
+          test ! -e src/btg_ai_trader/scenario_engine
+
+          # The changed-file surface remains governance-only.
+          while IFS= read -r path; do
+            case "${path}" in
+              AGENTS.md|docs/BTG_AI_TRADER_MASTER_PLAN.md|docs/program/PROGRAM_EXECUTION.md|docs/program/S6_ENTRY_CONTRACT.md|docs/program/S6_DECISION_REGISTER.md|docs/program/S6_CAPABILITY_MATRIX.md|docs/program/S6_ENTRY_GATE.md|docs/sprints/SPRINT_6.md|docs/program/workstreams/S6-PREAUTH-REMEDIATION.md|.github/workflows/s6-preauth-remediation-ci.yml)
+                ;;
+              *)
+                echo "Unauthorized remediation path: ${path}" >&2
+                exit 1
+                ;;
+            esac
+          done < <(git diff --name-only "${PREAUTH_BASE_SHA}" HEAD)
+
+          # Functional authorization remains absent.
+          grep -F "SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED" docs/program/S6_ENTRY_CONTRACT.md
+          grep -F "SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED" docs/sprints/SPRINT_6.md
+
+          # Eight review findings are materially closed in the contract.
+          grep -F "ScenarioInputBoundary" docs/program/S6_ENTRY_CONTRACT.md
+          grep -F "PROTECTED_INFORMED" docs/program/S6_ENTRY_CONTRACT.md
+          grep -F "SCENARIO_OUTCOME_SET != OBSERVED_DISTRIBUTION" docs/program/S6_ENTRY_CONTRACT.md
+          grep -F "CAUSAL_STRATIFICATION" docs/program/S6_ENTRY_CONTRACT.md
+          grep -F "STRATEGY_BOUND" docs/program/S6_ENTRY_CONTRACT.md
+          grep -F "ScenarioDispositionPolicy" docs/program/S6_ENTRY_CONTRACT.md
+          grep -F "Sprint 6 is not a second backtester" docs/program/S6_ENTRY_CONTRACT.md
+          grep -F "ObservedSeries" docs/program/S6_ENTRY_CONTRACT.md
+          grep -F "TailMetricPolicy" docs/program/S6_ENTRY_CONTRACT.md
+          grep -F "S6_PACKAGE_STATEMENT_COVERAGE = 100%" docs/program/S6_ENTRY_CONTRACT.md
+          grep -F "S6_PACKAGE_BRANCH_COVERAGE = 100%" docs/program/S6_ENTRY_CONTRACT.md
+
+          # Final canonical Entry Gate evidence is reconciled.
+          grep -F "616849f8e77ecf3624b2b9362c1ef42c7fb9bcc1" docs/program/S6_ENTRY_GATE.md
+          grep -F "35474371811" docs/program/S6_ENTRY_GATE.md
+          grep -F "35474371852" docs/program/S6_ENTRY_GATE.md
+
+      - name: Check diff whitespace
+        shell: bash
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+          INITIAL_BASE_SHA: 616849f8e77ecf3624b2b9362c1ef42c7fb9bcc1
+        run: |
+          set -euo pipefail
+          if [[ -n "${PR_BASE_SHA}" ]]; then
+            comparison_base="${PR_BASE_SHA}"
+          elif [[ -n "${PUSH_BEFORE_SHA}" && ! "${PUSH_BEFORE_SHA}" =~ ^0+$ ]]; then
+            comparison_base="${PUSH_BEFORE_SHA}"
+          else
+            comparison_base="${INITIAL_BASE_SHA}"
+          fi
+          git cat-file -e "${comparison_base}^{commit}"
+          git diff --check "${comparison_base}" HEAD
