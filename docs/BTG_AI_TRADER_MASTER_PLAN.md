@@ -390,8 +390,8 @@ S6_ENTRY_GATE_MERGE_SHA = d74e632f47fafab9f441574acbacb3ae7f1a7a72
 S6_ENTRY_GATE_FINAL_CANONICAL_HEAD = 616849f8e77ecf3624b2b9362c1ef42c7fb9bcc1
 S6_ENTRY_GATE_FINAL_CI_RUN = 35474371811
 S6_ENTRY_GATE_FINAL_UPSTREAM_RUN = 35474371852
-S6_PREAUTH_REVIEW = CHANGES_REQUIRED
-S6_PREAUTH_REMEDIATION = IN_PROGRESS
+S6_PREAUTH_REVIEW = CHANGES_REQUIRED_REMEDIATED
+S6_PREAUTH_REMEDIATION = PASS_CANDIDATE_PENDING_MERGE
 SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 ```
 
@@ -569,7 +569,7 @@ A revisão pré-autorização preservou o Entry Gate como PASS, mas classificou 
 
 ## 16. Próxima ação oficial
 
-A próxima ação oficial é concluir a **remediação pré-autorização do Sprint 6** no branch `s6/01-preauth-remediation`, validar o HEAD exato, realizar reauditoria independente e parar antes do merge sem autorização humana explícita.
+A próxima ação oficial é validar o HEAD final do **PR #82 — remediação pré-autorização do Sprint 6** e submeter o merge à decisão humana explícita. A reauditoria substantiva do contrato está PASS e não há blocker aberto.
 
 ```text
 PROMOTION_TO_SPRINT_6_GATE = YES
@@ -580,4 +580,4 @@ S6_PREAUTH_REMEDIATION = IN_PROGRESS
 SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 ```
 
-Mesmo após eventual merge da remediação, a implementação funcional do Scenario Engine exigirá decisão humana explícita separada. Não há autorização para negociação automática, envio de ordens, Strategy, Risk, Paper, Live ou uso de dinheiro real.
+Mesmo após eventual merge da remediação, a implementação funcional do Scenario Engine continuará `NOT_AUTHORIZED` e exigirá decisão humana explícita separada. Não há autorização para negociação automática, envio de ordens, Strategy, Risk, Paper, Live ou uso de dinheiro real.
