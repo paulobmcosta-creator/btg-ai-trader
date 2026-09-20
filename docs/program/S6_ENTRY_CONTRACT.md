@@ -518,8 +518,10 @@ This remediation only strengthens the contract.
 
 ```text
 S6_ENTRY_GATE = PASS
-S6_PREAUTH_CONTRACT_REMEDIATION = IN_PROGRESS
+S6_PREAUTH_CONTRACT_REMEDIATION = PASS_CANDIDATE_PENDING_MERGE
+S6_PREAUTH_REAUDIT = PASS
+OPEN_PREAUTH_BLOCKERS = 0
 SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 ```
 
-Functional implementation requires a separate explicit human authorization after this remediation is merged and independently revalidated.
+PR #82 is technically eligible for the human merge decision only after final exact-head validation. Even if the remediation is merged, functional implementation remains separately NOT_AUTHORIZED and requires a distinct explicit human authorization.
