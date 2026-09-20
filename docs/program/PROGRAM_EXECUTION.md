@@ -90,7 +90,7 @@ SPRINT_5_POST_MERGE_UPSTREAM = PASS
 SPRINT_5_ISSUE_STATUS = CLOSED_COMPLETED
 PROMOTION_TO_SPRINT_6_GATE = YES
 SPRINT_6_STATUS = ENTRY_GATE_APPROVED
-SPRINT_6_LIFECYCLE = PREAUTH_REMEDIATION_IN_PROGRESS
+SPRINT_6_LIFECYCLE = PREAUTH_REMEDIATION_PASS_CANDIDATE
 SPRINT_6_BRANCH = sprint/6-scenario-engine
 SPRINT_6_PREAUTH_WORK_BRANCH = s6/01-preauth-remediation
 SPRINT_6_ENTRY_GATE_ISSUE = #79
@@ -101,8 +101,8 @@ SPRINT_6_ENTRY_GATE_FINAL_CANONICAL_HEAD = 616849f8e77ecf3624b2b9362c1ef42c7fb9b
 SPRINT_6_ENTRY_GATE_FINAL_CI_RUN = 35474371811
 SPRINT_6_ENTRY_GATE_FINAL_UPSTREAM_RUN = 35474371852
 SPRINT_6_ENTRY_GATE_INDEPENDENT_REVIEW = PASS
-SPRINT_6_PREAUTH_REVIEW = CHANGES_REQUIRED
-SPRINT_6_PREAUTH_REMEDIATION = IN_PROGRESS
+SPRINT_6_PREAUTH_REVIEW = CHANGES_REQUIRED_REMEDIATED
+SPRINT_6_PREAUTH_REMEDIATION = PASS_CANDIDATE_PENDING_MERGE
 SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 
 OFFICIAL_CODEX_SECURITY_DIFF_SCAN = NOT_EXECUTED
@@ -270,4 +270,4 @@ SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 
 ## Canonical next action
 
-The canonical next action is to complete exact-head validation and independent re-audit of the Sprint 6 pre-authorization remediation in Issue #81 / `s6/01-preauth-remediation`. The remediation PR must not be merged without explicit human authorization. Even after remediation merge, functional Scenario Engine implementation remains a separate explicit human decision. Strategy, Risk, Paper, Live, broker-order, FinancialLedger mutation and real-money authority remain prohibited.
+The canonical next action is final exact-head validation of PR #82 and the human merge decision for the pre-authorization remediation. The independent contract re-audit is PASS and open substantive blockers are zero. The remediation PR must not be merged without explicit human authorization. Even after remediation merge, functional Scenario Engine implementation remains a separate explicit human decision. Strategy, Risk, Paper, Live, broker-order, FinancialLedger mutation and real-money authority remain prohibited.
