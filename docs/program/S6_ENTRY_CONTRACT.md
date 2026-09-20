@@ -73,9 +73,10 @@ The boundary must bind at minimum:
 - immutable upstream artifact identity;
 - upstream artifact content/scientific-root digest;
 - `source_lineage_digest`;
-- `evaluation_role`, when the source carries an evaluation role;
-- `protected_boundary_id`, when protected evidence is involved;
-- numeric-policy identity/digest where numeric policy is material;
+- canonical `evaluation_role` for every S6 analysis;
+- `protected_boundary_id` whenever `evaluation_role == PROTECTED_TEST`;
+- `role_provenance`, distinguishing a role inherited from upstream from a role assigned by the enclosing S6 experiment contract;
+- numeric-policy identity/digest;
 - source code revision;
 - Scenario Engine code revision;
 - ordered input identity where ordering is material;
@@ -83,12 +84,16 @@ The boundary must bind at minimum:
 
 No mutable alias such as `latest`, `champion`, `production` or an unversioned filename is sufficient provenance.
 
+The boundary must be constructed by a validated factory that recomputes all supported digests and fails closed on identity mismatch. Caller-supplied digest text is not trusted merely because it is syntactically valid.
+
+If an upstream artifact already carries an `EvaluationRole`, the S6 role must match it exactly. If the upstream artifact does not carry a role (for example a Sprint 3 backtest artifact), the enclosing S6 experiment contract must assign the role explicitly before analysis. Role may never be inferred from filename, date range, directory name or favorable/adverse outcome.
+
 ### 2.2 Admissible upstream evidence families
 
 Initial S6 may consume only explicitly typed, immutable evidence snapshots rooted in one of these families:
 
 1. **Backtest evidence**
-   - verified/integrity-valid Sprint 3 `BacktestRunManifest` identity and hashes;
+   - Sprint 3 `BacktestRunManifest` whose `verify_integrity()` succeeds, plus its immutable identity and hashes;
    - referenced immutable `BacktestResult`/economic evidence when required by the analysis;
    - causal replay boundary identity;
    - action-sequence identity;
@@ -96,19 +101,20 @@ Initial S6 may consume only explicitly typed, immutable evidence snapshots roote
    - instrument economics identity.
 
 2. **Statistical evaluation evidence**
-   - Sprint 4 `StatisticalEvaluationInputBoundary` / evaluation-manifest identity;
+   - Sprint 4 verified `StatisticalEvaluationInputBoundary` (`is_verified == True`) and evaluation-manifest identity;
    - `EvaluationRole`;
    - dataset, source-lineage and plan digests;
    - aggregate/fold metrics only under the original evaluation context.
 
 3. **Model evaluation evidence**
-   - a neutral immutable `ModelEvidenceSnapshot` containing only research evidence required by S6;
+   - a neutral immutable verified `ModelEvidenceSnapshot` containing only research evidence required by S6;
    - candidate/model identity;
    - `EvaluationScope.MODEL`;
    - `EvaluationRole`;
    - dataset, plan, target-contract and experimental-context digests;
    - metrics/disposition as upstream facts;
-   - source training/evaluation manifest identities where available.
+   - source training/evaluation manifest identities where available;
+   - when a `ModelTrainingManifest` is supplied, it must be verified and identity-consistent with the snapshot.
 
 4. **Observed series evidence**
    - immutable `ObservedSeries` described in section 7.
@@ -123,7 +129,7 @@ scenario_engine core -> MUST_NOT_LOAD estimator objects
 scenario_engine core -> MUST_NOT_DESERIALIZE joblib/pickle model state
 ```
 
-A neutral evidence snapshot may be produced at an upstream adapter boundary. That snapshot contains immutable facts/digests, not a fitted estimator or executable model object.
+A neutral evidence snapshot may be produced at an upstream adapter boundary. Its factory must verify source identities/context before issuing the snapshot, and the snapshot must carry a non-transferable verification state or equivalent fail-closed construction invariant. It contains immutable facts/digests, not a fitted estimator or executable model object.
 
 ### 2.4 Upstream evidence is immutable
 
@@ -137,12 +143,15 @@ Sprint 6 inherits Sprint 4/Sprint 5 epistemological protection. A scenario/regim
 
 ### 3.1 Canonical roles
 
-When an upstream artifact carries an `EvaluationRole`, S6 preserves it exactly. In particular:
+Every S6 analysis declares a canonical `EvaluationRole`. When an upstream artifact already carries a role, S6 preserves it exactly. When it does not, the S6 experiment contract assigns the role explicitly before any result is inspected. In particular:
 
 ```text
 PROTECTED_TEST remains PROTECTED_TEST
 PROTECTED_TEST -> MUST_NOT_BECOME development evidence implicitly
+UNLABELED_BACKTEST -> MUST_BE_ROLE_BOUND_BEFORE_ANALYSIS
 ```
+
+`ScenarioResearchHistory` complements rather than weakens the existing S4/S5 protected-evidence semantics. Where the existing `EvaluationHistory` abstraction applies to the candidate lineage, S6 must preserve/check that history as well as its scenario-specific history; a parallel scenario history cannot be used to bypass an existing protected-evidence consumption record.
 
 ### 3.2 ScenarioResearchHistory
 
@@ -391,13 +400,15 @@ If the predeclared sample/tail sufficiency rule is not met, the metric is unavai
 
 Scenario dispositions must be derived under a predeclared immutable `ScenarioDispositionPolicy`, never improvised after result inspection.
 
-Allowed research dispositions are:
+Final research dispositions reuse the canonical 0E-F vocabulary:
 
-- `ROBUST_WITHIN_DECLARED_SCOPE`;
-- `FRAGILE`;
+- `FAVORABLE`;
+- `UNFAVORABLE`;
 - `CONDITIONAL`;
 - `INCONCLUSIVE`;
 - `INVALID`.
+
+Robustness is a separate descriptive characterization, not a replacement disposition. A governed result may additionally report a `RobustnessCharacterization` such as `ROBUST_WITHIN_DECLARED_SCOPE`, `FRAGILE` or `MIXED`, but that label cannot override the canonical final disposition.
 
 The policy must bind:
 
@@ -408,9 +419,10 @@ The policy must bind:
 - treatment of missing/unknown metrics;
 - treatment of conflicting metrics;
 - tail/path sufficiency requirements when applicable;
-- policy digest.
+- policy digest;
+- definition mode for any experiment-local tolerances (`PREDECLARED` or `DEVELOPMENT_FIT`).
 
-No universal compensatory score is allowed. A hard-invalidity condition yields `INVALID` regardless of favorable values elsewhere. Insufficient required evidence yields `INCONCLUSIVE`, not robustness.
+Any `DEVELOPMENT_FIT` tolerance is derived only from the declared development domain and frozen before validation/protected evaluation. No universal compensatory score is allowed. A hard-invalidity condition yields `INVALID` regardless of favorable values elsewhere. Insufficient required evidence yields `INCONCLUSIVE`, not robustness.
 
 No disposition grants Strategy, Risk, Paper or Live authority.
 
