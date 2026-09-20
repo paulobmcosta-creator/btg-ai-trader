@@ -2,7 +2,7 @@
 
 ```text
 SPRINT_6_STATUS = ENTRY_GATE_APPROVED
-SPRINT_6_LIFECYCLE = PREAUTH_REMEDIATION_IN_PROGRESS
+SPRINT_6_LIFECYCLE = PREAUTH_REMEDIATION_PASS_CANDIDATE
 SPRINT_6_CANONICAL_BRANCH = sprint/6-scenario-engine
 PREAUTH_REMEDIATION_BRANCH = s6/01-preauth-remediation
 PREAUTH_REMEDIATION_ISSUE = #81
@@ -14,7 +14,7 @@ S6_ENTRY_GATE_FINAL_CANONICAL_HEAD = 616849f8e77ecf3624b2b9362c1ef42c7fb9bcc1
 S6_ENTRY_GATE_FINAL_CI_RUN = 35474371811
 S6_ENTRY_GATE_FINAL_UPSTREAM_RUN = 35474371852
 
-S6_PREAUTH_REMEDIATION = IN_PROGRESS
+S6_PREAUTH_REMEDIATION = PASS_CANDIDATE_PENDING_MERGE
 SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 PROMOTION_TO_S6_FUNCTIONAL_IMPLEMENTATION = NO
 
@@ -114,4 +114,4 @@ S6_PREAUTH_REMEDIATION = IN_PROGRESS
 SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 ```
 
-The remediation must pass exact-head CI/upstream and independent re-audit. Merge requires explicit human authorization. Functional implementation requires another distinct explicit human authorization after the remediation becomes canonical.
+The remediation contract has passed independent re-audit and is a PASS candidate. Final exact-head CI/upstream on the reconciled PR head is still required before merge eligibility is final. Merge requires explicit human authorization. Functional implementation remains a separate later authorization even after remediation merge.
