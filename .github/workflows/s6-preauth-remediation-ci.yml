@@ -87,7 +87,7 @@ jobs:
 
           # Eight review findings are materially closed in the contract.
           grep -F "ScenarioInputBoundary" docs/program/S6_ENTRY_CONTRACT.md
-          grep -F "canonical `evaluation_role` for every S6 analysis" docs/program/S6_ENTRY_CONTRACT.md
+          grep -F 'canonical `evaluation_role` for every S6 analysis' docs/program/S6_ENTRY_CONTRACT.md
           grep -F "UNLABELED_BACKTEST -> MUST_BE_ROLE_BOUND_BEFORE_ANALYSIS" docs/program/S6_ENTRY_CONTRACT.md
           grep -F "EvaluationHistory" docs/program/S6_ENTRY_CONTRACT.md
           grep -F "PROTECTED_INFORMED" docs/program/S6_ENTRY_CONTRACT.md
@@ -95,8 +95,8 @@ jobs:
           grep -F "CAUSAL_STRATIFICATION" docs/program/S6_ENTRY_CONTRACT.md
           grep -F "STRATEGY_BOUND" docs/program/S6_ENTRY_CONTRACT.md
           grep -F "ScenarioDispositionPolicy" docs/program/S6_ENTRY_CONTRACT.md
-          grep -F "`FAVORABLE`" docs/program/S6_ENTRY_CONTRACT.md
-          grep -F "`UNFAVORABLE`" docs/program/S6_ENTRY_CONTRACT.md
+          grep -F '`FAVORABLE`' docs/program/S6_ENTRY_CONTRACT.md
+          grep -F '`UNFAVORABLE`' docs/program/S6_ENTRY_CONTRACT.md
           grep -F "RobustnessCharacterization" docs/program/S6_ENTRY_CONTRACT.md
           grep -F "Sprint 6 is not a second backtester" docs/program/S6_ENTRY_CONTRACT.md
           grep -F "ObservedSeries" docs/program/S6_ENTRY_CONTRACT.md
