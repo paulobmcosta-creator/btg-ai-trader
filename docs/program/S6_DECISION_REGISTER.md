@@ -72,10 +72,10 @@ Scenario definitions, regime definitions, input boundaries, grids, policies, res
 No paid scenario/risk service is introduced.
 
 ### S6-D-17 — ScenarioInputBoundary is mandatory
-Every S6 run is rooted in an immutable boundary binding source kind, source identity/digest, lineage, evaluation role/protected boundary when applicable, numeric policy, code revisions and canonical boundary digest.
+Every S6 run is rooted in an immutable fail-closed boundary binding source kind, source identity/digest, lineage, a canonical evaluation role for every analysis, protected boundary when role is `PROTECTED_TEST`, role provenance, numeric policy, code revisions and canonical boundary digest. Existing upstream role must match exactly; otherwise the enclosing S6 experiment contract assigns the role before analysis.
 
 ### S6-D-18 — Protected-evidence semantics are inherited
-S6 must preserve S4/S5 `EvaluationRole` and protected-boundary semantics. Any artifact adapted using protected evidence is `PROTECTED_INFORMED` and cannot use the same protected boundary as independent confirmation.
+S6 must preserve S4/S5 `EvaluationRole`, `EvaluationHistory` and protected-boundary semantics where applicable. `ScenarioResearchHistory` complements rather than replaces them. Any artifact adapted using protected evidence is `PROTECTED_INFORMED` and cannot use the same protected boundary as independent confirmation.
 
 ### S6-D-19 — Model evidence crosses a neutral snapshot boundary
 Initial S6 core does not import `btg_ai_trader.ml_engine` at runtime and does not load fitted estimator state. Model evidence is consumed as immutable neutral facts/digests.
@@ -86,8 +86,8 @@ Synthetic scenario outcomes may be compared descriptively but cannot be interpre
 ### S6-D-21 — RegimeUseMode is explicit
 Every regime-conditioned result is `CAUSAL_STRATIFICATION`, `STRATEGY_BOUND` or `RETROSPECTIVE_EXPLORATORY`. `STRATEGY_BOUND` requires upstream proof of actual regime consumption by the evaluated strategy/candidate.
 
-### S6-D-22 — ScenarioDispositionPolicy is predeclared
-Robustness/fragility dispositions require a predeclared immutable policy. Hard invalidity is non-compensatory and missing required evidence yields `INCONCLUSIVE`.
+### S6-D-22 — ScenarioDispositionPolicy is predeclared and uses canonical 0E-F disposition vocabulary
+Final dispositions are `FAVORABLE`, `UNFAVORABLE`, `CONDITIONAL`, `INCONCLUSIVE` or `INVALID`. Robustness labels are a separate descriptive characterization. Experiment-local tolerances are `PREDECLARED` or `DEVELOPMENT_FIT`; development-fit tolerances are frozen before validation/protected evidence. Hard invalidity is non-compensatory and missing required evidence yields `INCONCLUSIVE`.
 
 ### S6-D-23 — Sprint 3 owns execution economics
 S6 orchestrates Sprint 3 for fees/slippage/latency/spread assumption stresses and may not duplicate fill, accounting or P&L logic.
