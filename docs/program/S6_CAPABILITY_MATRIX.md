@@ -73,7 +73,7 @@ These are requirements, not current implementation claims.
 | **S6-AC-29** | Separate governed robustness characterization (`ROBUST_WITHIN_DECLARED_SCOPE`/`FRAGILE`/`MIXED`) | S6-D-22 | NOT_IMPLEMENTED |
 | **S6-AC-30** | Non-compensatory `INVALID` disposition | QPI-10; S6-D-22 | NOT_IMPLEMENTED |
 | **S6-AC-31** | `INCONCLUSIVE` on insufficient required evidence | QPI-11; E-HQI-53 | NOT_IMPLEMENTED |
-| **S6-AC-33** | Complete scenario/regime/policy search history | QPI-04 | NOT_IMPLEMENTED |
+| **S6-AC-32** | Complete scenario/regime/policy search history | QPI-04 | NOT_IMPLEMENTED |
 | **S6-AC-33** | Experimental parity checks | QPI-01 | NOT_IMPLEMENTED |
 | **S6-AC-34** | Deterministic repeated-run equivalence | S6-D-10 | NOT_IMPLEMENTED |
 | **S6-AC-35** | Scenario/regime provenance manifest | S6-D-15 | NOT_IMPLEMENTED |
