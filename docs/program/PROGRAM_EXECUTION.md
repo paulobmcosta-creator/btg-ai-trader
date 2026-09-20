@@ -90,15 +90,19 @@ SPRINT_5_POST_MERGE_UPSTREAM = PASS
 SPRINT_5_ISSUE_STATUS = CLOSED_COMPLETED
 PROMOTION_TO_SPRINT_6_GATE = YES
 SPRINT_6_STATUS = ENTRY_GATE_APPROVED
-SPRINT_6_LIFECYCLE = AWAITING_FUNCTIONAL_AUTHORIZATION
+SPRINT_6_LIFECYCLE = PREAUTH_REMEDIATION_IN_PROGRESS
 SPRINT_6_BRANCH = sprint/6-scenario-engine
-SPRINT_6_WORK_BRANCH = s6/00-entry-gate
-SPRINT_6_ISSUE = #79
+SPRINT_6_PREAUTH_WORK_BRANCH = s6/01-preauth-remediation
+SPRINT_6_ENTRY_GATE_ISSUE = #79
+SPRINT_6_PREAUTH_REMEDIATION_ISSUE = #81
 SPRINT_6_ENTRY_GATE = PASS
 SPRINT_6_ENTRY_GATE_MERGE_SHA = d74e632f47fafab9f441574acbacb3ae7f1a7a72
-SPRINT_6_ENTRY_GATE_POST_MERGE_CI_RUN = 35474259990
-SPRINT_6_ENTRY_GATE_POST_MERGE_UPSTREAM_RUN = 35474259986
+SPRINT_6_ENTRY_GATE_FINAL_CANONICAL_HEAD = 616849f8e77ecf3624b2b9362c1ef42c7fb9bcc1
+SPRINT_6_ENTRY_GATE_FINAL_CI_RUN = 35474371811
+SPRINT_6_ENTRY_GATE_FINAL_UPSTREAM_RUN = 35474371852
 SPRINT_6_ENTRY_GATE_INDEPENDENT_REVIEW = PASS
+SPRINT_6_PREAUTH_REVIEW = CHANGES_REQUIRED
+SPRINT_6_PREAUTH_REMEDIATION = IN_PROGRESS
 SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 
 OFFICIAL_CODEX_SECURITY_DIFF_SCAN = NOT_EXECUTED
@@ -256,11 +260,14 @@ Current gate scope:
 ```text
 S6_ENTRY_GATE = PASS
 S6_ENTRY_GATE_CANONICAL = PASS
-S6_ENTRY_GATE_POST_MERGE_CI_RUN = 35474259990
-S6_ENTRY_GATE_POST_MERGE_UPSTREAM_RUN = 35474259986
+S6_ENTRY_GATE_FINAL_CANONICAL_HEAD = 616849f8e77ecf3624b2b9362c1ef42c7fb9bcc1
+S6_ENTRY_GATE_FINAL_CI_RUN = 35474371811
+S6_ENTRY_GATE_FINAL_UPSTREAM_RUN = 35474371852
+S6_PREAUTH_REVIEW = CHANGES_REQUIRED
+S6_PREAUTH_REMEDIATION = IN_PROGRESS
 SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 ```
 
 ## Canonical next action
 
-The canonical next action is a separate human decision on whether to authorize functional Sprint 6 implementation under the approved Entry Gate. Until that explicit authorization exists, no Scenario Engine functional code may be created. Strategy, Risk, Paper, Live, broker-order, FinancialLedger mutation and real-money authority remain prohibited.
+The canonical next action is to complete exact-head validation and independent re-audit of the Sprint 6 pre-authorization remediation in Issue #81 / `s6/01-preauth-remediation`. The remediation PR must not be merged without explicit human authorization. Even after remediation merge, functional Scenario Engine implementation remains a separate explicit human decision. Strategy, Risk, Paper, Live, broker-order, FinancialLedger mutation and real-money authority remain prohibited.
