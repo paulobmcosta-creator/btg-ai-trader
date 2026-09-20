@@ -2,20 +2,21 @@
 
 ```text
 SPRINT_6_STATUS = ENTRY_GATE_APPROVED
-SPRINT_6_LIFECYCLE = AWAITING_FUNCTIONAL_AUTHORIZATION
-SPRINT_6_REQUIRED_BASE_SHA = 9956f3a15d1fa2f87b347d436a26d684d50ba857
-CANONICAL_SPRINT_6_BRANCH = sprint/6-scenario-engine
-ENTRY_GATE_WORK_BRANCH = s6/00-entry-gate
-ISSUE = #79
+SPRINT_6_LIFECYCLE = PREAUTH_REMEDIATION_IN_PROGRESS
+SPRINT_6_CANONICAL_BRANCH = sprint/6-scenario-engine
+PREAUTH_REMEDIATION_BRANCH = s6/01-preauth-remediation
+PREAUTH_REMEDIATION_ISSUE = #81
 
-S6_ENTRY_GATE_ADJUDICATION = PASS
+S6_ENTRY_GATE = PASS
 S6_ENTRY_GATE_CANONICAL = PASS
+S6_ENTRY_GATE_MERGE_SHA = d74e632f47fafab9f441574acbacb3ae7f1a7a72
+S6_ENTRY_GATE_FINAL_CANONICAL_HEAD = 616849f8e77ecf3624b2b9362c1ef42c7fb9bcc1
+S6_ENTRY_GATE_FINAL_CI_RUN = 35474371811
+S6_ENTRY_GATE_FINAL_UPSTREAM_RUN = 35474371852
+
+S6_PREAUTH_REMEDIATION = IN_PROGRESS
 SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 PROMOTION_TO_S6_FUNCTIONAL_IMPLEMENTATION = NO
-S6_ENTRY_GATE_MERGE_SHA = d74e632f47fafab9f441574acbacb3ae7f1a7a72
-S6_ENTRY_GATE_POST_MERGE_CI_RUN = 35474259990
-S6_ENTRY_GATE_POST_MERGE_UPSTREAM_RUN = 35474259986
-S6_ENTRY_GATE_INDEPENDENT_REVIEW = PASS
 
 FINANCIAL_AUTHORITY = ABSENT
 STRATEGY_OPERATIONAL_PATH = ABSENT
@@ -28,64 +29,89 @@ ADDITIONAL_RECURRING_COST = ZERO
 
 ## 1. Purpose
 
-Sprint 6 is the research-only **Scenario Engine** stage. Its future functional scope is limited to causal regime analysis, deterministic scenarios/stress, regime-conditioned robustness analysis and empirical distribution summaries.
+Sprint 6 is a research-only Scenario Engine stage. The Entry Gate is already canonical PASS, but functional implementation remains behind a separate authorization boundary.
 
-The current task is only the Entry Gate. No functional Scenario Engine code is authorized.
+The current task is a controlled pre-authorization remediation of the functional contract. No Scenario Engine functional code is authorized.
 
-## 2. Canonical conceptual boundary
+## 2. Canonical architecture after remediation
 
 ```text
-UPSTREAM RESEARCH EVIDENCE
-    |
-    +--> causal regime definition / assignment
-    |
-    +--> deterministic scenario definition
-    |
-    +--> finite predeclared scenario grid
-    |
-    +--> regime/scenario evaluation
-    |
-    +--> empirical distribution / downside / path summaries
-    |
-    +--> research provenance and disposition
+IMMUTABLE UPSTREAM EVIDENCE
+        |
+        v
+ScenarioInputBoundary
+        |
+        +--> protected-evidence role/history
+        |
+        +--> RegimeDefinition + RegimeUseMode
+        |
+        +--> ScenarioSpec + ScenarioGrid
+        |
+        +--> Sprint-3-delegated economic stress
+        |
+        +--> ObservedSeries --------------------+
+        |                                      |
+        |                                      v
+        |                         ObservedDistributionSummary
+        |
+        +--> ScenarioOutcomeSet  !=  empirical distribution
+        |
+        +--> ScenarioDispositionPolicy
+        |
+        v
+Scenario research result + provenance manifest
 
 NEVER:
 Scenario -> StrategyDecision
-Scenario -> RiskDecision
-Scenario -> RiskAuthorization
-Scenario -> OrderIntent
-Scenario -> Broker
+Scenario -> RiskDecision / RiskAuthorization
+Scenario -> OrderIntent / Broker
+ScenarioOutcomeSet -> probability/VaR/ES
+Protected-informed artifact -> same protected boundary confirmation
 ```
 
 ## 3. Governing separations
 
-- causal regime != retrospective/post-hoc segmentation;
-- stress scenario != probabilistic forecast;
-- empirical distribution != population probability claim;
-- tail metric != operational risk limit;
-- scenario robustness != strategy quality;
-- scenario evidence != Paper/Live eligibility.
+- causal regime != retrospective segmentation;
+- causal regime availability != proof of actual strategy regime use;
+- `CAUSAL_STRATIFICATION != STRATEGY_BOUND`;
+- synthetic scenario outcome set != observed empirical distribution;
+- stress scenario != probability forecast;
+- tail metric != Risk limit;
+- scenario robustness != Strategy quality;
+- scenario evidence != Paper/Live eligibility;
+- deterministic computation != empirical certainty.
 
-## 4. Initial functional design boundary
+## 4. Initial implementation constraints if later authorized
 
-If later authorized, the initial implementation must be deterministic. It may use explicit threshold-based causal regime definitions and finite scenario grids. It must not introduce Monte Carlo, bootstrap inference, stochastic scenario generation or adaptive clustering as a causal promotion mechanism.
+- deterministic threshold-based regime classification only;
+- no indicator engineering owned by S6 in the initial scope;
+- finite predeclared scenario grids;
+- economic/execution stress delegated to Sprint 3;
+- no action/replay mutation;
+- empirical tail/path analysis only from governed `ObservedSeries`;
+- predeclared `TailMetricPolicy` and `ScenarioDispositionPolicy`;
+- neutral model-evidence snapshots rather than direct optional-ML runtime coupling;
+- no model retraining/selection;
+- no Monte Carlo/bootstrap/stochastic scenarios;
+- no external network/subprocess/dynamic execution surfaces;
+- no new mandatory runtime dependency;
+- zero additional recurring cost.
 
-## 5. Entry-gate governing artifacts
+## 5. Governing artifacts
 
 - `docs/program/S6_ENTRY_CONTRACT.md`
 - `docs/program/S6_DECISION_REGISTER.md`
 - `docs/program/S6_CAPABILITY_MATRIX.md`
 - `docs/program/S6_ENTRY_GATE.md`
-- `docs/program/workstreams/S6-ENTRY-GATE.md`
+- `docs/program/workstreams/S6-ENTRY-GATE.md` — historical entry-gate packet
+- `docs/program/workstreams/S6-PREAUTH-REMEDIATION.md` — current remediation packet
 
 ## 6. Current stop condition
 
-The Entry Gate has been merged and validated on the exact merge SHA. Sprint 6 is now waiting at a separate human-authorization boundary.
-
 ```text
 S6_ENTRY_GATE = PASS
-S6_ENTRY_GATE_CANONICAL = PASS
+S6_PREAUTH_REMEDIATION = IN_PROGRESS
 SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 ```
 
-No functional Scenario Engine implementation may begin until explicit human authorization is given for that distinct step.
+The remediation must pass exact-head CI/upstream and independent re-audit. Merge requires explicit human authorization. Functional implementation requires another distinct explicit human authorization after the remediation becomes canonical.
