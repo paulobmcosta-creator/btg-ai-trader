@@ -33,8 +33,8 @@ These requirements must be fully materialized and independently reviewed before 
 | **S6-PRE-12** | Functional quality gate | 100% statement/branch coverage + engineering checks | MATERIALIZED |
 | **S6-PRE-13** | Security/side-effect gate | no dynamic exec/deserialization/network/subprocess | MATERIALIZED |
 | **S6-PRE-14** | Final Entry Gate evidence reconciliation | final head + final runs recorded | MATERIALIZED |
-| **S6-PRE-15** | Exact-head remediation CI/upstream | current remediation PR exact head | PENDING |
-| **S6-PRE-16** | Independent re-audit | exact remediation PR head | PENDING |
+| **S6-PRE-15** | Exact-head remediation CI/upstream | PR #82 head `485b70af...`; runs `35533162875`, `35533162868`, `35533162885` PASS | PASS |
+| **S6-PRE-16** | Independent re-audit | review `5261545806` on exact PR head `485b70af...` | PASS |
 
 ## 3. Functional positive capabilities required after future explicit authorization
 
