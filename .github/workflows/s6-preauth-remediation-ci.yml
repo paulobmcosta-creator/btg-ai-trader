@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - "s6/01-preauth-remediation"
+      - "sprint/6-scenario-engine"
   pull_request:
     branches:
       - "sprint/6-scenario-engine"
