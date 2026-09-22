@@ -390,8 +390,12 @@ S6_ENTRY_GATE_MERGE_SHA = d74e632f47fafab9f441574acbacb3ae7f1a7a72
 S6_ENTRY_GATE_FINAL_CANONICAL_HEAD = 616849f8e77ecf3624b2b9362c1ef42c7fb9bcc1
 S6_ENTRY_GATE_FINAL_CI_RUN = 35474371811
 S6_ENTRY_GATE_FINAL_UPSTREAM_RUN = 35474371852
-S6_PREAUTH_REVIEW = CHANGES_REQUIRED_REMEDIATED_REMEDIATED
-S6_PREAUTH_REMEDIATION = PASS_CANDIDATE_PENDING_MERGE
+S6_PREAUTH_REVIEW = CHANGES_REQUIRED_REMEDIATED
+S6_PREAUTH_REMEDIATION = PASS
+S6_PREAUTH_REMEDIATION_CANONICAL = PASS
+S6_PREAUTH_REMEDIATION_MERGE_SHA = 7df047b25633527e505b3e4772c0a0c43e1ab10c
+S6_PREAUTH_POST_MERGE_ENTRY_GATE_CI_RUN = 35759318235
+S6_PREAUTH_POST_MERGE_UPSTREAM_RUN = 35759318238
 SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 ```
 
@@ -480,7 +484,7 @@ Direção futura de produção continua separando Trading Node, Research/AI Node
 - branch canônica atual: `sprint/6-scenario-engine`;
 - Entry Gate do Sprint 6: canônico / PASS;
 - head canônico final do gate antes da remediação: `616849f8e77ecf3624b2b9362c1ef42c7fb9bcc1`;
-- remediação pré-autorização: `s6/01-preauth-remediation` / Issue #81;
+- remediação pré-autorização: canônica PASS; PR #82 mergeado em `7df047b25633527e505b3e4772c0a0c43e1ab10c`; Issue #81 em fechamento;
 - implementação funcional do Sprint 6: `NOT_AUTHORIZED`;
 - Sprints 4 e 5 permanecem formalmente fechados (`FORMALLY_CLOSED` / `PASS`).
 
@@ -565,19 +569,23 @@ Foi aberto o tracking Issue #79 e materializado o Gate de Entrada do Scenario En
 
 A revisão pré-autorização preservou o Entry Gate como PASS, mas classificou o contrato funcional como `CHANGES_REQUIRED` antes de qualquer autorização de implementação. A Issue #81 e o branch `s6/01-preauth-remediation` foram abertos para fechar oito classes de finding: protected evidence, ScenarioInputBoundary, separação de distribuições observadas e outcomes sintéticos, semântica de uso de regimes, ScenarioDispositionPolicy, delegação ao kernel do Sprint 3, semântica de séries/tail/path e quality/security gates do futuro pacote. Nenhum código funcional do Scenario Engine foi autorizado.
 
+### 2026-09-22 — fechamento canônico da remediação pré-autorização
+
+A remediação passou reauditoria independente no exact head `485b70af4333cf3aeb3cef4d5b11a8909dc05597`. O PR #82 foi mergeado por autorização humana no SHA `7df047b25633527e505b3e4772c0a0c43e1ab10c`. A validação pós-merge registrou Entry Gate CI `35759318235` PASS 2/2 e pinned upstream `35759318238` PASS 2/2. A remediação está canônica PASS e a implementação funcional do Sprint 6 permanece `NOT_AUTHORIZED`.
+
 ---
 
 ## 16. Próxima ação oficial
 
-A próxima ação oficial é validar o HEAD final do **PR #82 — remediação pré-autorização do Sprint 6** e submeter o merge à decisão humana explícita. A reauditoria substantiva do contrato está PASS e não há blocker aberto.
+A próxima ação oficial é uma decisão humana separada sobre a **autorização da implementação funcional do Sprint 6 — Scenario Engine**, agora sob Entry Gate e remediação pré-autorização canônicos PASS.
 
 ```text
 PROMOTION_TO_SPRINT_6_GATE = YES
 SPRINT_6_ENTRY_GATE = PASS
 SPRINT_6_ENTRY_GATE_CANONICAL = PASS
 S6_PREAUTH_REVIEW = CHANGES_REQUIRED_REMEDIATED
-S6_PREAUTH_REMEDIATION = PASS_CANDIDATE_PENDING_MERGE
+S6_PREAUTH_REMEDIATION = PASS
 SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 ```
 
-Mesmo após eventual merge da remediação, a implementação funcional do Scenario Engine continuará `NOT_AUTHORIZED` e exigirá decisão humana explícita separada. Não há autorização para negociação automática, envio de ordens, Strategy, Risk, Paper, Live ou uso de dinheiro real.
+A implementação funcional do Scenario Engine permanece `NOT_AUTHORIZED` e exige decisão humana explícita separada. Não há autorização para negociação automática, envio de ordens, Strategy, Risk, Paper, Live ou uso de dinheiro real.
