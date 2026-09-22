@@ -52,13 +52,27 @@ from btg_ai_trader.scenario_engine import (
     verify_experimental_parity,
 )
 from btg_ai_trader.scenario_engine.core import _jsonable
+from btg_ai_trader.statistical_baselines.boundaries import (
+    EvaluationBoundary,
+    TemporalFold,
+    WalkForwardPlan,
+)
 from btg_ai_trader.statistical_baselines.comparison import EvaluationHistory
 from btg_ai_trader.statistical_baselines.domain import (
+    CandidateIdentity,
     EvaluationRole,
     ParityViolationError,
     ProtectedEvidenceReuseError,
+    StatisticalSample,
+    TargetSemantics,
+)
+from btg_ai_trader.statistical_baselines.evaluation import (
+    AggregateEvaluationResult,
+    FoldEvaluationResult,
 )
 from btg_ai_trader.statistical_baselines.metrics import DEFAULT_NUMERIC_POLICY
+from btg_ai_trader.statistical_baselines.provenance import StatisticalEvaluationInputBoundary
+from btg_ai_trader.statistical_baselines.splits import EmbargoPolicy, PurgePolicy
 
 
 def dt(second: int = 0) -> datetime:
@@ -144,81 +158,63 @@ def test_jsonable_canonical_fallbacks() -> None:
 
 
 def test_input_boundary_and_model_snapshot_validation() -> None:
-    boundary = ScenarioInputBoundary.create(
-        source_kind=SourceKind.BACKTEST,
-        source_artifact_id="run-1",
-        source_digest="a" * 64,
-        source_lineage_digest="b" * 64,
+    series = ObservedSeries(
+        "series",
+        "trades",
+        "trade",
+        "BRL",
+        (Decimal("1"), Decimal("2")),
+        ("o1", "o2"),
+        "source-root",
+        "REJECT",
+    )
+    boundary = ScenarioInputBoundary.from_observed_series(
+        series,
         evaluation_role=EvaluationRole.DEVELOPMENT,
         protected_boundary_id=None,
-        role_provenance=RoleProvenance.EXPERIMENT_ASSIGNED,
         numeric_policy=DEFAULT_NUMERIC_POLICY,
         source_code_revision="c" * 40,
         scenario_code_revision="d" * 40,
-        ordered_input_digest="e" * 64,
     )
     assert boundary.is_verified
-    assert len(boundary.boundary_digest) == 64
-    assert boundary.numeric_policy_digest
+    assert boundary.source_digest == series.series_digest
 
-    protected = ScenarioInputBoundary.create(
-        source_kind=SourceKind.STATISTICAL_EVALUATION,
-        source_artifact_id="eval-1",
-        source_digest="f" * 64,
-        source_lineage_digest="1" * 64,
+    protected = ScenarioInputBoundary.from_observed_series(
+        series,
         evaluation_role=EvaluationRole.PROTECTED_TEST,
         protected_boundary_id="protected-1",
-        role_provenance=RoleProvenance.INHERITED,
         numeric_policy=DEFAULT_NUMERIC_POLICY,
-        source_code_revision="2" * 40,
-        scenario_code_revision="3" * 40,
-        ordered_input_digest="4" * 64,
+        source_code_revision="c" * 40,
+        scenario_code_revision="d" * 40,
     )
     assert protected.protected_boundary_id == "protected-1"
 
-    with pytest.raises(ValueError, match="source_artifact_id"):
-        ScenarioInputBoundary.create(
-            source_kind=SourceKind.BACKTEST,
-            source_artifact_id="",
-            source_digest="a",
-            source_lineage_digest="b",
-            evaluation_role=EvaluationRole.DEVELOPMENT,
-            protected_boundary_id=None,
-            role_provenance=RoleProvenance.EXPERIMENT_ASSIGNED,
-            numeric_policy=DEFAULT_NUMERIC_POLICY,
-            source_code_revision="c",
-            scenario_code_revision="d",
-            ordered_input_digest="e",
-        )
-
     with pytest.raises(ValueError, match="PROTECTED_TEST requires"):
-        ScenarioInputBoundary.create(
-            source_kind=SourceKind.BACKTEST,
-            source_artifact_id="x",
-            source_digest="a",
-            source_lineage_digest="b",
+        ScenarioInputBoundary.from_observed_series(
+            series,
             evaluation_role=EvaluationRole.PROTECTED_TEST,
             protected_boundary_id=None,
-            role_provenance=RoleProvenance.EXPERIMENT_ASSIGNED,
             numeric_policy=DEFAULT_NUMERIC_POLICY,
             source_code_revision="c",
             scenario_code_revision="d",
-            ordered_input_digest="e",
         )
-
     with pytest.raises(ValueError, match="only valid for PROTECTED_TEST"):
-        ScenarioInputBoundary.create(
-            source_kind=SourceKind.BACKTEST,
-            source_artifact_id="x",
-            source_digest="a",
-            source_lineage_digest="b",
+        ScenarioInputBoundary.from_observed_series(
+            series,
             evaluation_role=EvaluationRole.DEVELOPMENT,
             protected_boundary_id="bad",
-            role_provenance=RoleProvenance.EXPERIMENT_ASSIGNED,
             numeric_policy=DEFAULT_NUMERIC_POLICY,
             source_code_revision="c",
             scenario_code_revision="d",
-            ordered_input_digest="e",
+        )
+    with pytest.raises(ValueError, match="source_code_revision"):
+        ScenarioInputBoundary.from_observed_series(
+            series,
+            evaluation_role=EvaluationRole.DEVELOPMENT,
+            protected_boundary_id=None,
+            numeric_policy=DEFAULT_NUMERIC_POLICY,
+            source_code_revision="",
+            scenario_code_revision="d",
         )
 
     snapshot = ModelEvidenceSnapshot.create(
@@ -232,10 +228,38 @@ def test_input_boundary_and_model_snapshot_validation() -> None:
         disposition="FAVORABLE",
         source_manifest_ids=("manifest-1",),
         source_code_revision="e" * 40,
+        numeric_policy=DEFAULT_NUMERIC_POLICY,
     )
     assert snapshot.is_verified
-    assert snapshot.evaluation_scope == "MODEL"
-    assert snapshot.metrics["mae"] == Decimal("1.5")
+    model_boundary = ScenarioInputBoundary.from_model_snapshot(
+        snapshot,
+        protected_boundary_id=None,
+        scenario_code_revision="f" * 40,
+    )
+    assert model_boundary.source_kind is SourceKind.MODEL_EVALUATION
+    assert model_boundary.numeric_policy_digest == snapshot.numeric_policy_digest
+
+    unverified_snapshot = ModelEvidenceSnapshot(
+        candidate_id=snapshot.candidate_id,
+        evaluation_scope=snapshot.evaluation_scope,
+        evaluation_role=snapshot.evaluation_role,
+        dataset_digest=snapshot.dataset_digest,
+        plan_digest=snapshot.plan_digest,
+        target_contract_digest=snapshot.target_contract_digest,
+        experimental_context_fingerprint=snapshot.experimental_context_fingerprint,
+        metrics=snapshot.metrics,
+        disposition=snapshot.disposition,
+        source_manifest_ids=snapshot.source_manifest_ids,
+        source_code_revision=snapshot.source_code_revision,
+        numeric_policy_digest=snapshot.numeric_policy_digest,
+        snapshot_digest=snapshot.snapshot_digest,
+    )
+    with pytest.raises(ValueError, match="must be verified"):
+        ScenarioInputBoundary.from_model_snapshot(
+            unverified_snapshot,
+            protected_boundary_id=None,
+            scenario_code_revision="f" * 40,
+        )
 
     with pytest.raises(ValueError, match="candidate_id"):
         ModelEvidenceSnapshot.create(
@@ -262,6 +286,128 @@ def test_input_boundary_and_model_snapshot_validation() -> None:
             disposition="FAVORABLE",
             source_manifest_ids=(),
             source_code_revision="e",
+        )
+
+
+def make_verified_statistical_source() -> tuple[
+    StatisticalEvaluationInputBoundary,
+    AggregateEvaluationResult,
+]:
+    t0 = dt()
+    t1 = t0 + timedelta(minutes=1)
+    t2 = t0 + timedelta(minutes=2)
+    fold = TemporalFold(
+        fold_id="f1",
+        development_boundary=EvaluationBoundary(t0, t2, knowledge_cutoff=t0),
+        training_boundary=EvaluationBoundary(t0, t1, knowledge_cutoff=t0),
+        protected_evaluation_boundary=EvaluationBoundary(t1, t2, knowledge_cutoff=t1),
+        knowledge_cutoff=t1,
+        window_policy_name="EXPANDING",
+    )
+    plan = WalkForwardPlan(
+        plan_id="plan",
+        window_policy_name="EXPANDING",
+        folds=(fold,),
+        purge_policy=PurgePolicy(purge_overlapping=True, fail_closed_on_unknown=False),
+        embargo_policy=EmbargoPolicy(duration=timedelta(0)),
+    )
+    sample = StatisticalSample(
+        sample_id="sample",
+        feature_knowledge_time=t0,
+        target_knowledge_time=t0,
+        target_value=Decimal("1"),
+        target_semantics=TargetSemantics.CONTINUOUS,
+        source_lineage="source",
+    )
+    revision = "revision"
+    candidate = CandidateIdentity("Mean", {}, TargetSemantics.CONTINUOUS, revision)
+    input_boundary = StatisticalEvaluationInputBoundary.create(
+        [sample],
+        plan,
+        [candidate],
+        revision,
+        target_contract_id="target",
+        metric_names=("mae",),
+    )
+    fold_result = FoldEvaluationResult(
+        fold_id="f1",
+        candidate_id=candidate.candidate_id,
+        evaluation_role=EvaluationRole.VALIDATION_SELECTION,
+        metrics={"mae": Decimal("1")},
+        sample_count=1,
+        cold_start_count=0,
+    )
+    aggregate = AggregateEvaluationResult(
+        candidate_id=candidate.candidate_id,
+        evaluation_role=EvaluationRole.VALIDATION_SELECTION,
+        fold_results=(fold_result,),
+        aggregate_metrics={"mean_mae": Decimal("1")},
+        total_samples=1,
+        total_cold_starts=0,
+        numeric_policy=input_boundary.numeric_policy,
+        target_contract_id="target",
+        code_revision=revision,
+        evaluation_context_fingerprint="context",
+    )
+    return input_boundary, aggregate
+
+
+def test_statistical_evidence_boundary_is_verified_and_context_bound() -> None:
+    input_boundary, aggregate = make_verified_statistical_source()
+    boundary = ScenarioInputBoundary.from_statistical_evaluation(
+        input_boundary,
+        aggregate,
+        protected_boundary_id=None,
+        scenario_code_revision="s6",
+    )
+    assert boundary.is_verified
+    assert boundary.source_kind is SourceKind.STATISTICAL_EVALUATION
+
+    unverified = StatisticalEvaluationInputBoundary(
+        sample_ids=input_boundary.sample_ids,
+        dataset_digest=input_boundary.dataset_digest,
+        source_lineage_digest=input_boundary.source_lineage_digest,
+        target_semantics=input_boundary.target_semantics,
+        target_contract_id=input_boundary.target_contract_id,
+        candidate_identities=input_boundary.candidate_identities,
+        search_family=input_boundary.search_family,
+        plan_digest=input_boundary.plan_digest,
+        fold_definitions=input_boundary.fold_definitions,
+        purge_policy=input_boundary.purge_policy,
+        embargo_policy=input_boundary.embargo_policy,
+        metric_names=input_boundary.metric_names,
+        calibration_config=input_boundary.calibration_config,
+        aggregation_policy=input_boundary.aggregation_policy,
+        numeric_policy=input_boundary.numeric_policy,
+        code_revision=input_boundary.code_revision,
+        logical_evaluation_digest=input_boundary.logical_evaluation_digest,
+    )
+    with pytest.raises(ValueError, match="must be verified"):
+        ScenarioInputBoundary.from_statistical_evaluation(
+            unverified,
+            aggregate,
+            protected_boundary_id=None,
+            scenario_code_revision="s6",
+        )
+
+    mismatched = AggregateEvaluationResult(
+        candidate_id="not-bound",
+        evaluation_role=aggregate.evaluation_role,
+        fold_results=aggregate.fold_results,
+        aggregate_metrics=aggregate.aggregate_metrics,
+        total_samples=aggregate.total_samples,
+        total_cold_starts=aggregate.total_cold_starts,
+        numeric_policy=aggregate.numeric_policy,
+        target_contract_id=aggregate.target_contract_id,
+        code_revision=aggregate.code_revision,
+        evaluation_context_fingerprint=aggregate.evaluation_context_fingerprint,
+    )
+    with pytest.raises(ValueError, match="does not match verified"):
+        ScenarioInputBoundary.from_statistical_evaluation(
+            input_boundary,
+            mismatched,
+            protected_boundary_id=None,
+            scenario_code_revision="s6",
         )
 
 
@@ -873,31 +1019,31 @@ def test_regime_conditioned_summary_parity_and_experimental_parity() -> None:
     with pytest.raises(ParityViolationError, match="cannot mix"):
         summarize_metric_by_regime(mixed_mode, {"a": Decimal("1"), "b": Decimal("2")})
 
-    boundary = ScenarioInputBoundary.create(
-        source_kind=SourceKind.BACKTEST,
-        source_artifact_id="run",
-        source_digest="a" * 64,
-        source_lineage_digest="b" * 64,
+    parity_series = ObservedSeries(
+        "parity-series",
+        "trades",
+        "trade",
+        "BRL",
+        (Decimal("1"),),
+        ("p1",),
+        "source",
+        "REJECT",
+    )
+    boundary = ScenarioInputBoundary.from_observed_series(
+        parity_series,
         evaluation_role=EvaluationRole.VALIDATION_SELECTION,
         protected_boundary_id=None,
-        role_provenance=RoleProvenance.EXPERIMENT_ASSIGNED,
         numeric_policy=DEFAULT_NUMERIC_POLICY,
         source_code_revision="c" * 40,
         scenario_code_revision="d" * 40,
-        ordered_input_digest="e" * 64,
     )
-    same = ScenarioInputBoundary.create(
-        source_kind=SourceKind.BACKTEST,
-        source_artifact_id="another-label",
-        source_digest="a" * 64,
-        source_lineage_digest="b" * 64,
+    same = ScenarioInputBoundary.from_observed_series(
+        parity_series,
         evaluation_role=EvaluationRole.VALIDATION_SELECTION,
         protected_boundary_id=None,
-        role_provenance=RoleProvenance.EXPERIMENT_ASSIGNED,
         numeric_policy=DEFAULT_NUMERIC_POLICY,
         source_code_revision="c" * 40,
         scenario_code_revision="f" * 40,
-        ordered_input_digest="e" * 64,
     )
     assert len(verify_experimental_parity((boundary, same))) == 64
     with pytest.raises(ValueError, match="cannot be empty"):
@@ -920,18 +1066,23 @@ def test_regime_conditioned_summary_parity_and_experimental_parity() -> None:
         verify_experimental_parity((unverified,))
     with pytest.raises(ValueError, match="verified"):
         verify_experimental_parity((boundary, unverified))
-    different = ScenarioInputBoundary.create(
-        source_kind=SourceKind.BACKTEST,
-        source_artifact_id="run",
-        source_digest="z" * 64,
-        source_lineage_digest="b" * 64,
+    different_series = ObservedSeries(
+        "parity-series-different",
+        "trades",
+        "trade",
+        "BRL",
+        (Decimal("2"),),
+        ("p1",),
+        "source",
+        "REJECT",
+    )
+    different = ScenarioInputBoundary.from_observed_series(
+        different_series,
         evaluation_role=EvaluationRole.VALIDATION_SELECTION,
         protected_boundary_id=None,
-        role_provenance=RoleProvenance.EXPERIMENT_ASSIGNED,
         numeric_policy=DEFAULT_NUMERIC_POLICY,
         source_code_revision="c" * 40,
         scenario_code_revision="d" * 40,
-        ordered_input_digest="e" * 64,
     )
     with pytest.raises(ParityViolationError, match="parity violation"):
         verify_experimental_parity((boundary, different))

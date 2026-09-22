@@ -11,13 +11,16 @@ from datetime import datetime
 from decimal import ROUND_CEILING, Decimal, localcontext
 from enum import Enum
 
+from btg_ai_trader.backtesting import BacktestRunManifest, compute_replay_boundary_fingerprint
 from btg_ai_trader.statistical_baselines.comparison import EvaluationHistory
 from btg_ai_trader.statistical_baselines.domain import (
     EvaluationRole,
     ParityViolationError,
     ProtectedEvidenceReuseError,
 )
+from btg_ai_trader.statistical_baselines.evaluation import AggregateEvaluationResult
 from btg_ai_trader.statistical_baselines.metrics import DEFAULT_NUMERIC_POLICY, NumericPolicy
+from btg_ai_trader.statistical_baselines.provenance import StatisticalEvaluationInputBoundary
 
 _VERIFIED_BOUNDARY_TOKEN = object()
 _VERIFIED_MODEL_SNAPSHOT_TOKEN = object()
@@ -155,7 +158,7 @@ class ScenarioInputBoundary:
         return self._verification_token is _VERIFIED_BOUNDARY_TOKEN
 
     @classmethod
-    def create(
+    def _build(
         cls,
         *,
         source_kind: SourceKind,
@@ -165,7 +168,7 @@ class ScenarioInputBoundary:
         evaluation_role: EvaluationRole,
         protected_boundary_id: str | None,
         role_provenance: RoleProvenance,
-        numeric_policy: NumericPolicy,
+        numeric_policy_digest: str,
         source_code_revision: str,
         scenario_code_revision: str,
         ordered_input_digest: str,
@@ -174,6 +177,7 @@ class ScenarioInputBoundary:
             (source_artifact_id, "source_artifact_id"),
             (source_digest, "source_digest"),
             (source_lineage_digest, "source_lineage_digest"),
+            (numeric_policy_digest, "numeric_policy_digest"),
             (source_code_revision, "source_code_revision"),
             (scenario_code_revision, "scenario_code_revision"),
             (ordered_input_digest, "ordered_input_digest"),
@@ -184,7 +188,6 @@ class ScenarioInputBoundary:
                 raise ValueError("PROTECTED_TEST requires protected_boundary_id")
         elif protected_boundary_id is not None:
             raise ValueError("protected_boundary_id is only valid for PROTECTED_TEST")
-        numeric_policy_digest = _digest(numeric_policy.to_canonical_dict())
         payload: dict[str, object] = {
             "source_kind": source_kind.value,
             "source_artifact_id": source_artifact_id,
@@ -214,6 +217,142 @@ class ScenarioInputBoundary:
         )
         object.__setattr__(obj, "_verification_token", _VERIFIED_BOUNDARY_TOKEN)
         return obj
+
+    @classmethod
+    def from_backtest_manifest(
+        cls,
+        manifest: BacktestRunManifest,
+        *,
+        evaluation_role: EvaluationRole,
+        protected_boundary_id: str | None,
+        numeric_policy: NumericPolicy,
+        scenario_code_revision: str,
+    ) -> ScenarioInputBoundary:
+        if not manifest.verify_integrity():
+            raise ValueError("BacktestRunManifest integrity verification failed")
+        replay_fingerprint = compute_replay_boundary_fingerprint(
+            manifest.input_boundary.replay_boundary
+        ).value
+        return cls._build(
+            source_kind=SourceKind.BACKTEST,
+            source_artifact_id=manifest.run_id.value,
+            source_digest=manifest.manifest_hash.value,
+            source_lineage_digest=replay_fingerprint,
+            evaluation_role=evaluation_role,
+            protected_boundary_id=protected_boundary_id,
+            role_provenance=RoleProvenance.EXPERIMENT_ASSIGNED,
+            numeric_policy_digest=_digest(numeric_policy.to_canonical_dict()),
+            source_code_revision=manifest.input_boundary.code_revision.value,
+            scenario_code_revision=scenario_code_revision,
+            ordered_input_digest=manifest.input_boundary.actions_hash.value,
+        )
+
+    @classmethod
+    def from_statistical_evaluation(
+        cls,
+        boundary: StatisticalEvaluationInputBoundary,
+        result: AggregateEvaluationResult,
+        *,
+        protected_boundary_id: str | None,
+        scenario_code_revision: str,
+    ) -> ScenarioInputBoundary:
+        if not boundary.is_verified:
+            raise ValueError("StatisticalEvaluationInputBoundary must be verified")
+        candidate_ids = {candidate.candidate_id for candidate in boundary.candidate_identities}
+        fold_ids = tuple(fold.fold_id for fold in result.fold_results)
+        boundary_fold_ids = tuple(str(fold["fold_id"]) for fold in boundary.fold_definitions)
+        context_matches = (
+            result.candidate_id in candidate_ids
+            and result.target_contract_id == boundary.target_contract_id
+            and result.code_revision == boundary.code_revision
+            and result.numeric_policy == boundary.numeric_policy
+            and fold_ids == boundary_fold_ids
+        )
+        if not context_matches:
+            raise ValueError("statistical evaluation result does not match verified input boundary")
+        source_digest = _digest(
+            {
+                "logical_evaluation_digest": boundary.logical_evaluation_digest,
+                "candidate_id": result.candidate_id,
+                "evaluation_role": result.evaluation_role.value,
+                "aggregate_metrics": result.aggregate_metrics,
+                "evaluation_context_fingerprint": result.evaluation_context_fingerprint,
+            }
+        )
+        return cls._build(
+            source_kind=SourceKind.STATISTICAL_EVALUATION,
+            source_artifact_id=result.candidate_id,
+            source_digest=source_digest,
+            source_lineage_digest=boundary.source_lineage_digest,
+            evaluation_role=result.evaluation_role,
+            protected_boundary_id=protected_boundary_id,
+            role_provenance=RoleProvenance.INHERITED,
+            numeric_policy_digest=_digest(boundary.numeric_policy.to_canonical_dict()),
+            source_code_revision=boundary.code_revision,
+            scenario_code_revision=scenario_code_revision,
+            ordered_input_digest=_digest(
+                {"sample_ids": boundary.sample_ids, "plan_digest": boundary.plan_digest}
+            ),
+        )
+
+    @classmethod
+    def from_model_snapshot(
+        cls,
+        snapshot: ModelEvidenceSnapshot,
+        *,
+        protected_boundary_id: str | None,
+        scenario_code_revision: str,
+    ) -> ScenarioInputBoundary:
+        if not snapshot.is_verified:
+            raise ValueError("ModelEvidenceSnapshot must be verified")
+        return cls._build(
+            source_kind=SourceKind.MODEL_EVALUATION,
+            source_artifact_id=snapshot.candidate_id,
+            source_digest=snapshot.snapshot_digest,
+            source_lineage_digest=snapshot.experimental_context_fingerprint,
+            evaluation_role=snapshot.evaluation_role,
+            protected_boundary_id=protected_boundary_id,
+            role_provenance=RoleProvenance.INHERITED,
+            numeric_policy_digest=snapshot.numeric_policy_digest,
+            source_code_revision=snapshot.source_code_revision,
+            scenario_code_revision=scenario_code_revision,
+            ordered_input_digest=_digest(
+                {
+                    "dataset_digest": snapshot.dataset_digest,
+                    "plan_digest": snapshot.plan_digest,
+                }
+            ),
+        )
+
+    @classmethod
+    def from_observed_series(
+        cls,
+        series: ObservedSeries,
+        *,
+        evaluation_role: EvaluationRole,
+        protected_boundary_id: str | None,
+        numeric_policy: NumericPolicy,
+        source_code_revision: str,
+        scenario_code_revision: str,
+    ) -> ScenarioInputBoundary:
+        return cls._build(
+            source_kind=SourceKind.OBSERVED_SERIES,
+            source_artifact_id=series.series_id,
+            source_digest=series.series_digest,
+            source_lineage_digest=series.source_digest,
+            evaluation_role=evaluation_role,
+            protected_boundary_id=protected_boundary_id,
+            role_provenance=RoleProvenance.EXPERIMENT_ASSIGNED,
+            numeric_policy_digest=_digest(numeric_policy.to_canonical_dict()),
+            source_code_revision=source_code_revision,
+            scenario_code_revision=scenario_code_revision,
+            ordered_input_digest=_digest(
+                {
+                    "observation_ids": series.observation_ids,
+                    "timestamps": series.timestamps,
+                }
+            ),
+        )
 
 
 def verify_experimental_parity(
@@ -276,6 +415,7 @@ class ModelEvidenceSnapshot:
     disposition: str
     source_manifest_ids: tuple[str, ...]
     source_code_revision: str
+    numeric_policy_digest: str
     snapshot_digest: str
     _verification_token: object = field(default=None, repr=False, compare=False)
 
@@ -297,6 +437,7 @@ class ModelEvidenceSnapshot:
         disposition: str,
         source_manifest_ids: Sequence[str],
         source_code_revision: str,
+        numeric_policy: NumericPolicy = DEFAULT_NUMERIC_POLICY,
     ) -> ModelEvidenceSnapshot:
         for value, name in (
             (candidate_id, "candidate_id"),
@@ -312,6 +453,7 @@ class ModelEvidenceSnapshot:
         if not manifest_ids or any(not item for item in manifest_ids):
             raise ValueError("source_manifest_ids must contain non-empty immutable identities")
         frozen_metrics = _freeze_decimal_mapping(metrics)
+        numeric_policy_digest = _digest(numeric_policy.to_canonical_dict())
         payload: dict[str, object] = {
             "candidate_id": candidate_id,
             "evaluation_scope": "MODEL",
@@ -324,6 +466,7 @@ class ModelEvidenceSnapshot:
             "disposition": disposition,
             "source_manifest_ids": manifest_ids,
             "source_code_revision": source_code_revision,
+            "numeric_policy_digest": numeric_policy_digest,
         }
         obj = cls(
             candidate_id=candidate_id,
@@ -337,6 +480,7 @@ class ModelEvidenceSnapshot:
             disposition=disposition,
             source_manifest_ids=manifest_ids,
             source_code_revision=source_code_revision,
+            numeric_policy_digest=numeric_policy_digest,
             snapshot_digest=_digest(payload),
         )
         object.__setattr__(obj, "_verification_token", _VERIFIED_MODEL_SNAPSHOT_TOKEN)

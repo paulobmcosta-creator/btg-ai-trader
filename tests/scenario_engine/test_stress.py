@@ -40,6 +40,7 @@ from btg_ai_trader.observer.temporal import EventTime, ObservationTimes
 from btg_ai_trader.replay.core import CausalMarketReplaySchedule
 from btg_ai_trader.scenario_engine import (
     ScenarioGrid,
+    ScenarioInputBoundary,
     ScenarioShock,
     ScenarioSpec,
     ShockTarget,
@@ -47,6 +48,8 @@ from btg_ai_trader.scenario_engine import (
     run_economic_scenario_grid,
     run_economic_stress,
 )
+from btg_ai_trader.statistical_baselines.domain import EvaluationRole
+from btg_ai_trader.statistical_baselines.metrics import DEFAULT_NUMERIC_POLICY
 
 
 REV = CodeRevision("b" * 40)
@@ -160,6 +163,32 @@ def scenario(
         research_history_ref="history",
         code_revision=REV.value,
     )
+
+
+def test_backtest_manifest_input_boundary_factory() -> None:
+    _, _, _, _, _, baseline = fixture_bundle()
+    boundary = ScenarioInputBoundary.from_backtest_manifest(
+        baseline.manifest,
+        evaluation_role=EvaluationRole.VALIDATION_SELECTION,
+        protected_boundary_id=None,
+        numeric_policy=DEFAULT_NUMERIC_POLICY,
+        scenario_code_revision=REV.value,
+    )
+    assert boundary.is_verified
+    assert boundary.source_digest == baseline.manifest.manifest_hash.value
+
+    tampered = replace(
+        baseline.manifest,
+        manifest_hash=ContentHash("0" * 64),
+    )
+    with pytest.raises(ValueError, match="integrity verification failed"):
+        ScenarioInputBoundary.from_backtest_manifest(
+            tampered,
+            evaluation_role=EvaluationRole.VALIDATION_SELECTION,
+            protected_boundary_id=None,
+            numeric_policy=DEFAULT_NUMERIC_POLICY,
+            scenario_code_revision=REV.value,
+        )
 
 
 def test_apply_shocks_all_supported_dimensions() -> None:
