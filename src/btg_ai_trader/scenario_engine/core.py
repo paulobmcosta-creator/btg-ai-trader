@@ -404,25 +404,55 @@ def verify_experimental_parity(
 
 
 class ModelEvaluationEvidence(Protocol):
-    candidate_id: str
-    evaluation_scope: object
-    role: EvaluationRole
-    dataset_digest: str
-    plan_digest: str
-    target_contract_digest: str
-    experimental_context_fingerprint: str
-    mean_metrics: Mapping[str, Decimal]
-    disposition: object
-    protected_boundary_id: str
-    numeric_policy: NumericPolicy
+    @property
+    def candidate_id(self) -> str: ...
+
+    @property
+    def evaluation_scope(self) -> object: ...
+
+    @property
+    def role(self) -> EvaluationRole: ...
+
+    @property
+    def dataset_digest(self) -> str: ...
+
+    @property
+    def plan_digest(self) -> str: ...
+
+    @property
+    def target_contract_digest(self) -> str: ...
+
+    @property
+    def experimental_context_fingerprint(self) -> str: ...
+
+    @property
+    def mean_metrics(self) -> Mapping[str, Decimal]: ...
+
+    @property
+    def disposition(self) -> object: ...
+
+    @property
+    def protected_boundary_id(self) -> str: ...
+
+    @property
+    def numeric_policy(self) -> NumericPolicy: ...
 
 
 class VerifiedModelTrainingManifest(Protocol):
-    candidate_id: str
-    target_contract_digest: str
-    code_revision: str
-    numeric_policy: NumericPolicy
-    scientific_root_digest: str
+    @property
+    def candidate_id(self) -> str: ...
+
+    @property
+    def target_contract_digest(self) -> str: ...
+
+    @property
+    def code_revision(self) -> str: ...
+
+    @property
+    def numeric_policy(self) -> NumericPolicy: ...
+
+    @property
+    def scientific_root_digest(self) -> str: ...
 
     @property
     def is_verified(self) -> bool: ...
@@ -1366,7 +1396,9 @@ class ScenarioResearchHistory:
         if derived is None:
             raise ValueError("protected adaptation derived artifact must be registered")
         if not derived.protected_informed:
-            raise ValueError("protected adaptation derived artifact must be marked protected_informed")
+            raise ValueError(
+                "protected adaptation derived artifact must be marked protected_informed"
+            )
         self._adaptations.append(record)
 
     def _protected_informed_digests(self, protected_boundary_id: str) -> set[str]:
