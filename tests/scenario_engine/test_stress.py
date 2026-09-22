@@ -43,10 +43,10 @@ from btg_ai_trader.scenario_engine import (
     ScenarioShock,
     ScenarioSpec,
     ShockTarget,
+    apply_economic_shocks,
     run_economic_scenario_grid,
     run_economic_stress,
 )
-from btg_ai_trader.scenario_engine.stress import _apply_shocks
 
 
 REV = CodeRevision("b" * 40)
@@ -165,7 +165,7 @@ def scenario(
 def test_apply_shocks_all_supported_dimensions() -> None:
     _, _, assumptions, _, _, _ = fixture_bundle()
 
-    fee = _apply_shocks(
+    fee = apply_economic_shocks(
         assumptions,
         (ScenarioShock(ShockTarget.FEE_MULTIPLIER, Decimal("2"), "multiplier"),),
     )
@@ -173,27 +173,27 @@ def test_apply_shocks_all_supported_dimensions() -> None:
     assert fee.fee_schedule.per_unit == Decimal("0.2")
     assert fee.fee_schedule.bps_rate == Decimal("2")
 
-    zero = _apply_shocks(
+    zero = apply_economic_shocks(
         assumptions,
         (ScenarioShock(ShockTarget.SLIPPAGE_POINTS, Decimal("0"), "points"),),
     )
     assert isinstance(zero.slippage_model, ZeroSlippageModel)
 
-    slip = _apply_shocks(
+    slip = apply_economic_shocks(
         assumptions,
         (ScenarioShock(ShockTarget.SLIPPAGE_POINTS, Decimal("0.5"), "points"),),
     )
     assert isinstance(slip.slippage_model, FixedPointsSlippageModel)
     assert slip.slippage_model.adverse_points == Decimal("0.5")
 
-    latency = _apply_shocks(
+    latency = apply_economic_shocks(
         assumptions,
         (ScenarioShock(ShockTarget.TRANSIT_LATENCY_US, Decimal("250"), "microseconds"),),
     )
     assert latency.latency_model.transit_latency_us == 250
 
     with pytest.raises(ValueError, match="integral Decimal"):
-        _apply_shocks(
+        apply_economic_shocks(
             assumptions,
             (
                 ScenarioShock(
@@ -204,7 +204,7 @@ def test_apply_shocks_all_supported_dimensions() -> None:
             ),
         )
 
-    combined = _apply_shocks(
+    combined = apply_economic_shocks(
         assumptions,
         (
             ScenarioShock(ShockTarget.FEE_MULTIPLIER, Decimal("1.5"), "multiplier"),
