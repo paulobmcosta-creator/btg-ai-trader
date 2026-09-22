@@ -8,8 +8,9 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-import btg_ai_trader.scenario_engine.stress as stress_module
 import pytest
+
+import btg_ai_trader.scenario_engine.stress as stress_module
 from btg_ai_trader.backtesting import (
     ActionIdentity,
     BacktestAction,
