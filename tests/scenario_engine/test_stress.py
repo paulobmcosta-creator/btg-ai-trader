@@ -10,7 +10,6 @@ from uuid import UUID
 
 import pytest
 
-import btg_ai_trader.scenario_engine.stress as stress_module
 from btg_ai_trader.backtesting import (
     ActionIdentity,
     BacktestAction,
@@ -268,6 +267,27 @@ def test_run_economic_stress_rejects_upstream_identity_drift() -> None:
         (ScenarioShock(ShockTarget.FEE_MULTIPLIER, Decimal("2"), "multiplier"),),
     )
 
+    non_predeclared = ScenarioSpec(
+        scenario_id="non-predeclared",
+        baseline_evidence_ref=baseline.manifest.manifest_hash.value,
+        shocks=(ScenarioShock(ShockTarget.FEE_MULTIPLIER, Decimal("2"), "multiplier"),),
+        structural_constraints=(),
+        predeclared=False,
+        research_history_ref="history",
+        code_revision=REV.value,
+    )
+    with pytest.raises(ValueError, match="predeclared"):
+        run_economic_stress(
+            non_predeclared,
+            baseline_result=baseline,
+            actions=actions,
+            replay_schedule=schedule,
+            instrument_economics=econ,
+            base_assumptions=assumptions,
+            end_of_window_policy=EndOfWindowPolicy.KEEP_OPEN,
+            code_revision=REV,
+        )
+
     bad_manifest = replace(
         baseline.manifest,
         manifest_hash=ContentHash("0" * 64),
@@ -427,7 +447,10 @@ def test_run_economic_stress_detects_kernel_output_drift(
         input_boundary=changed_boundary,
     )
     fake_result = replace(real_evidence.result, manifest=changed_manifest)
-    monkeypatch.setattr(stress_module, "DeterministicEconomicBacktester", FakeEngine)
+    monkeypatch.setattr(
+        "btg_ai_trader.scenario_engine.stress.DeterministicEconomicBacktester",
+        FakeEngine,
+    )
     with pytest.raises(RuntimeError, match="action identity drift"):
         run_economic_stress(
             spec,

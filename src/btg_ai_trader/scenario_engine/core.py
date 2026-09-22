@@ -11,8 +11,10 @@ from datetime import datetime
 from decimal import ROUND_CEILING, Decimal, localcontext
 from enum import Enum
 
+from btg_ai_trader.statistical_baselines.comparison import EvaluationHistory
 from btg_ai_trader.statistical_baselines.domain import (
     EvaluationRole,
+    ParityViolationError,
     ProtectedEvidenceReuseError,
 )
 from btg_ai_trader.statistical_baselines.metrics import DEFAULT_NUMERIC_POLICY, NumericPolicy
@@ -124,6 +126,14 @@ class QuantileConvention(str, Enum):
     NEAREST_RANK = "NEAREST_RANK"
 
 
+class ResearchArtifactKind(str, Enum):
+    REGIME_DEFINITION = "REGIME_DEFINITION"
+    SCENARIO_SPEC = "SCENARIO_SPEC"
+    SCENARIO_GRID = "SCENARIO_GRID"
+    DISPOSITION_POLICY = "DISPOSITION_POLICY"
+    TAIL_POLICY = "TAIL_POLICY"
+
+
 @dataclass(frozen=True, slots=True)
 class ScenarioInputBoundary:
     source_kind: SourceKind
@@ -204,6 +214,53 @@ class ScenarioInputBoundary:
         )
         object.__setattr__(obj, "_verification_token", _VERIFIED_BOUNDARY_TOKEN)
         return obj
+
+
+def verify_experimental_parity(
+    boundaries: Sequence[ScenarioInputBoundary],
+) -> str:
+    if not boundaries:
+        raise ValueError("boundaries cannot be empty")
+    first = boundaries[0]
+    if not first.is_verified:
+        raise ValueError("experimental parity requires verified ScenarioInputBoundary values")
+    parity_fields = (
+        first.source_kind,
+        first.source_digest,
+        first.source_lineage_digest,
+        first.evaluation_role,
+        first.protected_boundary_id,
+        first.numeric_policy_digest,
+        first.source_code_revision,
+        first.ordered_input_digest,
+    )
+    for boundary in boundaries[1:]:
+        if not boundary.is_verified:
+            raise ValueError("experimental parity requires verified ScenarioInputBoundary values")
+        current = (
+            boundary.source_kind,
+            boundary.source_digest,
+            boundary.source_lineage_digest,
+            boundary.evaluation_role,
+            boundary.protected_boundary_id,
+            boundary.numeric_policy_digest,
+            boundary.source_code_revision,
+            boundary.ordered_input_digest,
+        )
+        if current != parity_fields:
+            raise ParityViolationError("Scenario Engine experimental context parity violation")
+    return _digest(
+        {
+            "source_kind": first.source_kind.value,
+            "source_digest": first.source_digest,
+            "source_lineage_digest": first.source_lineage_digest,
+            "evaluation_role": first.evaluation_role.value,
+            "protected_boundary_id": first.protected_boundary_id,
+            "numeric_policy_digest": first.numeric_policy_digest,
+            "source_code_revision": first.source_code_revision,
+            "ordered_input_digest": first.ordered_input_digest,
+        }
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -300,6 +357,8 @@ class RegimeObservation:
         _require_text(self.source_lineage_digest, "source_lineage_digest")
         if self.event_time is not None:
             _require_aware(self.event_time, "event_time")
+            if self.event_time > self.knowledge_time:
+                raise ValueError("event_time cannot be later than knowledge_time")
         object.__setattr__(self, "variables", _freeze_decimal_mapping(self.variables))
 
 
@@ -399,6 +458,59 @@ def classify_regime(
         use_mode=use_mode,
         knowledge_time=observation.knowledge_time,
     )
+
+
+@dataclass(frozen=True, slots=True)
+class RegimeMetricSummary:
+    label: str
+    count: int
+    minimum: Decimal
+    maximum: Decimal
+    mean: Decimal
+    definition_digest: str
+    use_mode: RegimeUseMode
+
+
+def summarize_metric_by_regime(
+    assignments: Sequence[RegimeAssignment],
+    values_by_observation_id: Mapping[str, Decimal],
+) -> Mapping[str, RegimeMetricSummary]:
+    if not assignments:
+        raise ValueError("assignments cannot be empty")
+    expected_ids = tuple(assignment.observation_id for assignment in assignments)
+    if len(set(expected_ids)) != len(expected_ids):
+        raise ValueError("regime assignments must have unique observation_id values")
+    if set(values_by_observation_id) != set(expected_ids):
+        raise ParityViolationError(
+            "regime-conditioned values must exactly match assignment observation IDs"
+        )
+    definition_digest = assignments[0].definition_digest
+    use_mode = assignments[0].use_mode
+    if any(
+        assignment.definition_digest != definition_digest or assignment.use_mode is not use_mode
+        for assignment in assignments
+    ):
+        raise ParityViolationError(
+            "regime-conditioned summaries cannot mix definition digests or use modes"
+        )
+    grouped: dict[str, list[Decimal]] = {}
+    for assignment in assignments:
+        grouped.setdefault(assignment.label, []).append(
+            values_by_observation_id[assignment.observation_id]
+        )
+    result: dict[str, RegimeMetricSummary] = {}
+    for label in sorted(grouped):
+        values = grouped[label]
+        result[label] = RegimeMetricSummary(
+            label=label,
+            count=len(values),
+            minimum=min(values),
+            maximum=max(values),
+            mean=sum(values, Decimal(0)) / Decimal(len(values)),
+            definition_digest=definition_digest,
+            use_mode=use_mode,
+        )
+    return types.MappingProxyType(result)
 
 
 def fit_development_threshold_definition(
@@ -692,9 +804,12 @@ class TailMetricPolicy:
     minimum_total_count: int
     minimum_tail_count: int
     numeric_policy: NumericPolicy = DEFAULT_NUMERIC_POLICY
+    predeclared: bool = True
     policy_digest: str = field(init=False)
 
     def __post_init__(self) -> None:
+        if not self.predeclared:
+            raise ValueError("TailMetricPolicy must be predeclared")
         if not (Decimal(0) < self.tail_fraction <= Decimal("0.5")):
             raise ValueError("tail_fraction must be in (0, 0.5]")
         if self.minimum_total_count <= 0 or self.minimum_tail_count <= 0:
@@ -710,6 +825,7 @@ class TailMetricPolicy:
                     "minimum_total_count": self.minimum_total_count,
                     "minimum_tail_count": self.minimum_tail_count,
                     "numeric_policy": self.numeric_policy.to_canonical_dict(),
+                    "predeclared": self.predeclared,
                 }
             ),
         )
@@ -954,10 +1070,29 @@ class ProtectedAdaptationRecord:
         _require_text(self.derived_artifact_digest, "derived_artifact_digest")
 
 
+@dataclass(frozen=True, slots=True)
+class ResearchArtifactRecord:
+    artifact_digest: str
+    kind: ResearchArtifactKind
+    predeclared: bool
+    parent_digests: tuple[str, ...] = ()
+    protected_informed: bool = False
+
+    def __post_init__(self) -> None:
+        _require_text(self.artifact_digest, "artifact_digest")
+        if any(not digest for digest in self.parent_digests):
+            raise ValueError("parent_digests must contain non-empty identities")
+
+
 class ScenarioResearchHistory:
     def __init__(self) -> None:
+        self._artifacts: list[ResearchArtifactRecord] = []
         self._attempts: list[ResearchAttemptRecord] = []
         self._adaptations: list[ProtectedAdaptationRecord] = []
+
+    @property
+    def artifacts(self) -> tuple[ResearchArtifactRecord, ...]:
+        return tuple(self._artifacts)
 
     @property
     def attempts(self) -> tuple[ResearchAttemptRecord, ...]:
@@ -966,6 +1101,11 @@ class ScenarioResearchHistory:
     @property
     def adaptations(self) -> tuple[ProtectedAdaptationRecord, ...]:
         return tuple(self._adaptations)
+
+    def record_artifact(self, record: ResearchArtifactRecord) -> None:
+        if any(existing.artifact_digest == record.artifact_digest for existing in self._artifacts):
+            raise ValueError("research artifact digest already registered")
+        self._artifacts.append(record)
 
     def record_attempt(self, record: ResearchAttemptRecord) -> None:
         self._attempts.append(record)
@@ -987,6 +1127,9 @@ class ScenarioResearchHistory:
         artifact_digest: str,
         evaluation_role: EvaluationRole,
         protected_boundary_id: str | None,
+        evaluation_history: EvaluationHistory | None = None,
+        candidate_id: str | None = None,
+        parent_candidate_ids: tuple[str, ...] = (),
     ) -> None:
         if evaluation_role is not EvaluationRole.PROTECTED_TEST:
             return
@@ -999,6 +1142,15 @@ class ScenarioResearchHistory:
         ):
             raise ProtectedEvidenceReuseError(
                 "protected-informed artifact cannot reuse the same protected boundary"
+            )
+        if evaluation_history is not None:
+            if candidate_id is None:
+                raise ValueError("candidate_id is required when EvaluationHistory is supplied")
+            evaluation_history.check_admissibility(
+                candidate_id=candidate_id,
+                protected_boundary_id=protected_boundary_id,
+                role=evaluation_role,
+                parent_candidate_ids=parent_candidate_ids,
             )
 
 
@@ -1035,3 +1187,12 @@ class ScenarioRunManifest:
                 }
             ),
         )
+
+
+def verify_deterministic_equivalence(
+    first: ScenarioRunManifest,
+    second: ScenarioRunManifest,
+) -> str:
+    if first.manifest_digest != second.manifest_digest:
+        raise ValueError("ScenarioRunManifest deterministic equivalence violation")
+    return first.manifest_digest

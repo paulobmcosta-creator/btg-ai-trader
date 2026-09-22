@@ -18,6 +18,8 @@ from btg_ai_trader.scenario_engine import (
     RegimeDefinitionMode,
     RegimeObservation,
     RegimeUseMode,
+    ResearchArtifactKind,
+    ResearchArtifactRecord,
     ResearchAttemptRecord,
     RobustnessCharacterization,
     RoleProvenance,
@@ -42,12 +44,17 @@ from btg_ai_trader.scenario_engine import (
     compute_tail_metrics,
     evaluate_disposition,
     fit_development_threshold_definition,
+    summarize_metric_by_regime,
     summarize_observed_series,
     summarize_scenario_outcomes,
+    verify_deterministic_equivalence,
+    verify_experimental_parity,
 )
 from btg_ai_trader.scenario_engine.core import _jsonable
+from btg_ai_trader.statistical_baselines.comparison import EvaluationHistory
 from btg_ai_trader.statistical_baselines.domain import (
     EvaluationRole,
+    ParityViolationError,
     ProtectedEvidenceReuseError,
 )
 from btg_ai_trader.statistical_baselines.metrics import DEFAULT_NUMERIC_POLICY
@@ -265,6 +272,8 @@ def test_regime_contracts_classification_and_development_fit() -> None:
         RegimeObservation("x", datetime(2026, 1, 1), {"vol": Decimal(1)}, "a")
     with pytest.raises(ValueError, match="timezone-aware"):
         RegimeObservation("x", dt(), {"vol": Decimal(1)}, "a", datetime(2026, 1, 1))
+    with pytest.raises(ValueError, match="later than knowledge_time"):
+        RegimeObservation("x", dt(), {"vol": Decimal(1)}, "a", dt(1))
     with pytest.raises(TypeError, match="threshold"):
         ThresholdRule("vol", ComparisonOperator.LT, 1, "LOW")  # type: ignore[arg-type]
 
@@ -527,6 +536,15 @@ def test_observed_distribution_tail_and_path_semantics() -> None:
     )
     assert summarize_observed_series(even).median == Decimal("2")
 
+    with pytest.raises(ValueError, match="predeclared"):
+        TailMetricPolicy(
+            Decimal("0.25"),
+            LossDirection.LOWER_IS_LOSS,
+            QuantileConvention.NEAREST_RANK,
+            4,
+            1,
+            predeclared=False,
+        )
     with pytest.raises(ValueError, match="tail_fraction"):
         TailMetricPolicy(
             Decimal(0),
@@ -793,3 +811,220 @@ def test_disposition_robustness_history_and_manifest() -> None:
     assert len(manifest.manifest_digest) == 64
     with pytest.raises(ValueError, match="boundary_digest"):
         ScenarioRunManifest("", (), None, None, None, "f", "c")
+
+
+def test_regime_conditioned_summary_parity_and_experimental_parity() -> None:
+    definition = make_definition()
+    assignments = (
+        classify_regime(
+            definition,
+            make_observation("a", Decimal("5")),
+            use_mode=RegimeUseMode.CAUSAL_STRATIFICATION,
+        ),
+        classify_regime(
+            definition,
+            make_observation("b", Decimal("15")),
+            use_mode=RegimeUseMode.CAUSAL_STRATIFICATION,
+        ),
+        classify_regime(
+            definition,
+            make_observation("c", Decimal("20")),
+            use_mode=RegimeUseMode.CAUSAL_STRATIFICATION,
+        ),
+    )
+    summary = summarize_metric_by_regime(
+        assignments,
+        {"a": Decimal("-1"), "b": Decimal("2"), "c": Decimal("4")},
+    )
+    assert summary["LOW"].count == 1
+    assert summary["HIGH"].mean == Decimal("3")
+
+    with pytest.raises(ValueError, match="cannot be empty"):
+        summarize_metric_by_regime((), {})
+    with pytest.raises(ParityViolationError, match="exactly match"):
+        summarize_metric_by_regime(assignments, {"a": Decimal("1")})
+    duplicated = (assignments[0], assignments[0])
+    with pytest.raises(ValueError, match="unique observation_id"):
+        summarize_metric_by_regime(duplicated, {"a": Decimal("1")})
+    mixed = (
+        assignments[0],
+        RegimeAssignment(
+            observation_id="b",
+            definition_digest="different",
+            label="HIGH",
+            use_mode=RegimeUseMode.CAUSAL_STRATIFICATION,
+            knowledge_time=dt(),
+        ),
+    )
+    with pytest.raises(ParityViolationError, match="cannot mix"):
+        summarize_metric_by_regime(mixed, {"a": Decimal("1"), "b": Decimal("2")})
+
+    boundary = ScenarioInputBoundary.create(
+        source_kind=SourceKind.BACKTEST,
+        source_artifact_id="run",
+        source_digest="a" * 64,
+        source_lineage_digest="b" * 64,
+        evaluation_role=EvaluationRole.VALIDATION_SELECTION,
+        protected_boundary_id=None,
+        role_provenance=RoleProvenance.EXPERIMENT_ASSIGNED,
+        numeric_policy=DEFAULT_NUMERIC_POLICY,
+        source_code_revision="c" * 40,
+        scenario_code_revision="d" * 40,
+        ordered_input_digest="e" * 64,
+    )
+    same = ScenarioInputBoundary.create(
+        source_kind=SourceKind.BACKTEST,
+        source_artifact_id="another-label",
+        source_digest="a" * 64,
+        source_lineage_digest="b" * 64,
+        evaluation_role=EvaluationRole.VALIDATION_SELECTION,
+        protected_boundary_id=None,
+        role_provenance=RoleProvenance.EXPERIMENT_ASSIGNED,
+        numeric_policy=DEFAULT_NUMERIC_POLICY,
+        source_code_revision="c" * 40,
+        scenario_code_revision="f" * 40,
+        ordered_input_digest="e" * 64,
+    )
+    assert len(verify_experimental_parity((boundary, same))) == 64
+    with pytest.raises(ValueError, match="cannot be empty"):
+        verify_experimental_parity(())
+    unverified = ScenarioInputBoundary(
+        source_kind=boundary.source_kind,
+        source_artifact_id=boundary.source_artifact_id,
+        source_digest=boundary.source_digest,
+        source_lineage_digest=boundary.source_lineage_digest,
+        evaluation_role=boundary.evaluation_role,
+        protected_boundary_id=boundary.protected_boundary_id,
+        role_provenance=boundary.role_provenance,
+        numeric_policy_digest=boundary.numeric_policy_digest,
+        source_code_revision=boundary.source_code_revision,
+        scenario_code_revision=boundary.scenario_code_revision,
+        ordered_input_digest=boundary.ordered_input_digest,
+        boundary_digest=boundary.boundary_digest,
+    )
+    with pytest.raises(ValueError, match="verified"):
+        verify_experimental_parity((unverified,))
+    with pytest.raises(ValueError, match="verified"):
+        verify_experimental_parity((boundary, unverified))
+    different = ScenarioInputBoundary.create(
+        source_kind=SourceKind.BACKTEST,
+        source_artifact_id="run",
+        source_digest="z" * 64,
+        source_lineage_digest="b" * 64,
+        evaluation_role=EvaluationRole.VALIDATION_SELECTION,
+        protected_boundary_id=None,
+        role_provenance=RoleProvenance.EXPERIMENT_ASSIGNED,
+        numeric_policy=DEFAULT_NUMERIC_POLICY,
+        source_code_revision="c" * 40,
+        scenario_code_revision="d" * 40,
+        ordered_input_digest="e" * 64,
+    )
+    with pytest.raises(ParityViolationError, match="parity violation"):
+        verify_experimental_parity((boundary, different))
+
+
+def test_typed_research_history_upstream_evaluation_history_and_determinism() -> None:
+    history = ScenarioResearchHistory()
+    artifact = ResearchArtifactRecord(
+        artifact_digest="artifact-1",
+        kind=ResearchArtifactKind.REGIME_DEFINITION,
+        predeclared=True,
+    )
+    history.record_artifact(artifact)
+    assert history.artifacts == (artifact,)
+    with pytest.raises(ValueError, match="already registered"):
+        history.record_artifact(artifact)
+    with pytest.raises(ValueError, match="parent_digests"):
+        ResearchArtifactRecord(
+            artifact_digest="x",
+            kind=ResearchArtifactKind.SCENARIO_SPEC,
+            predeclared=True,
+            parent_digests=("",),
+        )
+
+    upstream = EvaluationHistory()
+    upstream.record_evaluation(
+        candidate_id="candidate",
+        protected_boundary_id="pb",
+        role=EvaluationRole.PROTECTED_TEST,
+    )
+    upstream.record_protected_evidence_consumption(
+        protected_boundary_id="pb",
+        source_candidate_id="candidate",
+        derived_candidate_id="derived-candidate",
+    )
+    with pytest.raises(ValueError, match="candidate_id is required"):
+        history.check_admissibility(
+            artifact_digest="fresh",
+            evaluation_role=EvaluationRole.PROTECTED_TEST,
+            protected_boundary_id="pb",
+            evaluation_history=upstream,
+        )
+    with pytest.raises(ProtectedEvidenceReuseError, match="Protected evidence reuse"):
+        history.check_admissibility(
+            artifact_digest="fresh",
+            evaluation_role=EvaluationRole.PROTECTED_TEST,
+            protected_boundary_id="pb",
+            evaluation_history=upstream,
+            candidate_id="derived-candidate",
+        )
+
+    first = ScenarioRunManifest(
+        boundary_digest="a",
+        regime_definition_digests=("b",),
+        scenario_grid_digest="c",
+        observed_series_digest="d",
+        disposition_policy_digest="e",
+        result_digest="f",
+        code_revision="1" * 40,
+    )
+    second = ScenarioRunManifest(
+        boundary_digest="a",
+        regime_definition_digests=("b",),
+        scenario_grid_digest="c",
+        observed_series_digest="d",
+        disposition_policy_digest="e",
+        result_digest="f",
+        code_revision="1" * 40,
+    )
+    assert verify_deterministic_equivalence(first, second) == first.manifest_digest
+    third = ScenarioRunManifest(
+        boundary_digest="a",
+        regime_definition_digests=("b",),
+        scenario_grid_digest="c",
+        observed_series_digest="d",
+        disposition_policy_digest="e",
+        result_digest="different",
+        code_revision="1" * 40,
+    )
+    with pytest.raises(ValueError, match="equivalence violation"):
+        verify_deterministic_equivalence(first, third)
+
+
+def test_extreme_tail_is_preserved_and_synthetic_outcome_is_not_empirical() -> None:
+    series = ObservedSeries(
+        "extreme",
+        "trades",
+        "trade",
+        "BRL",
+        (Decimal("-100"), Decimal("-5"), Decimal("1"), Decimal("2")),
+        ("1", "2", "3", "4"),
+        "a",
+        "REJECT",
+    )
+    policy = TailMetricPolicy(
+        Decimal("0.5"),
+        LossDirection.LOWER_IS_LOSS,
+        QuantileConvention.NEAREST_RANK,
+        4,
+        2,
+    )
+    result = compute_tail_metrics(series, policy)
+    assert result.expected_shortfall == Decimal("-52.5")
+
+    outcome_set = ScenarioOutcomeSet(
+        "grid",
+        (ScenarioOutcome("s", {"pnl": Decimal("-100")}, "manifest"),),
+    )
+    with pytest.raises(TypeError, match="ObservedSeries"):
+        compute_tail_metrics(outcome_set, policy)  # type: ignore[arg-type]

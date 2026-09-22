@@ -101,6 +101,8 @@ def run_economic_stress(
     end_of_window_policy: EndOfWindowPolicy,
     code_revision: CodeRevision | str,
 ) -> StressRunEvidence:
+    if not scenario.predeclared:
+        raise ValueError("economic stress requires a predeclared ScenarioSpec")
     baseline_manifest = baseline_result.manifest
     if not baseline_manifest.verify_integrity():
         raise ValueError("baseline BacktestRunManifest integrity verification failed")
