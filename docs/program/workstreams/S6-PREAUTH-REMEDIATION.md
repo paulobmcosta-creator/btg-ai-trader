@@ -96,3 +96,23 @@ SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 ```
 
 A successful remediation does not authorize functional implementation.
+
+
+## 7. Canonical closure
+
+The original workstream constraints above are the historical execution rules for the remediation. The remediation subsequently passed exact-head review and was merged by explicit human authorization.
+
+```text
+S6_PREAUTH_REAUDIT = PASS
+OPEN_PREAUTH_BLOCKERS = 0
+PR_82_MERGED = YES
+S6_PREAUTH_REMEDIATION_MERGE_SHA = 7df047b25633527e505b3e4772c0a0c43e1ab10c
+S6_PREAUTH_POST_MERGE_ENTRY_GATE_CI_RUN = 35759318235
+S6_PREAUTH_POST_MERGE_UPSTREAM_RUN = 35759318238
+S6_PREAUTH_REMEDIATION_CANONICAL = PASS
+
+SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+PROMOTION_TO_S6_FUNCTIONAL_IMPLEMENTATION = NO
+```
+
+The next boundary is a separate explicit human authorization decision for functional Sprint 6 implementation.
