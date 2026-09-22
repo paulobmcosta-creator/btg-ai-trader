@@ -6,6 +6,7 @@ from decimal import Decimal
 
 import pytest
 
+import btg_ai_trader.scenario_engine.core as scenario_core
 from btg_ai_trader.scenario_engine import (
     ComparisonOperator,
     LossDirection,
@@ -51,7 +52,6 @@ from btg_ai_trader.scenario_engine import (
     verify_deterministic_equivalence,
     verify_experimental_parity,
 )
-from btg_ai_trader.scenario_engine.core import _jsonable
 from btg_ai_trader.statistical_baselines.boundaries import (
     EvaluationBoundary,
     TemporalFold,
@@ -154,11 +154,70 @@ def make_policy(
 
 
 def test_jsonable_canonical_fallbacks() -> None:
-    assert _jsonable("plain") == "plain"
-    assert _jsonable([Decimal("1"), "x"]) == ["1", "x"]
-    assert _jsonable({"b": Decimal("2"), "a": Decimal("1")}) == {"a": "1", "b": "2"}
-    assert _jsonable(dt()) == dt().isoformat()
-    assert _jsonable(ComparisonOperator.GE) == "GE"
+    assert scenario_core._jsonable("plain") == "plain"
+    assert scenario_core._jsonable([Decimal("1"), "x"]) == ["1", "x"]
+    assert scenario_core._jsonable({"b": Decimal("2"), "a": Decimal("1")}) == {"a": "1", "b": "2"}
+    assert scenario_core._jsonable(dt()) == dt().isoformat()
+    assert scenario_core._jsonable(ComparisonOperator.GE) == "GE"
+
+
+def test_private_model_snapshot_issuer_fails_closed() -> None:
+    valid: dict[str, object] = {
+        "candidate_id": "candidate-1",
+        "evaluation_scope": "MODEL",
+        "evaluation_role": EvaluationRole.VALIDATION_SELECTION,
+        "protected_boundary_id": None,
+        "dataset_digest": "a" * 64,
+        "plan_digest": "b" * 64,
+        "target_contract_digest": "c" * 64,
+        "experimental_context_fingerprint": "d" * 64,
+        "metrics": {"mae": Decimal("1")},
+        "disposition": "INCONCLUSIVE",
+        "source_manifest_ids": ("m" * 64,),
+        "source_code_revision": "e" * 40,
+        "numeric_policy": DEFAULT_NUMERIC_POLICY,
+        "issuer_token": scenario_core._MODEL_SNAPSHOT_ISSUER_TOKEN,
+    }
+    issued = scenario_core._issue_model_evidence_snapshot(**valid)  # type: ignore[arg-type]
+    assert issued.is_verified
+
+    with pytest.raises(PermissionError, match="verified S5 adapter"):
+        scenario_core._issue_model_evidence_snapshot(
+            **(valid | {"issuer_token": object()})  # type: ignore[arg-type]
+        )
+    with pytest.raises(ValueError, match="MODEL evaluation scope"):
+        scenario_core._issue_model_evidence_snapshot(
+            **(valid | {"evaluation_scope": "STRATEGY"})  # type: ignore[arg-type]
+        )
+    with pytest.raises(ValueError, match="requires protected_boundary_id"):
+        scenario_core._issue_model_evidence_snapshot(
+            **(
+                valid
+                | {
+                    "evaluation_role": EvaluationRole.PROTECTED_TEST,
+                    "protected_boundary_id": None,
+                }
+            )  # type: ignore[arg-type]
+        )
+    with pytest.raises(ValueError, match="non-protected"):
+        scenario_core._issue_model_evidence_snapshot(
+            **(valid | {"protected_boundary_id": "pb"})  # type: ignore[arg-type]
+        )
+    with pytest.raises(ValueError, match="non-empty immutable identities"):
+        scenario_core._issue_model_evidence_snapshot(
+            **(valid | {"source_manifest_ids": ()})  # type: ignore[arg-type]
+        )
+    with pytest.raises(ValueError, match="non-empty immutable identities"):
+        scenario_core._issue_model_evidence_snapshot(
+            **(valid | {"source_manifest_ids": ("",)})  # type: ignore[arg-type]
+        )
+    with pytest.raises(ValueError, match="must be unique"):
+        scenario_core._issue_model_evidence_snapshot(
+            **(
+                valid
+                | {"source_manifest_ids": ("m" * 64, "m" * 64)}
+            )  # type: ignore[arg-type]
+        )
 
 
 def test_input_boundary_and_model_snapshot_validation() -> None:
@@ -687,7 +746,11 @@ def test_observed_distribution_tail_and_path_semantics() -> None:
         "a",
         "REJECT",
     )
-    assert summarize_observed_series(even, loss_direction=LossDirection.LOWER_IS_LOSS).median == Decimal("2")
+    even_summary = summarize_observed_series(
+        even,
+        loss_direction=LossDirection.LOWER_IS_LOSS,
+    )
+    assert even_summary.median == Decimal("2")
 
     with pytest.raises(ValueError, match="predeclared"):
         TailMetricPolicy(

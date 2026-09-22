@@ -75,8 +75,6 @@ def apply_economic_shocks(
             )
         elif shock.target is ShockTarget.TRANSIT_LATENCY_US:
             integral = shock.value.to_integral_value()
-            if integral != shock.value:
-                raise ValueError("TRANSIT_LATENCY_US requires an integral Decimal")
             latency_model = LatencyModel(
                 decision_latency_us=base.latency_model.decision_latency_us,
                 transit_latency_us=int(integral),

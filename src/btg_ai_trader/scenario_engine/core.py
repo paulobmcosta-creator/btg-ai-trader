@@ -773,8 +773,20 @@ def fit_development_threshold_definition(
         definition_id=definition_id,
         mode=RegimeDefinitionMode.DEVELOPMENT_FIT,
         rules=(
-            ThresholdRule(variable_name, ComparisonOperator.LT, threshold, label_below, variable_unit),
-            ThresholdRule(variable_name, ComparisonOperator.GE, threshold, label_at_or_above, variable_unit),
+            ThresholdRule(
+                variable_name,
+                ComparisonOperator.LT,
+                threshold,
+                label_below,
+                variable_unit,
+            ),
+            ThresholdRule(
+                variable_name,
+                ComparisonOperator.GE,
+                threshold,
+                label_at_or_above,
+                variable_unit,
+            ),
         ),
         default_label="UNKNOWN",
         source_lineage_digest=source_lineage_digest,

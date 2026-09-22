@@ -8,20 +8,16 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+import btg_ai_trader.scenario_engine.core as scenario_core
 from btg_ai_trader.ml_engine.evaluation import ModelEvaluationReport
 from btg_ai_trader.ml_engine.provenance import ModelTrainingManifest
-from btg_ai_trader.scenario_engine.core import (
-    ModelEvidenceSnapshot,
-    _MODEL_SNAPSHOT_ISSUER_TOKEN,
-    _issue_model_evidence_snapshot,
-)
 from btg_ai_trader.statistical_baselines.domain import EvaluationRole
 
 
 def snapshot_from_s5(
     report: ModelEvaluationReport,
     training_manifests: Sequence[ModelTrainingManifest],
-) -> ModelEvidenceSnapshot:
+) -> scenario_core.ModelEvidenceSnapshot:
     """Issue a neutral verified snapshot from real Sprint 5 evidence objects."""
     if not isinstance(report, ModelEvaluationReport):
         raise TypeError("report must be ModelEvaluationReport")
@@ -68,7 +64,7 @@ def snapshot_from_s5(
         sorted(manifest.scientific_root_digest for manifest in manifests)
     )
 
-    return _issue_model_evidence_snapshot(
+    return scenario_core._issue_model_evidence_snapshot(
         candidate_id=report.candidate_id,
         evaluation_scope=report.evaluation_scope.value,
         evaluation_role=report.role,
@@ -82,5 +78,5 @@ def snapshot_from_s5(
         source_manifest_ids=source_manifest_ids,
         source_code_revision=source_code_revision,
         numeric_policy=report.numeric_policy,
-        issuer_token=_MODEL_SNAPSHOT_ISSUER_TOKEN,
+        issuer_token=scenario_core._MODEL_SNAPSHOT_ISSUER_TOKEN,
     )

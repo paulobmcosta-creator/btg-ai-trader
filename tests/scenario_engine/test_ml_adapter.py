@@ -7,13 +7,9 @@ from decimal import Decimal
 
 import pytest
 
+import btg_ai_trader.ml_engine.provenance as ml_provenance
 from btg_ai_trader.ml_engine.domain import EvaluationScope, ModelEvaluationDisposition
 from btg_ai_trader.ml_engine.evaluation import FoldModelEvaluation, ModelEvaluationReport
-from btg_ai_trader.ml_engine.provenance import (
-    EnvironmentFingerprint,
-    ModelTrainingManifest,
-    _MANIFEST_VERIFICATION_TOKEN,
-)
 from btg_ai_trader.scenario_engine.core import ScenarioInputBoundary
 from btg_ai_trader.scenario_engine.ml_adapter import snapshot_from_s5
 from btg_ai_trader.statistical_baselines.domain import EvaluationRole, TargetSemantics
@@ -27,20 +23,20 @@ def training_manifest(
     target_contract_digest: str = "target-1",
     code_revision: str = "rev-s5",
     verified: bool = True,
-) -> ModelTrainingManifest:
-    manifest = ModelTrainingManifest(
+) -> ml_provenance.ModelTrainingManifest:
+    manifest = ml_provenance.ModelTrainingManifest(
         boundary_digest="b" * 64,
         candidate_id=candidate_id,
         fitted_feature_pipeline_digest="f" * 64,
         model_state_digest="m" * 64,
         target_contract_digest=target_contract_digest,
         rng_context=None,
-        environment_fingerprint=EnvironmentFingerprint.current(),
+        environment_fingerprint=ml_provenance.EnvironmentFingerprint.current(),
         code_revision=code_revision,
         numeric_policy=DEFAULT_NUMERIC_POLICY,
     )
     if verified:
-        object.__setattr__(manifest, "_verification_token", _MANIFEST_VERIFICATION_TOKEN)
+        object.__setattr__(manifest, "_verification_token", ml_provenance._MANIFEST_VERIFICATION_TOKEN)
     return manifest
 
 
@@ -96,6 +92,11 @@ def test_snapshot_from_s5_fails_closed_on_invalid_upstream_evidence() -> None:
     manifest = training_manifest()
     with pytest.raises(TypeError, match="ModelEvaluationReport"):
         snapshot_from_s5(object(), (manifest,))  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="MODEL evaluation scope"):
+        snapshot_from_s5(
+            dataclasses.replace(report(), evaluation_scope=EvaluationScope.STRATEGY),
+            (manifest,),
+        )
     with pytest.raises(ValueError, match="validation or protected"):
         snapshot_from_s5(report(role=EvaluationRole.DEVELOPMENT), (manifest,))
     with pytest.raises(ValueError, match="fold evaluation roles"):
@@ -119,12 +120,25 @@ def test_snapshot_from_s5_fails_closed_on_invalid_upstream_evidence() -> None:
         snapshot_from_s5(report(protected_boundary_id="unexpected"), (manifest,))
     with pytest.raises(ValueError, match="at least one verified"):
         snapshot_from_s5(report(), ())
-    with pytest.raises(ValueError, match="verified ModelTrainingManifest"):
+    with pytest.raises(ValueError, match="verified ml_provenance.ModelTrainingManifest"):
         snapshot_from_s5(report(), (training_manifest(verified=False),))
     with pytest.raises(ValueError, match="candidate identities differ"):
         snapshot_from_s5(report(), (training_manifest(candidate_id="other"),))
     with pytest.raises(ValueError, match="target contracts differ"):
         snapshot_from_s5(report(), (training_manifest(target_contract_digest="other"),))
+    with pytest.raises(ValueError, match="numeric policies differ"):
+        snapshot_from_s5(
+            report(),
+            (
+                dataclasses.replace(
+                    manifest,
+                    numeric_policy=dataclasses.replace(
+                        DEFAULT_NUMERIC_POLICY,
+                        precision=20,
+                    ),
+                ),
+            ),
+        )
     with pytest.raises(ValueError, match="share one code revision"):
         snapshot_from_s5(
             report(),
@@ -132,5 +146,5 @@ def test_snapshot_from_s5_fails_closed_on_invalid_upstream_evidence() -> None:
         )
     unverified = dataclasses.replace(manifest)
     assert not unverified.is_verified
-    with pytest.raises(ValueError, match="verified ModelTrainingManifest"):
+    with pytest.raises(ValueError, match="verified ml_provenance.ModelTrainingManifest"):
         snapshot_from_s5(report(), (unverified,))
