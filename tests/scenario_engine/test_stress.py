@@ -40,14 +40,14 @@ from btg_ai_trader.observer.provenance import CodeRevision, ConfigHash, ContentH
 from btg_ai_trader.observer.temporal import EventTime, ObservationTimes
 from btg_ai_trader.replay.core import CausalMarketReplaySchedule
 from btg_ai_trader.scenario_engine import (
-    apply_economic_shocks,
-    run_economic_scenario_grid,
-    run_economic_stress,
     ScenarioGrid,
     ScenarioInputBoundary,
     ScenarioShock,
     ScenarioSpec,
     ShockTarget,
+    apply_economic_shocks,
+    run_economic_scenario_grid,
+    run_economic_stress,
 )
 from btg_ai_trader.statistical_baselines.domain import EvaluationRole
 from btg_ai_trader.statistical_baselines.metrics import DEFAULT_NUMERIC_POLICY
