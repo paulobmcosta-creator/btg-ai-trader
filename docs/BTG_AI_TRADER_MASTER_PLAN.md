@@ -488,7 +488,7 @@ Direção futura de produção continua separando Trading Node, Research/AI Node
 - Entry Gate do Sprint 6: canônico / PASS;
 - head canônico final do gate antes da remediação: `616849f8e77ecf3624b2b9362c1ef42c7fb9bcc1`;
 - remediação pré-autorização: canônica PASS; PR #82 mergeado em `7df047b25633527e505b3e4772c0a0c43e1ab10c`; Issue #81 em fechamento;
-- implementação funcional do Sprint 6: `NOT_AUTHORIZED`;
+- implementação funcional do Sprint 6: `AUTHORIZED_IN_WORK_BRANCH` (`s6/02-full-scenario-engine`); merge `NOT_AUTHORIZED`;
 - Sprints 4 e 5 permanecem formalmente fechados (`FORMALLY_CLOSED` / `PASS`).
 
 ### 12.2. Segurança do repositório
@@ -574,7 +574,7 @@ A revisão pré-autorização preservou o Entry Gate como PASS, mas classificou 
 
 ### 2026-09-22 — fechamento canônico da remediação pré-autorização
 
-A remediação passou reauditoria independente no exact head `485b70af4333cf3aeb3cef4d5b11a8909dc05597`. O PR #82 foi mergeado por autorização humana no SHA `7df047b25633527e505b3e4772c0a0c43e1ab10c`. A validação pós-merge registrou Entry Gate CI `35759318235` PASS 2/2 e pinned upstream `35759318238` PASS 2/2. A remediação está canônica PASS e a implementação funcional do Sprint 6 permanece `NOT_AUTHORIZED`.
+A remediação passou reauditoria independente no exact head `485b70af4333cf3aeb3cef4d5b11a8909dc05597`. O PR #82 foi mergeado por autorização humana no SHA `7df047b25633527e505b3e4772c0a0c43e1ab10c`. A validação pós-merge registrou Entry Gate CI `35759318235` PASS 2/2 e pinned upstream `35759318238` PASS 2/2. A remediação está canônica PASS; naquele checkpoint, antes da autorização funcional posterior de 2026-09-22, a implementação do Sprint 6 permanecia `NOT_AUTHORIZED`.
 
 ### 2026-09-22 — autorização funcional do Sprint 6
 
