@@ -105,30 +105,23 @@ def _validate_adverse_shocks(
 ) -> None:
     for shock in shocks:
         if shock.target is ShockTarget.FEE_MULTIPLIER:
-            if shock.value < Decimal(1):
-                raise ValueError("fee stress cannot improve the baseline fee schedule")
-        elif shock.target is ShockTarget.SLIPPAGE_POINTS:
+            continue
+        if shock.target is ShockTarget.SLIPPAGE_POINTS:
             if isinstance(base.slippage_model, ZeroSlippageModel):
                 baseline_points = Decimal(0)
             elif isinstance(base.slippage_model, FixedPointsSlippageModel):
                 baseline_points = base.slippage_model.adverse_points
-            elif isinstance(base.slippage_model, FixedBpsSlippageModel):
+            else:
                 raise ValueError(
                     "SLIPPAGE_POINTS stress is not comparable with FixedBpsSlippageModel baseline"
                 )
-            else:
-                raise ValueError("unsupported baseline slippage model for point stress")
             if shock.value < baseline_points:
                 raise ValueError("slippage stress cannot improve baseline slippage")
         elif shock.target is ShockTarget.TRANSIT_LATENCY_US:
             integral = shock.value.to_integral_value()
-            if integral != shock.value:
-                raise ValueError("TRANSIT_LATENCY_US requires an integral Decimal")
             if int(integral) < base.latency_model.transit_latency_us:
                 raise ValueError("latency stress cannot improve baseline transit latency")
         else:
-            if shock.value <= Decimal(0):
-                raise ValueError("MAX_SPREAD stress must be positive")
             baseline_max = base.spread_model.max_spread
             if baseline_max is not None and shock.value > baseline_max:
                 raise ValueError(
