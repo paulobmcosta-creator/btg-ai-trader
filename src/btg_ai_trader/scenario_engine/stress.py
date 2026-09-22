@@ -13,9 +13,11 @@ from btg_ai_trader.backtesting import (
     EconomicAssumptions,
     EndOfWindowPolicy,
     FeeSchedule,
+    FixedBpsSlippageModel,
     FixedPointsSlippageModel,
     InstrumentEconomics,
     LatencyModel,
+    SpreadModel,
     ZeroSlippageModel,
     compute_actions_hash,
     compute_assumptions_hash,
@@ -52,6 +54,7 @@ def apply_economic_shocks(
     fee_schedule = base.fee_schedule
     slippage_model = base.slippage_model
     latency_model = base.latency_model
+    spread_model = base.spread_model
 
     for shock in shocks:
         if shock.target is ShockTarget.FEE_MULTIPLIER:
@@ -70,7 +73,7 @@ def apply_economic_shocks(
                 if shock.value == Decimal(0)
                 else FixedPointsSlippageModel(shock.value)
             )
-        else:
+        elif shock.target is ShockTarget.TRANSIT_LATENCY_US:
             integral = shock.value.to_integral_value()
             if integral != shock.value:
                 raise ValueError("TRANSIT_LATENCY_US requires an integral Decimal")
@@ -78,17 +81,59 @@ def apply_economic_shocks(
                 decision_latency_us=base.latency_model.decision_latency_us,
                 transit_latency_us=int(integral),
             )
+        else:
+            spread_model = SpreadModel(
+                require_positive_spread=True,
+                max_spread=shock.value,
+            )
 
     suffix = "-".join(f"{shock.target.value}:{shock.value}" for shock in shocks)
     return EconomicAssumptions(
         assumptions_id=f"{base.assumptions_id}-s6-{suffix}",
-        spread_model=base.spread_model,
+        spread_model=spread_model,
         slippage_model=slippage_model,
         fee_schedule=fee_schedule,
         latency_model=latency_model,
         execution_policy=base.execution_policy,
     )
 
+
+
+def _validate_adverse_shocks(
+    base: EconomicAssumptions,
+    shocks: Sequence[ScenarioShock],
+) -> None:
+    for shock in shocks:
+        if shock.target is ShockTarget.FEE_MULTIPLIER:
+            if shock.value < Decimal(1):
+                raise ValueError("fee stress cannot improve the baseline fee schedule")
+        elif shock.target is ShockTarget.SLIPPAGE_POINTS:
+            if isinstance(base.slippage_model, ZeroSlippageModel):
+                baseline_points = Decimal(0)
+            elif isinstance(base.slippage_model, FixedPointsSlippageModel):
+                baseline_points = base.slippage_model.adverse_points
+            elif isinstance(base.slippage_model, FixedBpsSlippageModel):
+                raise ValueError(
+                    "SLIPPAGE_POINTS stress is not comparable with FixedBpsSlippageModel baseline"
+                )
+            else:
+                raise ValueError("unsupported baseline slippage model for point stress")
+            if shock.value < baseline_points:
+                raise ValueError("slippage stress cannot improve baseline slippage")
+        elif shock.target is ShockTarget.TRANSIT_LATENCY_US:
+            integral = shock.value.to_integral_value()
+            if integral != shock.value:
+                raise ValueError("TRANSIT_LATENCY_US requires an integral Decimal")
+            if int(integral) < base.latency_model.transit_latency_us:
+                raise ValueError("latency stress cannot improve baseline transit latency")
+        else:
+            if shock.value <= Decimal(0):
+                raise ValueError("MAX_SPREAD stress must be positive")
+            baseline_max = base.spread_model.max_spread
+            if baseline_max is not None and shock.value > baseline_max:
+                raise ValueError(
+                    "MAX_SPREAD stress must be at least as restrictive as baseline max_spread"
+                )
 
 def run_economic_stress(
     scenario: ScenarioSpec,
@@ -129,6 +174,7 @@ def run_economic_stress(
     if baseline_assumptions_hash != baseline_manifest.assumptions_hash:
         raise ValueError("base assumptions/end-of-window policy do not match baseline evidence")
 
+    _validate_adverse_shocks(base_assumptions, scenario.shocks)
     stressed_assumptions = apply_economic_shocks(base_assumptions, scenario.shocks)
     engine = DeterministicEconomicBacktester(
         instrument_economics=instrument_economics,
