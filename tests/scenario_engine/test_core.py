@@ -663,9 +663,34 @@ def test_regime_contracts_classification_and_development_fit() -> None:
             source_lineage_digest="a" * 64,
             evaluation_role=EvaluationRole.DEVELOPMENT,
         )
+    with pytest.raises(ValueError, match="unique observation IDs"):
+        fit_development_threshold_definition(
+            [
+                make_observation("dup", Decimal("1")),
+                make_observation("dup", Decimal("2")),
+            ],
+            variable_name="vol",
+            label_below="L",
+            label_at_or_above="H",
+            definition_id="bad",
+            development_boundary_id="dev",
+            source_lineage_digest="a" * 64,
+            evaluation_role=EvaluationRole.DEVELOPMENT,
+        )
+    with pytest.raises(ValueError, match="lineage"):
+        fit_development_threshold_definition(
+            [RegimeObservation("x", dt(), {"vol": Decimal("1")}, "z" * 64)],
+            variable_name="vol",
+            label_below="L",
+            label_at_or_above="H",
+            definition_id="bad",
+            development_boundary_id="dev",
+            source_lineage_digest="a" * 64,
+            evaluation_role=EvaluationRole.DEVELOPMENT,
+        )
     with pytest.raises(ValueError, match="cannot silently drop"):
         fit_development_threshold_definition(
-            [RegimeObservation("x", dt(), {}, "a")],
+            [RegimeObservation("x", dt(), {}, "a" * 64)],
             variable_name="vol",
             label_below="L",
             label_at_or_above="H",
