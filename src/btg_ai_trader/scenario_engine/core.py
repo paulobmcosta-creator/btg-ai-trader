@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import ROUND_CEILING, Decimal, localcontext
 from enum import Enum
+from typing import Protocol
 
 from btg_ai_trader.backtesting import BacktestRunManifest, compute_replay_boundary_fingerprint
 from btg_ai_trader.statistical_baselines.comparison import EvaluationHistory
@@ -99,6 +100,7 @@ class ShockTarget(str, Enum):
     FEE_MULTIPLIER = "FEE_MULTIPLIER"
     SLIPPAGE_POINTS = "SLIPPAGE_POINTS"
     TRANSIT_LATENCY_US = "TRANSIT_LATENCY_US"
+    MAX_SPREAD = "MAX_SPREAD"
 
 
 class MetricDirection(str, Enum):
@@ -300,7 +302,6 @@ class ScenarioInputBoundary:
         cls,
         snapshot: ModelEvidenceSnapshot,
         *,
-        protected_boundary_id: str | None,
         scenario_code_revision: str,
     ) -> ScenarioInputBoundary:
         if not snapshot.is_verified:
@@ -311,7 +312,7 @@ class ScenarioInputBoundary:
             source_digest=snapshot.snapshot_digest,
             source_lineage_digest=snapshot.experimental_context_fingerprint,
             evaluation_role=snapshot.evaluation_role,
-            protected_boundary_id=protected_boundary_id,
+            protected_boundary_id=snapshot.protected_boundary_id,
             role_provenance=RoleProvenance.INHERITED,
             numeric_policy_digest=snapshot.numeric_policy_digest,
             source_code_revision=snapshot.source_code_revision,
@@ -402,11 +403,45 @@ def verify_experimental_parity(
     )
 
 
+class ModelEvaluationEvidence(Protocol):
+    candidate_id: str
+    evaluation_scope: object
+    role: EvaluationRole
+    dataset_digest: str
+    plan_digest: str
+    target_contract_digest: str
+    experimental_context_fingerprint: str
+    mean_metrics: Mapping[str, Decimal]
+    disposition: object
+    protected_boundary_id: str
+    numeric_policy: NumericPolicy
+
+
+class VerifiedModelTrainingManifest(Protocol):
+    candidate_id: str
+    target_contract_digest: str
+    code_revision: str
+    numeric_policy: NumericPolicy
+    scientific_root_digest: str
+
+    @property
+    def is_verified(self) -> bool: ...
+
+
+def _enum_text(value: object) -> str:
+    if isinstance(value, Enum):
+        return str(value.value)
+    if isinstance(value, str):
+        return value
+    raise TypeError("expected enum or string value")
+
+
 @dataclass(frozen=True, slots=True)
 class ModelEvidenceSnapshot:
     candidate_id: str
     evaluation_scope: str
     evaluation_role: EvaluationRole
+    protected_boundary_id: str | None
     dataset_digest: str
     plan_digest: str
     target_contract_digest: str
@@ -424,44 +459,73 @@ class ModelEvidenceSnapshot:
         return self._verification_token is _VERIFIED_MODEL_SNAPSHOT_TOKEN
 
     @classmethod
-    def create(
+    def from_verified_evidence(
         cls,
-        *,
-        candidate_id: str,
-        evaluation_role: EvaluationRole,
-        dataset_digest: str,
-        plan_digest: str,
-        target_contract_digest: str,
-        experimental_context_fingerprint: str,
-        metrics: Mapping[str, Decimal],
-        disposition: str,
-        source_manifest_ids: Sequence[str],
-        source_code_revision: str,
-        numeric_policy: NumericPolicy = DEFAULT_NUMERIC_POLICY,
+        report: ModelEvaluationEvidence,
+        training_manifests: Sequence[VerifiedModelTrainingManifest],
     ) -> ModelEvidenceSnapshot:
+        scope = _enum_text(report.evaluation_scope)
+        if scope != "MODEL":
+            raise ValueError("model evidence snapshot requires MODEL evaluation scope")
+        if not isinstance(report.role, EvaluationRole):
+            raise TypeError("model evaluation role must be EvaluationRole")
         for value, name in (
-            (candidate_id, "candidate_id"),
-            (dataset_digest, "dataset_digest"),
-            (plan_digest, "plan_digest"),
-            (target_contract_digest, "target_contract_digest"),
-            (experimental_context_fingerprint, "experimental_context_fingerprint"),
-            (disposition, "disposition"),
-            (source_code_revision, "source_code_revision"),
+            (report.candidate_id, "candidate_id"),
+            (report.dataset_digest, "dataset_digest"),
+            (report.plan_digest, "plan_digest"),
+            (report.target_contract_digest, "target_contract_digest"),
+            (
+                report.experimental_context_fingerprint,
+                "experimental_context_fingerprint",
+            ),
         ):
             _require_text(value, name)
-        manifest_ids = tuple(source_manifest_ids)
-        if not manifest_ids or any(not item for item in manifest_ids):
-            raise ValueError("source_manifest_ids must contain non-empty immutable identities")
-        frozen_metrics = _freeze_decimal_mapping(metrics)
-        numeric_policy_digest = _digest(numeric_policy.to_canonical_dict())
+
+        protected_boundary_id = report.protected_boundary_id.strip() or None
+        if report.role is EvaluationRole.PROTECTED_TEST:
+            if protected_boundary_id is None:
+                raise ValueError("PROTECTED_TEST model evidence requires protected_boundary_id")
+        elif protected_boundary_id is not None:
+            raise ValueError("non-protected model evidence cannot carry protected_boundary_id")
+
+        manifests = tuple(training_manifests)
+        if not manifests:
+            raise ValueError("at least one verified ModelTrainingManifest is required")
+        if any(not manifest.is_verified for manifest in manifests):
+            raise ValueError("all model training manifests must be verified")
+        if any(manifest.candidate_id != report.candidate_id for manifest in manifests):
+            raise ValueError("model report and training manifest candidate identities differ")
+        if any(
+            manifest.target_contract_digest != report.target_contract_digest
+            for manifest in manifests
+        ):
+            raise ValueError("model report and training manifest target contracts differ")
+        if any(manifest.numeric_policy != report.numeric_policy for manifest in manifests):
+            raise ValueError("model report and training manifest numeric policies differ")
+
+        revisions = {manifest.code_revision for manifest in manifests}
+        if len(revisions) != 1:
+            raise ValueError("model training manifests must share one code revision")
+        source_code_revision = next(iter(revisions))
+        _require_text(source_code_revision, "source_code_revision")
+
+        manifest_ids = tuple(sorted(manifest.scientific_root_digest for manifest in manifests))
+        if any(not item for item in manifest_ids):
+            raise ValueError("training manifest scientific roots must be non-empty")
+
+        frozen_metrics = _freeze_decimal_mapping(report.mean_metrics)
+        numeric_policy_digest = _digest(report.numeric_policy.to_canonical_dict())
+        disposition = _enum_text(report.disposition)
+        _require_text(disposition, "disposition")
         payload: dict[str, object] = {
-            "candidate_id": candidate_id,
-            "evaluation_scope": "MODEL",
-            "evaluation_role": evaluation_role.value,
-            "dataset_digest": dataset_digest,
-            "plan_digest": plan_digest,
-            "target_contract_digest": target_contract_digest,
-            "experimental_context_fingerprint": experimental_context_fingerprint,
+            "candidate_id": report.candidate_id,
+            "evaluation_scope": scope,
+            "evaluation_role": report.role.value,
+            "protected_boundary_id": protected_boundary_id,
+            "dataset_digest": report.dataset_digest,
+            "plan_digest": report.plan_digest,
+            "target_contract_digest": report.target_contract_digest,
+            "experimental_context_fingerprint": report.experimental_context_fingerprint,
             "metrics": frozen_metrics,
             "disposition": disposition,
             "source_manifest_ids": manifest_ids,
@@ -469,13 +533,14 @@ class ModelEvidenceSnapshot:
             "numeric_policy_digest": numeric_policy_digest,
         }
         obj = cls(
-            candidate_id=candidate_id,
-            evaluation_scope="MODEL",
-            evaluation_role=evaluation_role,
-            dataset_digest=dataset_digest,
-            plan_digest=plan_digest,
-            target_contract_digest=target_contract_digest,
-            experimental_context_fingerprint=experimental_context_fingerprint,
+            candidate_id=report.candidate_id,
+            evaluation_scope=scope,
+            evaluation_role=report.role,
+            protected_boundary_id=protected_boundary_id,
+            dataset_digest=report.dataset_digest,
+            plan_digest=report.plan_digest,
+            target_contract_digest=report.target_contract_digest,
+            experimental_context_fingerprint=report.experimental_context_fingerprint,
             metrics=frozen_metrics,
             disposition=disposition,
             source_manifest_ids=manifest_ids,
@@ -580,6 +645,8 @@ def classify_regime(
     use_mode: RegimeUseMode,
     strategy_regime_definition_digest: str | None = None,
 ) -> RegimeAssignment:
+    if observation.source_lineage_digest != definition.source_lineage_digest:
+        raise ValueError("regime observation source lineage does not match definition")
     if definition.mode is RegimeDefinitionMode.RETROSPECTIVE_EXPLORATORY:
         if use_mode is not RegimeUseMode.RETROSPECTIVE_EXPLORATORY:
             raise ValueError("retrospective regime definition is exploratory-only")
@@ -672,6 +739,10 @@ def fit_development_threshold_definition(
         raise ValueError("learned regime threshold may be fit only on DEVELOPMENT evidence")
     if not observations:
         raise ValueError("observations cannot be empty")
+    if len({obs.observation_id for obs in observations}) != len(observations):
+        raise ValueError("development observations must have unique observation IDs")
+    if any(obs.source_lineage_digest != source_lineage_digest for obs in observations):
+        raise ValueError("development observation lineage does not match declared source lineage")
     if any(variable_name not in obs.variables for obs in observations):
         raise ValueError("development observations cannot silently drop missing regime values")
     values = sorted(obs.variables[variable_name] for obs in observations)
@@ -702,6 +773,10 @@ class ScenarioShock:
     def __post_init__(self) -> None:
         if not isinstance(self.value, Decimal) or self.value < Decimal(0):
             raise ValueError("shock value must be a non-negative Decimal")
+        if self.target is ShockTarget.FEE_MULTIPLIER and self.value < Decimal(1):
+            raise ValueError("FEE_MULTIPLIER stress must be at least 1")
+        if self.target is ShockTarget.MAX_SPREAD and self.value <= Decimal(0):
+            raise ValueError("MAX_SPREAD stress must be positive")
         _require_text(self.unit, "unit")
 
 
@@ -829,6 +904,9 @@ class ScenarioMetricRange:
     minimum: Decimal
     maximum: Decimal
     mean: Decimal
+    scenario_count: int
+    effective_count: int
+    missing_count: int
 
 
 def summarize_scenario_outcomes(
@@ -846,6 +924,9 @@ def summarize_scenario_outcomes(
             minimum=min(values),
             maximum=max(values),
             mean=sum(values, Decimal(0)) / Decimal(len(values)),
+            scenario_count=len(outcome_set.outcomes),
+            effective_count=len(values),
+            missing_count=len(outcome_set.outcomes) - len(values),
         )
     return types.MappingProxyType(summary)
 
@@ -1162,6 +1243,10 @@ def evaluate_disposition(
         for condition in policy.conditions
         if condition.metric_name in metrics
     ]
+    if not evaluated:
+        return ScenarioDispositionResult(
+            ScenarioDisposition.INCONCLUSIVE, (), (), policy.policy_digest
+        )
     failed = tuple(name for name, passed in evaluated if not passed)
     passed_count = sum(1 for _, passed in evaluated if passed)
     if passed_count == len(evaluated):
@@ -1179,13 +1264,12 @@ def characterize_robustness(
 ) -> RobustnessCharacterization:
     if not scenario_metrics:
         raise ValueError("scenario_metrics cannot be empty")
-    passes: list[bool] = []
-    for metrics in scenario_metrics:
-        result = evaluate_disposition(policy, metrics)
-        passes.append(result.disposition is ScenarioDisposition.FAVORABLE)
-    if all(passes):
+    dispositions = tuple(
+        evaluate_disposition(policy, metrics).disposition for metrics in scenario_metrics
+    )
+    if all(value is ScenarioDisposition.FAVORABLE for value in dispositions):
         return RobustnessCharacterization.ROBUST_WITHIN_DECLARED_SCOPE
-    if not any(passes):
+    if all(value is ScenarioDisposition.UNFAVORABLE for value in dispositions):
         return RobustnessCharacterization.FRAGILE
     return RobustnessCharacterization.MIXED
 
@@ -1200,6 +1284,11 @@ class ResearchAttemptRecord:
     def __post_init__(self) -> None:
         _require_text(self.artifact_digest, "artifact_digest")
         _require_text(self.disposition, "disposition")
+        if self.evaluation_role is EvaluationRole.PROTECTED_TEST:
+            if self.protected_boundary_id is None:
+                raise ValueError("PROTECTED_TEST attempt requires protected_boundary_id")
+        elif self.protected_boundary_id is not None:
+            raise ValueError("protected_boundary_id is only valid for PROTECTED_TEST attempt")
 
 
 @dataclass(frozen=True, slots=True)
@@ -1249,6 +1338,9 @@ class ScenarioResearchHistory:
     def record_artifact(self, record: ResearchArtifactRecord) -> None:
         if any(existing.artifact_digest == record.artifact_digest for existing in self._artifacts):
             raise ValueError("research artifact digest already registered")
+        known = {existing.artifact_digest for existing in self._artifacts}
+        if any(parent not in known for parent in record.parent_digests):
+            raise ValueError("parent_digests must reference previously registered artifacts")
         self._artifacts.append(record)
 
     def record_attempt(self, record: ResearchAttemptRecord) -> None:
@@ -1263,7 +1355,37 @@ class ScenarioResearchHistory:
         )
         if not source_seen:
             raise ValueError("protected adaptation requires prior protected evaluation evidence")
+        derived = next(
+            (
+                artifact
+                for artifact in self._artifacts
+                if artifact.artifact_digest == record.derived_artifact_digest
+            ),
+            None,
+        )
+        if derived is None:
+            raise ValueError("protected adaptation derived artifact must be registered")
+        if not derived.protected_informed:
+            raise ValueError("protected adaptation derived artifact must be marked protected_informed")
         self._adaptations.append(record)
+
+    def _protected_informed_digests(self, protected_boundary_id: str) -> set[str]:
+        informed = {
+            record.derived_artifact_digest
+            for record in self._adaptations
+            if record.protected_boundary_id == protected_boundary_id
+        }
+        changed = True
+        while changed:
+            changed = False
+            for artifact in self._artifacts:
+                if (
+                    artifact.artifact_digest not in informed
+                    and any(parent in informed for parent in artifact.parent_digests)
+                ):
+                    informed.add(artifact.artifact_digest)
+                    changed = True
+        return informed
 
     def check_admissibility(
         self,
@@ -1279,11 +1401,7 @@ class ScenarioResearchHistory:
             return
         if protected_boundary_id is None:
             raise ValueError("PROTECTED_TEST requires protected_boundary_id")
-        if any(
-            record.derived_artifact_digest == artifact_digest
-            and record.protected_boundary_id == protected_boundary_id
-            for record in self._adaptations
-        ):
+        if artifact_digest in self._protected_informed_digests(protected_boundary_id):
             raise ProtectedEvidenceReuseError(
                 "protected-informed artifact cannot reuse the same protected boundary"
             )
