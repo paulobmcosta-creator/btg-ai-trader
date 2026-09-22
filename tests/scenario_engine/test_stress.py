@@ -19,6 +19,7 @@ from btg_ai_trader.backtesting import (
     EndOfWindowPolicy,
     ExecutionPolicy,
     FeeSchedule,
+    FixedBpsSlippageModel,
     FixedPointsSlippageModel,
     InstrumentEconomics,
     LatencyModel,
@@ -221,6 +222,12 @@ def test_apply_shocks_all_supported_dimensions() -> None:
     )
     assert latency.latency_model.transit_latency_us == 250
 
+    spread = apply_economic_shocks(
+        assumptions,
+        (ScenarioShock(ShockTarget.MAX_SPREAD, Decimal("0.4"), "price"),),
+    )
+    assert spread.spread_model.max_spread == Decimal("0.4")
+
     with pytest.raises(ValueError, match="integral Decimal"):
         apply_economic_shocks(
             assumptions,
@@ -239,11 +246,13 @@ def test_apply_shocks_all_supported_dimensions() -> None:
             ScenarioShock(ShockTarget.FEE_MULTIPLIER, Decimal("1.5"), "multiplier"),
             ScenarioShock(ShockTarget.SLIPPAGE_POINTS, Decimal("0.25"), "points"),
             ScenarioShock(ShockTarget.TRANSIT_LATENCY_US, Decimal("100"), "microseconds"),
+            ScenarioShock(ShockTarget.MAX_SPREAD, Decimal("0.4"), "price"),
         ),
     )
     assert combined.fee_schedule.fixed_per_order == Decimal("1.5")
     assert isinstance(combined.slippage_model, FixedPointsSlippageModel)
     assert combined.latency_model.transit_latency_us == 100
+    assert combined.spread_model.max_spread == Decimal("0.4")
 
 
 def test_run_economic_stress_and_grid_preserve_sprint3_identity() -> None:
@@ -437,6 +446,140 @@ def test_run_economic_stress_rejects_upstream_identity_drift() -> None:
             end_of_window_policy=EndOfWindowPolicy.KEEP_OPEN,
             code_revision=REV,
         )
+
+
+def test_run_economic_stress_rejects_non_adverse_assumption_changes() -> None:
+    _, econ, assumptions, actions, schedule, _ = fixture_bundle()
+
+    slippage_base = replace(
+        assumptions,
+        assumptions_id="slip-base",
+        slippage_model=FixedPointsSlippageModel(Decimal("0.5")),
+    )
+    slippage_baseline = DeterministicEconomicBacktester(
+        econ,
+        slippage_base,
+        code_revision=REV,
+        end_of_window_policy=EndOfWindowPolicy.KEEP_OPEN,
+    ).run(actions=actions, replay_schedule=schedule)
+    with pytest.raises(ValueError, match="cannot improve baseline slippage"):
+        run_economic_stress(
+            scenario(
+                slippage_baseline,
+                "slip-improvement",
+                (ScenarioShock(ShockTarget.SLIPPAGE_POINTS, Decimal("0.25"), "points"),),
+            ),
+            baseline_result=slippage_baseline,
+            actions=actions,
+            replay_schedule=schedule,
+            instrument_economics=econ,
+            base_assumptions=slippage_base,
+            end_of_window_policy=EndOfWindowPolicy.KEEP_OPEN,
+            code_revision=REV,
+        )
+
+    bps_base = replace(
+        assumptions,
+        assumptions_id="bps-base",
+        slippage_model=FixedBpsSlippageModel(Decimal("5")),
+    )
+    bps_baseline = DeterministicEconomicBacktester(
+        econ,
+        bps_base,
+        code_revision=REV,
+        end_of_window_policy=EndOfWindowPolicy.KEEP_OPEN,
+    ).run(actions=actions, replay_schedule=schedule)
+    with pytest.raises(ValueError, match="not comparable"):
+        run_economic_stress(
+            scenario(
+                bps_baseline,
+                "bps-incomparable",
+                (ScenarioShock(ShockTarget.SLIPPAGE_POINTS, Decimal("1"), "points"),),
+            ),
+            baseline_result=bps_baseline,
+            actions=actions,
+            replay_schedule=schedule,
+            instrument_economics=econ,
+            base_assumptions=bps_base,
+            end_of_window_policy=EndOfWindowPolicy.KEEP_OPEN,
+            code_revision=REV,
+        )
+
+    latency_base = replace(
+        assumptions,
+        assumptions_id="latency-base",
+        latency_model=LatencyModel(transit_latency_us=100),
+    )
+    latency_baseline = DeterministicEconomicBacktester(
+        econ,
+        latency_base,
+        code_revision=REV,
+        end_of_window_policy=EndOfWindowPolicy.KEEP_OPEN,
+    ).run(actions=actions, replay_schedule=schedule)
+    with pytest.raises(ValueError, match="cannot improve baseline transit latency"):
+        run_economic_stress(
+            scenario(
+                latency_baseline,
+                "latency-improvement",
+                (ScenarioShock(ShockTarget.TRANSIT_LATENCY_US, Decimal("50"), "microseconds"),),
+            ),
+            baseline_result=latency_baseline,
+            actions=actions,
+            replay_schedule=schedule,
+            instrument_economics=econ,
+            base_assumptions=latency_base,
+            end_of_window_policy=EndOfWindowPolicy.KEEP_OPEN,
+            code_revision=REV,
+        )
+
+    spread_base = replace(
+        assumptions,
+        assumptions_id="spread-base",
+        spread_model=SpreadModel(max_spread=Decimal("0.4")),
+    )
+    spread_baseline = DeterministicEconomicBacktester(
+        econ,
+        spread_base,
+        code_revision=REV,
+        end_of_window_policy=EndOfWindowPolicy.KEEP_OPEN,
+    ).run(actions=actions, replay_schedule=schedule)
+    with pytest.raises(ValueError, match="at least as restrictive"):
+        run_economic_stress(
+            scenario(
+                spread_baseline,
+                "spread-relaxation",
+                (ScenarioShock(ShockTarget.MAX_SPREAD, Decimal("0.5"), "price"),),
+            ),
+            baseline_result=spread_baseline,
+            actions=actions,
+            replay_schedule=schedule,
+            instrument_economics=econ,
+            base_assumptions=spread_base,
+            end_of_window_policy=EndOfWindowPolicy.KEEP_OPEN,
+            code_revision=REV,
+        )
+
+    spread_scenario = scenario(
+        fixture_bundle()[-1],
+        "spread-adverse",
+        (ScenarioShock(ShockTarget.MAX_SPREAD, Decimal("0.4"), "price"),),
+    )
+    baseline = fixture_bundle()[-1]
+    evidence = run_economic_stress(
+        replace(
+            spread_scenario,
+            baseline_evidence_ref=baseline.manifest.manifest_hash.value,
+        ),
+        baseline_result=baseline,
+        actions=actions,
+        replay_schedule=schedule,
+        instrument_economics=econ,
+        base_assumptions=assumptions,
+        end_of_window_policy=EndOfWindowPolicy.KEEP_OPEN,
+        code_revision=REV,
+    )
+    assert evidence.result.manifest.verify_integrity()
+    assert evidence.result.manifest.assumptions_hash != baseline.manifest.assumptions_hash
 
 
 def test_run_economic_stress_detects_kernel_output_drift(
