@@ -1,10 +1,16 @@
 """Tests for the Sprint 6 capability/security boundary scanner."""
 
+import ast
 from pathlib import Path
 
-from scripts.check_s6_boundary import Finding, _scan_ast, _scan_text, main, scan_file, scan_tree
-
-import ast
+from scripts.check_s6_boundary import (
+    Finding,
+    _scan_ast,
+    _scan_text,
+    main,
+    scan_file,
+    scan_tree,
+)
 
 
 def test_finding_and_clean_tree(tmp_path: Path) -> None:

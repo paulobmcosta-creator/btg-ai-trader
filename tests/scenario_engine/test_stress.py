@@ -8,9 +8,8 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-import pytest
-
 import btg_ai_trader.scenario_engine.stress as stress_module
+import pytest
 from btg_ai_trader.backtesting import (
     ActionIdentity,
     BacktestAction,
@@ -324,7 +323,7 @@ def test_run_economic_stress_rejects_upstream_identity_drift() -> None:
         code_revision=REV,
         config_hash=ConfigHash("1" * 64),
         provider_id="xp",
-        capture_scope="other",
+        capture_scope="market",
     )
     with pytest.raises(ValueError, match="causal replay boundary"):
         run_economic_stress(

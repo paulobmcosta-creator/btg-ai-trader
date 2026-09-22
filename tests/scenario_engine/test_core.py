@@ -1,6 +1,6 @@
 """Comprehensive Sprint 6 Scenario Engine core tests."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
@@ -49,6 +49,7 @@ from btg_ai_trader.statistical_baselines.domain import (
     EvaluationRole,
     ProtectedEvidenceReuseError,
 )
+from btg_ai_trader.scenario_engine.core import _jsonable
 from btg_ai_trader.statistical_baselines.metrics import DEFAULT_NUMERIC_POLICY
 
 
@@ -124,6 +125,14 @@ def make_policy(
         definition_mode=mode,
         development_boundary_id=development_boundary_id,
     )
+
+
+def test_jsonable_canonical_fallbacks() -> None:
+    assert _jsonable("plain") == "plain"
+    assert _jsonable([Decimal("1"), "x"]) == ["1", "x"]
+    assert _jsonable({"b": Decimal("2"), "a": Decimal("1")}) == {"a": "1", "b": "2"}
+    assert _jsonable(dt()) == dt().isoformat()
+    assert _jsonable(ComparisonOperator.GE) == "GE"
 
 
 def test_input_boundary_and_model_snapshot_validation() -> None:
@@ -341,7 +350,11 @@ def test_regime_contracts_classification_and_development_fit() -> None:
         )
 
     odd = fit_development_threshold_definition(
-        [make_observation("1", Decimal(1)), make_observation("2", Decimal(3)), make_observation("3", Decimal(2))],
+        [
+            make_observation("1", Decimal(1)),
+            make_observation("2", Decimal(3)),
+            make_observation("3", Decimal(2)),
+        ],
         variable_name="vol",
         label_below="LOW",
         label_at_or_above="HIGH",

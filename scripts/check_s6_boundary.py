@@ -111,7 +111,10 @@ class Finding:
 
 
 def _is_forbidden_import(name: str) -> bool:
-    return any(name == prefix or name.startswith(prefix + ".") for prefix in FORBIDDEN_IMPORT_PREFIXES)
+    return any(
+        name == prefix or name.startswith(prefix + ".")
+        for prefix in FORBIDDEN_IMPORT_PREFIXES
+    )
 
 
 def _resolve_expr(node: ast.AST, aliases: dict[str, str]) -> str:

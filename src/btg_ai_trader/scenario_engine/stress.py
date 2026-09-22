@@ -20,10 +20,16 @@ from btg_ai_trader.backtesting import (
     compute_actions_hash,
     compute_assumptions_hash,
     compute_instrument_economics_hash,
+    compute_replay_boundary_fingerprint,
 )
 from btg_ai_trader.observer.provenance import CodeRevision
 from btg_ai_trader.replay.core import CausalMarketReplaySchedule
-from btg_ai_trader.scenario_engine.core import ScenarioGrid, ScenarioShock, ScenarioSpec, ShockTarget
+from btg_ai_trader.scenario_engine.core import (
+    ScenarioGrid,
+    ScenarioShock,
+    ScenarioSpec,
+    ShockTarget,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,7 +145,9 @@ def run_economic_stress(
         baseline_manifest_hash=baseline_hash,
         stressed_manifest_hash=stressed.manifest.manifest_hash.value,
         action_hash=action_hash.value,
-        replay_boundary_digest=stressed.manifest.input_boundary.replay_boundary.dataset_hash.value,
+        replay_boundary_digest=compute_replay_boundary_fingerprint(
+            stressed.manifest.input_boundary.replay_boundary
+        ).value,
         baseline_assumptions_hash=baseline_assumptions_hash.value,
         stressed_assumptions_hash=stressed.manifest.assumptions_hash.value,
         result=stressed,

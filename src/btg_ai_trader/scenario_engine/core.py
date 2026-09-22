@@ -10,7 +10,6 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import ROUND_CEILING, Decimal, localcontext
 from enum import Enum
-from typing import Any
 
 from btg_ai_trader.statistical_baselines.domain import (
     EvaluationRole,
@@ -582,7 +581,11 @@ def summarize_scenario_outcomes(
     metric_names = sorted({name for outcome in outcome_set.outcomes for name in outcome.metrics})
     summary: dict[str, ScenarioMetricRange] = {}
     for name in metric_names:
-        values = [outcome.metrics[name] for outcome in outcome_set.outcomes if name in outcome.metrics]
+        values = [
+            outcome.metrics[name]
+            for outcome in outcome_set.outcomes
+            if name in outcome.metrics
+        ]
         summary[name] = ScenarioMetricRange(
             minimum=min(values),
             maximum=max(values),
