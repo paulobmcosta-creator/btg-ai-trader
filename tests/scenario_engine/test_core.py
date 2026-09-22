@@ -77,7 +77,6 @@ from btg_ai_trader.statistical_baselines.provenance import StatisticalEvaluation
 from btg_ai_trader.statistical_baselines.splits import EmbargoPolicy, PurgePolicy
 
 
-@dataclass(frozen=True, slots=True)
 class FakeScope(str, Enum):
     MODEL = "MODEL"
 
@@ -86,6 +85,7 @@ class FakeDisposition(str, Enum):
     INCONCLUSIVE = "INCONCLUSIVE"
 
 
+@dataclass(frozen=True, slots=True)
 class FakeModelReport:
     candidate_id: str
     evaluation_scope: object
