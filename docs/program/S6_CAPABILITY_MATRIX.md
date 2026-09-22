@@ -59,7 +59,7 @@ These are requirements, not current implementation claims.
 | **S6-AC-14** | Scenario predeclaration evidence | E-HQI-38 | NOT_IMPLEMENTED |
 | **S6-AC-15** | Internally consistent multi-variable stress | E-HQI-51 | NOT_IMPLEMENTED |
 | **S6-AC-16** | Stress separated from probability forecast | E-HQI-39 | NOT_IMPLEMENTED |
-| **S6-AC-17** | Sprint 3 delegated fee/slippage/latency/spread stress | S6-D-23 | NOT_IMPLEMENTED |
+| **S6-AC-17** | Sprint 3 delegated execution-economic stress: fee/slippage/latency implemented; synthetic spread widening remains `NOT_TRIGGERED` because S3 preserves observed bid/ask and S6 may not mutate replay events | S6-D-23; S6-D-24 | IMPLEMENTED_WITH_NOT_TRIGGERED_SUBCAPABILITY |
 | **S6-AC-18** | Action/replay identity preservation under stress | S6-D-24 | NOT_IMPLEMENTED |
 | **S6-AC-19** | Baseline/stressed manifest lineage | S6-D-23 | NOT_IMPLEMENTED |
 | **S6-AC-20** | Regime-conditioned evaluation summaries | PR-0E-C-05 | NOT_IMPLEMENTED |
