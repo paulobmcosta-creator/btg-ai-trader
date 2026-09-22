@@ -972,6 +972,16 @@ def test_disposition_robustness_history_and_manifest() -> None:
         optional_policy, {"pnl": Decimal("1")}
     ).disposition is ScenarioDisposition.FAVORABLE
 
+    all_optional_policy = ScenarioDispositionPolicy(
+        "scope",
+        (MetricCondition("optional", MetricDirection.MAXIMIZE, Decimal("0"), required=False),),
+        (),
+        RegimeDefinitionMode.PREDECLARED,
+    )
+    assert evaluate_disposition(
+        all_optional_policy, {}
+    ).disposition is ScenarioDisposition.INCONCLUSIVE
+
     with pytest.raises(ValueError, match="cannot be empty"):
         characterize_robustness(policy, ())
     assert characterize_robustness(
@@ -996,6 +1006,14 @@ def test_disposition_robustness_history_and_manifest() -> None:
         ),
     ) is RobustnessCharacterization.MIXED
 
+    assert characterize_robustness(
+        policy,
+        (
+            {"pnl": Decimal("1")},
+            {"pnl": Decimal("2")},
+        ),
+    ) is RobustnessCharacterization.MIXED
+
     history = ScenarioResearchHistory()
     nonprotected = ResearchAttemptRecord(
         "a" * 64, EvaluationRole.DEVELOPMENT, None, "FAVORABLE"
@@ -1006,9 +1024,60 @@ def test_disposition_robustness_history_and_manifest() -> None:
         evaluation_role=EvaluationRole.DEVELOPMENT,
         protected_boundary_id=None,
     )
+    with pytest.raises(ValueError, match="requires protected_boundary_id"):
+        ResearchAttemptRecord(
+            "bad", EvaluationRole.PROTECTED_TEST, None, "INCONCLUSIVE"
+        )
+    with pytest.raises(ValueError, match="only valid for PROTECTED_TEST"):
+        ResearchAttemptRecord(
+            "bad", EvaluationRole.DEVELOPMENT, "pb", "INCONCLUSIVE"
+        )
     with pytest.raises(ValueError, match="prior protected"):
         history.record_protected_adaptation(
             ProtectedAdaptationRecord("pb", "source", "derived")
+        )
+
+    history.record_artifact(
+        ResearchArtifactRecord(
+            "source",
+            ResearchArtifactKind.SCENARIO_SPEC,
+            True,
+        )
+    )
+    with pytest.raises(ValueError, match="previously registered"):
+        history.record_artifact(
+            ResearchArtifactRecord(
+                "bad-child",
+                ResearchArtifactKind.SCENARIO_SPEC,
+                True,
+                parent_digests=("missing",),
+            )
+        )
+    history.record_artifact(
+        ResearchArtifactRecord(
+            "derived",
+            ResearchArtifactKind.SCENARIO_SPEC,
+            True,
+            parent_digests=("source",),
+            protected_informed=True,
+        )
+    )
+    history.record_artifact(
+        ResearchArtifactRecord(
+            "descendant",
+            ResearchArtifactKind.SCENARIO_GRID,
+            True,
+            parent_digests=("derived",),
+            protected_informed=True,
+        )
+    )
+    with pytest.raises(ValueError, match="already registered"):
+        history.record_artifact(
+            ResearchArtifactRecord(
+                "derived",
+                ResearchArtifactKind.SCENARIO_SPEC,
+                True,
+            )
         )
 
     protected = ResearchAttemptRecord(
@@ -1021,6 +1090,28 @@ def test_disposition_robustness_history_and_manifest() -> None:
     assert len(history.attempts) == 2
     assert len(history.adaptations) == 1
 
+    history_unmarked = ScenarioResearchHistory()
+    history_unmarked.record_artifact(
+        ResearchArtifactRecord("source", ResearchArtifactKind.SCENARIO_SPEC, True)
+    )
+    history_unmarked.record_artifact(
+        ResearchArtifactRecord(
+            "derived",
+            ResearchArtifactKind.SCENARIO_SPEC,
+            True,
+            parent_digests=("source",),
+        )
+    )
+    history_unmarked.record_attempt(
+        ResearchAttemptRecord(
+            "source", EvaluationRole.PROTECTED_TEST, "pb", "UNFAVORABLE"
+        )
+    )
+    with pytest.raises(ValueError, match="marked protected_informed"):
+        history_unmarked.record_protected_adaptation(
+            ProtectedAdaptationRecord("pb", "source", "derived")
+        )
+
     with pytest.raises(ValueError, match="requires protected_boundary_id"):
         history.check_admissibility(
             artifact_digest="other",
@@ -1030,6 +1121,12 @@ def test_disposition_robustness_history_and_manifest() -> None:
     with pytest.raises(ProtectedEvidenceReuseError, match="protected-informed"):
         history.check_admissibility(
             artifact_digest="derived",
+            evaluation_role=EvaluationRole.PROTECTED_TEST,
+            protected_boundary_id="pb",
+        )
+    with pytest.raises(ProtectedEvidenceReuseError, match="protected-informed"):
+        history.check_admissibility(
+            artifact_digest="descendant",
             evaluation_role=EvaluationRole.PROTECTED_TEST,
             protected_boundary_id="pb",
         )
