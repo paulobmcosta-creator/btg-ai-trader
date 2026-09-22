@@ -45,11 +45,11 @@ from btg_ai_trader.scenario_engine import (
     summarize_observed_series,
     summarize_scenario_outcomes,
 )
+from btg_ai_trader.scenario_engine.core import _jsonable
 from btg_ai_trader.statistical_baselines.domain import (
     EvaluationRole,
     ProtectedEvidenceReuseError,
 )
-from btg_ai_trader.scenario_engine.core import _jsonable
 from btg_ai_trader.statistical_baselines.metrics import DEFAULT_NUMERIC_POLICY
 
 
