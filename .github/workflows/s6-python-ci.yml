@@ -63,7 +63,7 @@ jobs:
 
       - name: Run Ruff
         if: matrix.check == 'lint'
-        run: python -m ruff check . --fix --diff
+        run: python -m ruff check .
 
       - name: Type check source, tests and scripts
         if: matrix.check == 'types'
