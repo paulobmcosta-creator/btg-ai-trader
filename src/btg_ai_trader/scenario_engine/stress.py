@@ -13,7 +13,6 @@ from btg_ai_trader.backtesting import (
     EconomicAssumptions,
     EndOfWindowPolicy,
     FeeSchedule,
-    FixedBpsSlippageModel,
     FixedPointsSlippageModel,
     InstrumentEconomics,
     LatencyModel,
