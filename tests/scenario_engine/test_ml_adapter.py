@@ -14,7 +14,7 @@ from btg_ai_trader.scenario_engine.core import ScenarioInputBoundary
 from btg_ai_trader.scenario_engine.ml_adapter import snapshot_from_s5
 from btg_ai_trader.statistical_baselines.domain import EvaluationRole, TargetSemantics
 from btg_ai_trader.statistical_baselines.evaluation import FoldAggregationPolicy
-from btg_ai_trader.statistical_baselines.metrics import DEFAULT_NUMERIC_POLICY
+from btg_ai_trader.statistical_baselines.metrics import DEFAULT_NUMERIC_POLICY, NumericPolicy
 
 
 def training_manifest(
@@ -22,6 +22,7 @@ def training_manifest(
     candidate_id: str = "candidate-1",
     target_contract_digest: str = "target-1",
     code_revision: str = "rev-s5",
+    numeric_policy: NumericPolicy = DEFAULT_NUMERIC_POLICY,
     verified: bool = True,
 ) -> ml_provenance.ModelTrainingManifest:
     manifest = ml_provenance.ModelTrainingManifest(
@@ -33,7 +34,7 @@ def training_manifest(
         rng_context=None,
         environment_fingerprint=ml_provenance.EnvironmentFingerprint.current(),
         code_revision=code_revision,
-        numeric_policy=DEFAULT_NUMERIC_POLICY,
+        numeric_policy=numeric_policy,
     )
     if verified:
         object.__setattr__(
@@ -139,12 +140,11 @@ def test_snapshot_from_s5_fails_closed_on_invalid_upstream_evidence() -> None:
         snapshot_from_s5(
             report(),
             (
-                dataclasses.replace(
-                    manifest,
+                training_manifest(
                     numeric_policy=dataclasses.replace(
                         DEFAULT_NUMERIC_POLICY,
                         precision=20,
-                    ),
+                    )
                 ),
             ),
         )
