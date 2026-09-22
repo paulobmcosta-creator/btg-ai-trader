@@ -30,7 +30,7 @@ S6_ENTRY_GATE_FINAL_CANONICAL_UPSTREAM_RUN = 35474371852
 S6_PREAUTH_REVIEW = CHANGES_REQUIRED_REMEDIATED
 S6_PREAUTH_REMEDIATION_ISSUE = #81
 S6_PREAUTH_REMEDIATION_BRANCH = s6/01-preauth-remediation
-S6_PREAUTH_REMEDIATION_STATUS = PASS_CANDIDATE_PENDING_MERGE
+S6_PREAUTH_REMEDIATION_STATUS = PASS
 
 FINANCIAL_AUTHORITY = ABSENT
 STRATEGY_OPERATIONAL_PATH = ABSENT
@@ -86,14 +86,18 @@ PROMOTION_TO_S6_FUNCTIONAL_IMPLEMENTATION = NO
 
 The Sprint 6 Entry Gate is canonical and approved. Its historical merge SHA is `d74e632f...`; the final reconciled Entry Gate head before preauthorization remediation is `616849f8...`, with final CI/upstream runs `35474371811` and `35474371852` PASS.
 
-A subsequent pre-authorization review identified contract-hardening findings recorded in Issue #81. These findings do not revoke the Entry Gate PASS, but they must be remediated and independently revalidated before a functional-authorization decision.
+A subsequent pre-authorization review identified contract-hardening findings recorded in Issue #81. Those findings were remediated, independently re-audited PASS, merged through PR #82 by explicit human authorization, and validated post-merge. The Entry Gate remains PASS; functional implementation remains separately unauthorized.
 
 ```text
 S6_ENTRY_GATE = PASS
 S6_PREAUTH_REVIEW = CHANGES_REQUIRED_REMEDIATED
-S6_PREAUTH_REMEDIATION_STATUS = PASS_CANDIDATE_PENDING_MERGE
+S6_PREAUTH_REMEDIATION_STATUS = PASS
 S6_PREAUTH_REAUDIT = PASS
 S6_PREAUTH_REMEDIATION_PR = #82
+S6_PREAUTH_REMEDIATION_CANONICAL = PASS
+S6_PREAUTH_REMEDIATION_MERGE_SHA = 7df047b25633527e505b3e4772c0a0c43e1ab10c
+S6_PREAUTH_POST_MERGE_ENTRY_GATE_CI_RUN = 35759318235
+S6_PREAUTH_POST_MERGE_UPSTREAM_RUN = 35759318238
 OPEN_PREAUTH_BLOCKERS = 0
 SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 ```
