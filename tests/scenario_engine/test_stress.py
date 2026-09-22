@@ -39,12 +39,14 @@ from btg_ai_trader.observer.market import Tick
 from btg_ai_trader.observer.provenance import CodeRevision, ConfigHash, ContentHash
 from btg_ai_trader.observer.temporal import EventTime, ObservationTimes
 from btg_ai_trader.replay.core import CausalMarketReplaySchedule
-from btg_ai_trader.scenario_engine import (
+from btg_ai_trader.scenario_engine.core import (
     ScenarioGrid,
     ScenarioInputBoundary,
     ScenarioShock,
     ScenarioSpec,
     ShockTarget,
+)
+from btg_ai_trader.scenario_engine.stress import (
     apply_economic_shocks,
     run_economic_scenario_grid,
     run_economic_stress,
@@ -462,6 +464,22 @@ def test_run_economic_stress_rejects_non_adverse_assumption_changes() -> None:
         code_revision=REV,
         end_of_window_policy=EndOfWindowPolicy.KEEP_OPEN,
     ).run(actions=actions, replay_schedule=schedule)
+    fixed_points_ok = run_economic_stress(
+        scenario(
+            slippage_baseline,
+            "slip-adverse",
+            (ScenarioShock(ShockTarget.SLIPPAGE_POINTS, Decimal("0.75"), "points"),),
+        ),
+        baseline_result=slippage_baseline,
+        actions=actions,
+        replay_schedule=schedule,
+        instrument_economics=econ,
+        base_assumptions=slippage_base,
+        end_of_window_policy=EndOfWindowPolicy.KEEP_OPEN,
+        code_revision=REV,
+    )
+    assert fixed_points_ok.result.manifest.verify_integrity()
+
     with pytest.raises(ValueError, match="cannot improve baseline slippage"):
         run_economic_stress(
             scenario(
@@ -516,6 +534,22 @@ def test_run_economic_stress_rejects_non_adverse_assumption_changes() -> None:
         code_revision=REV,
         end_of_window_policy=EndOfWindowPolicy.KEEP_OPEN,
     ).run(actions=actions, replay_schedule=schedule)
+    latency_ok = run_economic_stress(
+        scenario(
+            latency_baseline,
+            "latency-adverse",
+            (ScenarioShock(ShockTarget.TRANSIT_LATENCY_US, Decimal("150"), "microseconds"),),
+        ),
+        baseline_result=latency_baseline,
+        actions=actions,
+        replay_schedule=schedule,
+        instrument_economics=econ,
+        base_assumptions=latency_base,
+        end_of_window_policy=EndOfWindowPolicy.KEEP_OPEN,
+        code_revision=REV,
+    )
+    assert latency_ok.result.manifest.verify_integrity()
+
     with pytest.raises(ValueError, match="cannot improve baseline transit latency"):
         run_economic_stress(
             scenario(
