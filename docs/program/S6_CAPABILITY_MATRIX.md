@@ -35,6 +35,7 @@ These requirements must be fully materialized and independently reviewed before 
 | **S6-PRE-14** | Final Entry Gate evidence reconciliation | final head + final runs recorded | MATERIALIZED |
 | **S6-PRE-15** | Exact-head remediation CI/upstream | PR #82 head `485b70af...`; runs `35533162875`, `35533162868`, `35533162885` PASS | PASS |
 | **S6-PRE-16** | Independent re-audit | review `5261545806` on exact PR head `485b70af...` | PASS |
+| **S6-PRE-17** | Canonical remediation merge and post-merge validation | PR #82 merge `7df047b2...`; runs `35759318235` / `35759318238` PASS | PASS |
 
 ## 3. Functional positive capabilities required after future explicit authorization
 
