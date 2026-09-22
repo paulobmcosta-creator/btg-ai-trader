@@ -1,5 +1,7 @@
 """Comprehensive Sprint 6 Scenario Engine core tests."""
 
+from collections.abc import Mapping
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
@@ -69,9 +71,64 @@ from btg_ai_trader.statistical_baselines.evaluation import (
     AggregateEvaluationResult,
     FoldEvaluationResult,
 )
-from btg_ai_trader.statistical_baselines.metrics import DEFAULT_NUMERIC_POLICY
+from btg_ai_trader.statistical_baselines.metrics import DEFAULT_NUMERIC_POLICY, NumericPolicy
 from btg_ai_trader.statistical_baselines.provenance import StatisticalEvaluationInputBoundary
 from btg_ai_trader.statistical_baselines.splits import EmbargoPolicy, PurgePolicy
+
+
+@dataclass(frozen=True, slots=True)
+class FakeModelReport:
+    candidate_id: str
+    evaluation_scope: object
+    role: EvaluationRole
+    dataset_digest: str
+    plan_digest: str
+    target_contract_digest: str
+    experimental_context_fingerprint: str
+    mean_metrics: Mapping[str, Decimal]
+    disposition: object
+    protected_boundary_id: str
+    numeric_policy: NumericPolicy
+
+
+@dataclass(frozen=True, slots=True)
+class FakeTrainingManifest:
+    candidate_id: str
+    target_contract_digest: str
+    code_revision: str
+    numeric_policy: NumericPolicy
+    scientific_root_digest: str
+    is_verified: bool = True
+
+
+def make_model_report(
+    *,
+    role: EvaluationRole = EvaluationRole.VALIDATION_SELECTION,
+    protected_boundary_id: str = "",
+) -> FakeModelReport:
+    return FakeModelReport(
+        candidate_id="candidate-1",
+        evaluation_scope="MODEL",
+        role=role,
+        dataset_digest="a" * 64,
+        plan_digest="b" * 64,
+        target_contract_digest="c" * 64,
+        experimental_context_fingerprint="d" * 64,
+        mean_metrics={"mae": Decimal("1.5")},
+        disposition="INCONCLUSIVE",
+        protected_boundary_id=protected_boundary_id,
+        numeric_policy=DEFAULT_NUMERIC_POLICY,
+    )
+
+
+def make_training_manifest() -> FakeTrainingManifest:
+    return FakeTrainingManifest(
+        candidate_id="candidate-1",
+        target_contract_digest="c" * 64,
+        code_revision="e" * 40,
+        numeric_policy=DEFAULT_NUMERIC_POLICY,
+        scientific_root_digest="f" * 64,
+    )
 
 
 def dt(second: int = 0) -> datetime:
@@ -106,7 +163,7 @@ def make_definition(
             ThresholdRule("vol", ComparisonOperator.GE, Decimal("10"), "HIGH"),
         ),
         default_label="UNKNOWN",
-        source_lineage_digest="b" * 64,
+        source_lineage_digest="a" * 64,
         development_boundary_id=development_boundary_id,
     )
 
@@ -216,32 +273,37 @@ def test_input_boundary_and_model_snapshot_validation() -> None:
             scenario_code_revision="d",
         )
 
-    snapshot = ModelEvidenceSnapshot.create(
-        candidate_id="candidate-1",
-        evaluation_role=EvaluationRole.VALIDATION_SELECTION,
-        dataset_digest="a" * 64,
-        plan_digest="b" * 64,
-        target_contract_digest="c" * 64,
-        experimental_context_fingerprint="d" * 64,
-        metrics={"mae": Decimal("1.5")},
-        disposition="FAVORABLE",
-        source_manifest_ids=("manifest-1",),
-        source_code_revision="e" * 40,
-        numeric_policy=DEFAULT_NUMERIC_POLICY,
-    )
+    report = make_model_report()
+    manifest = make_training_manifest()
+    snapshot = ModelEvidenceSnapshot.from_verified_evidence(report, (manifest,))
     assert snapshot.is_verified
+    assert snapshot.protected_boundary_id is None
     model_boundary = ScenarioInputBoundary.from_model_snapshot(
         snapshot,
-        protected_boundary_id=None,
         scenario_code_revision="f" * 40,
     )
     assert model_boundary.source_kind is SourceKind.MODEL_EVALUATION
     assert model_boundary.numeric_policy_digest == snapshot.numeric_policy_digest
+    assert model_boundary.protected_boundary_id is None
+
+    protected_report = make_model_report(
+        role=EvaluationRole.PROTECTED_TEST,
+        protected_boundary_id="protected-model",
+    )
+    protected_snapshot = ModelEvidenceSnapshot.from_verified_evidence(
+        protected_report, (manifest,)
+    )
+    protected_boundary = ScenarioInputBoundary.from_model_snapshot(
+        protected_snapshot,
+        scenario_code_revision="f" * 40,
+    )
+    assert protected_boundary.protected_boundary_id == "protected-model"
 
     unverified_snapshot = ModelEvidenceSnapshot(
         candidate_id=snapshot.candidate_id,
         evaluation_scope=snapshot.evaluation_scope,
         evaluation_role=snapshot.evaluation_role,
+        protected_boundary_id=snapshot.protected_boundary_id,
         dataset_digest=snapshot.dataset_digest,
         plan_digest=snapshot.plan_digest,
         target_contract_digest=snapshot.target_contract_digest,
@@ -256,35 +318,55 @@ def test_input_boundary_and_model_snapshot_validation() -> None:
     with pytest.raises(ValueError, match="must be verified"):
         ScenarioInputBoundary.from_model_snapshot(
             unverified_snapshot,
-            protected_boundary_id=None,
             scenario_code_revision="f" * 40,
         )
 
-    with pytest.raises(ValueError, match="candidate_id"):
-        ModelEvidenceSnapshot.create(
-            candidate_id="",
-            evaluation_role=EvaluationRole.DEVELOPMENT,
-            dataset_digest="a",
-            plan_digest="b",
-            target_contract_digest="c",
-            experimental_context_fingerprint="d",
-            metrics={},
-            disposition="FAVORABLE",
-            source_manifest_ids=("m",),
-            source_code_revision="e",
+    with pytest.raises(ValueError, match="MODEL evaluation scope"):
+        ModelEvidenceSnapshot.from_verified_evidence(
+            replace(report, evaluation_scope="STRATEGY"), (manifest,)
         )
-    with pytest.raises(ValueError, match="source_manifest_ids"):
-        ModelEvidenceSnapshot.create(
-            candidate_id="c",
-            evaluation_role=EvaluationRole.DEVELOPMENT,
-            dataset_digest="a",
-            plan_digest="b",
-            target_contract_digest="c",
-            experimental_context_fingerprint="d",
-            metrics={},
-            disposition="FAVORABLE",
-            source_manifest_ids=(),
-            source_code_revision="e",
+    with pytest.raises(ValueError, match="must be verified"):
+        ModelEvidenceSnapshot.from_verified_evidence(
+            report, (replace(manifest, is_verified=False),)
+        )
+    with pytest.raises(ValueError, match="candidate identities differ"):
+        ModelEvidenceSnapshot.from_verified_evidence(
+            report, (replace(manifest, candidate_id="other"),)
+        )
+    with pytest.raises(ValueError, match="target contracts differ"):
+        ModelEvidenceSnapshot.from_verified_evidence(
+            report, (replace(manifest, target_contract_digest="other"),)
+        )
+    with pytest.raises(ValueError, match="numeric policies differ"):
+        other_policy = NumericPolicy(precision=20)
+        ModelEvidenceSnapshot.from_verified_evidence(
+            report, (replace(manifest, numeric_policy=other_policy),)
+        )
+    with pytest.raises(ValueError, match="share one code revision"):
+        ModelEvidenceSnapshot.from_verified_evidence(
+            report,
+            (
+                manifest,
+                replace(
+                    manifest,
+                    scientific_root_digest="9" * 64,
+                    code_revision="9" * 40,
+                ),
+            ),
+        )
+    with pytest.raises(ValueError, match="PROTECTED_TEST model evidence requires"):
+        ModelEvidenceSnapshot.from_verified_evidence(
+            make_model_report(role=EvaluationRole.PROTECTED_TEST),
+            (manifest,),
+        )
+    with pytest.raises(ValueError, match="non-protected model evidence"):
+        ModelEvidenceSnapshot.from_verified_evidence(
+            make_model_report(protected_boundary_id="unexpected"),
+            (manifest,),
+        )
+    with pytest.raises(ValueError, match="scientific roots"):
+        ModelEvidenceSnapshot.from_verified_evidence(
+            report, (replace(manifest, scientific_root_digest=""),)
         )
 
 
@@ -476,13 +558,20 @@ def test_regime_contracts_classification_and_development_fit() -> None:
         RegimeDefinitionMode.RETROSPECTIVE_EXPLORATORY,
         (ThresholdRule("vol", ComparisonOperator.GE, Decimal("0"), "RETRO"),),
         "UNKNOWN",
-        "a",
+        "a" * 64,
     )
     with pytest.raises(ValueError, match="exploratory-only"):
         classify_regime(retro, obs, use_mode=RegimeUseMode.CAUSAL_STRATIFICATION)
     assert classify_regime(
         retro, obs, use_mode=RegimeUseMode.RETROSPECTIVE_EXPLORATORY
     ).label == "RETRO"
+
+    with pytest.raises(ValueError, match="source lineage"):
+        classify_regime(
+            replace(make_definition(), source_lineage_digest="z" * 64),
+            obs,
+            use_mode=RegimeUseMode.CAUSAL_STRATIFICATION,
+        )
 
     with pytest.raises(ValueError, match="rules cannot be empty"):
         RegimeDefinition("x", RegimeDefinitionMode.PREDECLARED, (), "U", "a")
@@ -515,7 +604,7 @@ def test_regime_contracts_classification_and_development_fit() -> None:
         label_at_or_above="HIGH",
         definition_id="fit-odd",
         development_boundary_id="dev-1",
-        source_lineage_digest="a",
+        source_lineage_digest="a" * 64,
         evaluation_role=EvaluationRole.DEVELOPMENT,
     )
     assert odd.rules[0].threshold == Decimal(2)
@@ -527,7 +616,7 @@ def test_regime_contracts_classification_and_development_fit() -> None:
         label_at_or_above="HIGH",
         definition_id="fit-even",
         development_boundary_id="dev-1",
-        source_lineage_digest="a",
+        source_lineage_digest="a" * 64,
         evaluation_role=EvaluationRole.DEVELOPMENT,
     )
     assert even.rules[0].threshold == Decimal(2)
@@ -540,7 +629,7 @@ def test_regime_contracts_classification_and_development_fit() -> None:
             label_at_or_above="H",
             definition_id="bad",
             development_boundary_id="dev",
-            source_lineage_digest="a",
+            source_lineage_digest="a" * 64,
             evaluation_role=EvaluationRole.PROTECTED_TEST,
         )
     with pytest.raises(ValueError, match="cannot be empty"):
@@ -551,7 +640,7 @@ def test_regime_contracts_classification_and_development_fit() -> None:
             label_at_or_above="H",
             definition_id="bad",
             development_boundary_id="dev",
-            source_lineage_digest="a",
+            source_lineage_digest="a" * 64,
             evaluation_role=EvaluationRole.DEVELOPMENT,
         )
     with pytest.raises(ValueError, match="cannot silently drop"):
@@ -562,7 +651,7 @@ def test_regime_contracts_classification_and_development_fit() -> None:
             label_at_or_above="H",
             definition_id="bad",
             development_boundary_id="dev",
-            source_lineage_digest="a",
+            source_lineage_digest="a" * 64,
             evaluation_role=EvaluationRole.DEVELOPMENT,
         )
 
@@ -572,6 +661,10 @@ def test_scenario_grid_outcome_contracts_and_summary() -> None:
         ScenarioShock(ShockTarget.FEE_MULTIPLIER, Decimal("-1"), "multiplier")
     with pytest.raises(ValueError, match="unit"):
         ScenarioShock(ShockTarget.FEE_MULTIPLIER, Decimal("1"), "")
+    with pytest.raises(ValueError, match="at least 1"):
+        ScenarioShock(ShockTarget.FEE_MULTIPLIER, Decimal("0.5"), "multiplier")
+    with pytest.raises(ValueError, match="must be positive"):
+        ScenarioShock(ShockTarget.MAX_SPREAD, Decimal("0"), "price")
 
     with pytest.raises(ValueError, match="at least one shock"):
         ScenarioSpec("x", "a", (), (), True, "h", "c")
@@ -615,7 +708,13 @@ def test_scenario_grid_outcome_contracts_and_summary() -> None:
     assert summary["pnl"].minimum == Decimal("-2")
     assert summary["pnl"].maximum == Decimal("10")
     assert summary["pnl"].mean == Decimal("4")
+    assert summary["pnl"].scenario_count == 2
+    assert summary["pnl"].effective_count == 2
+    assert summary["pnl"].missing_count == 0
     assert summary["dd"].mean == Decimal("5")
+    assert summary["dd"].scenario_count == 2
+    assert summary["dd"].effective_count == 1
+    assert summary["dd"].missing_count == 1
 
 
 def test_observed_distribution_tail_and_path_semantics() -> None:
