@@ -1,6 +1,6 @@
 """Comprehensive Sprint 6 Scenario Engine core tests."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -23,7 +23,6 @@ from btg_ai_trader.scenario_engine import (
     ResearchArtifactRecord,
     ResearchAttemptRecord,
     RobustnessCharacterization,
-    RoleProvenance,
     ScenarioDisposition,
     ScenarioDispositionPolicy,
     ScenarioGrid,
