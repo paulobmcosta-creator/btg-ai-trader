@@ -14,6 +14,7 @@ from btg_ai_trader.scenario_engine import (
     ObservedSeries,
     ProtectedAdaptationRecord,
     QuantileConvention,
+    RegimeAssignment,
     RegimeDefinition,
     RegimeDefinitionMode,
     RegimeObservation,
@@ -858,6 +859,19 @@ def test_regime_conditioned_summary_parity_and_experimental_parity() -> None:
     )
     with pytest.raises(ParityViolationError, match="cannot mix"):
         summarize_metric_by_regime(mixed, {"a": Decimal("1"), "b": Decimal("2")})
+
+    mixed_mode = (
+        assignments[0],
+        RegimeAssignment(
+            observation_id="b",
+            definition_digest=definition.definition_digest,
+            label="HIGH",
+            use_mode=RegimeUseMode.STRATEGY_BOUND,
+            knowledge_time=dt(),
+        ),
+    )
+    with pytest.raises(ParityViolationError, match="cannot mix"):
+        summarize_metric_by_regime(mixed_mode, {"a": Decimal("1"), "b": Decimal("2")})
 
     boundary = ScenarioInputBoundary.create(
         source_kind=SourceKind.BACKTEST,
