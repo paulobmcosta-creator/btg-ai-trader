@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from enum import Enum
 
 import pytest
 
@@ -77,6 +78,14 @@ from btg_ai_trader.statistical_baselines.splits import EmbargoPolicy, PurgePolic
 
 
 @dataclass(frozen=True, slots=True)
+class FakeScope(str, Enum):
+    MODEL = "MODEL"
+
+
+class FakeDisposition(str, Enum):
+    INCONCLUSIVE = "INCONCLUSIVE"
+
+
 class FakeModelReport:
     candidate_id: str
     evaluation_scope: object
@@ -108,14 +117,14 @@ def make_model_report(
 ) -> FakeModelReport:
     return FakeModelReport(
         candidate_id="candidate-1",
-        evaluation_scope="MODEL",
+        evaluation_scope=FakeScope.MODEL,
         role=role,
         dataset_digest="a" * 64,
         plan_digest="b" * 64,
         target_contract_digest="c" * 64,
         experimental_context_fingerprint="d" * 64,
         mean_metrics={"mae": Decimal("1.5")},
-        disposition="INCONCLUSIVE",
+        disposition=FakeDisposition.INCONCLUSIVE,
         protected_boundary_id=protected_boundary_id,
         numeric_policy=DEFAULT_NUMERIC_POLICY,
     )
@@ -325,6 +334,17 @@ def test_input_boundary_and_model_snapshot_validation() -> None:
         ModelEvidenceSnapshot.from_verified_evidence(
             replace(report, evaluation_scope="STRATEGY"), (manifest,)
         )
+    with pytest.raises(TypeError, match="expected enum or string"):
+        ModelEvidenceSnapshot.from_verified_evidence(
+            replace(report, evaluation_scope=object()), (manifest,)
+        )
+    with pytest.raises(TypeError, match="evaluation role"):
+        ModelEvidenceSnapshot.from_verified_evidence(
+            replace(report, role="not-a-role"),  # type: ignore[arg-type]
+            (manifest,),
+        )
+    with pytest.raises(ValueError, match="at least one verified"):
+        ModelEvidenceSnapshot.from_verified_evidence(report, ())
     with pytest.raises(ValueError, match="must be verified"):
         ModelEvidenceSnapshot.from_verified_evidence(
             report, (replace(manifest, is_verified=False),)
@@ -536,7 +556,7 @@ def test_regime_contracts_classification_and_development_fit() -> None:
         use_mode=RegimeUseMode.CAUSAL_STRATIFICATION,
     ).label == "NO"
 
-    missing = RegimeObservation("m", dt(), {}, "a")
+    missing = RegimeObservation("m", dt(), {}, "a" * 64)
     assert classify_regime(
         make_definition(), missing, use_mode=RegimeUseMode.CAUSAL_STRATIFICATION
     ).label == "UNKNOWN"
@@ -1107,6 +1127,19 @@ def test_disposition_robustness_history_and_manifest() -> None:
             "source", EvaluationRole.PROTECTED_TEST, "pb", "UNFAVORABLE"
         )
     )
+    history_missing_derived = ScenarioResearchHistory()
+    history_missing_derived.record_artifact(
+        ResearchArtifactRecord("source", ResearchArtifactKind.SCENARIO_SPEC, True)
+    )
+    history_missing_derived.record_attempt(
+        ResearchAttemptRecord(
+            "source", EvaluationRole.PROTECTED_TEST, "pb", "UNFAVORABLE"
+        )
+    )
+    with pytest.raises(ValueError, match="derived artifact must be registered"):
+        history_missing_derived.record_protected_adaptation(
+            ProtectedAdaptationRecord("pb", "source", "not-registered")
+        )
     with pytest.raises(ValueError, match="marked protected_informed"):
         history_unmarked.record_protected_adaptation(
             ProtectedAdaptationRecord("pb", "source", "derived")
