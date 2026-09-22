@@ -2,7 +2,7 @@
 
 ```text
 SPRINT_6_STATUS = ENTRY_GATE_APPROVED
-SPRINT_6_LIFECYCLE = AWAITING_FUNCTIONAL_AUTHORIZATION
+SPRINT_6_LIFECYCLE = FUNCTIONAL_IMPLEMENTATION_IN_PROGRESS
 SPRINT_6_CANONICAL_BRANCH = sprint/6-scenario-engine
 PREAUTH_REMEDIATION_BRANCH = s6/01-preauth-remediation
 PREAUTH_REMEDIATION_ISSUE = #81
@@ -15,7 +15,9 @@ S6_ENTRY_GATE_FINAL_CI_RUN = 35474371811
 S6_ENTRY_GATE_FINAL_UPSTREAM_RUN = 35474371852
 
 S6_PREAUTH_REMEDIATION = PASS
-SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+S6_FUNCTIONAL_IMPLEMENTATION_ISSUE = #83
+S6_FUNCTIONAL_WORK_BRANCH = s6/02-full-scenario-engine
+SPRINT_6_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED
 PROMOTION_TO_S6_FUNCTIONAL_IMPLEMENTATION = NO
 
 FINANCIAL_AUTHORITY = ABSENT
@@ -114,4 +116,4 @@ S6_PREAUTH_REMEDIATION = PASS
 SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 ```
 
-The remediation contract passed independent re-audit, PR #82 was merged by explicit human authorization, and the merge SHA passed post-merge Entry Gate CI and pinned upstream. Sprint 6 now awaits a separate explicit human authorization for functional implementation.
+The remediation contract passed independent re-audit, PR #82 was merged by explicit human authorization, and the merge SHA passed post-merge Entry Gate CI and pinned upstream. Functional implementation was explicitly authorized on 2026-09-22 under Issue #83 and is now in progress on `s6/02-full-scenario-engine`. Merge remains separately unauthorized.
