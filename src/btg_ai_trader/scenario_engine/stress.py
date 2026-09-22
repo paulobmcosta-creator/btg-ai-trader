@@ -45,7 +45,7 @@ class StressRunEvidence:
     result: BacktestResult
 
 
-def _apply_shocks(
+def apply_economic_shocks(
     base: EconomicAssumptions,
     shocks: Sequence[ScenarioShock],
 ) -> EconomicAssumptions:
@@ -129,7 +129,7 @@ def run_economic_stress(
     if baseline_assumptions_hash != baseline_manifest.assumptions_hash:
         raise ValueError("base assumptions/end-of-window policy do not match baseline evidence")
 
-    stressed_assumptions = _apply_shocks(base_assumptions, scenario.shocks)
+    stressed_assumptions = apply_economic_shocks(base_assumptions, scenario.shocks)
     engine = DeterministicEconomicBacktester(
         instrument_economics=instrument_economics,
         assumptions=stressed_assumptions,
