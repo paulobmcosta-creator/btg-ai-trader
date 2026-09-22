@@ -73,3 +73,27 @@ SPRINT_6_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED_IN_WORK_BRANCH
 MERGE_AUTHORIZED = NO
 STOP_AFTER_INDEPENDENT_AUDIT = YES
 ```
+
+
+## Candidate audit remediation — 2026-09-22
+
+Ten semantic findings were closed in one controlled candidate remediation:
+
+1. causal regime assignment requires explicit `as_of_time`;
+2. regime observations and thresholds bind units;
+3. `STRATEGY_BOUND` fails closed until verified upstream regime-use evidence exists;
+4. experimental parity includes S6 code revision and role provenance;
+5. protected S4 evidence must match the canonical protected-evidence record;
+6. S5 model snapshots are issued through an optional adapter using real verified S5 training manifests while core remains ML-dependency-free;
+7. empirical loss direction is explicit and tail policy binds missing-value policy;
+8. research history has a deterministic digest, typed scenario predeclaration registration, and is included in `ScenarioRunManifest`;
+9. public economic shock application enforces adverse-only semantics and execution verifies ScenarioSpec code revision;
+10. shock units are canonical per target.
+
+```text
+S6_FUNCTIONAL_CANDIDATE_AUDIT = REMEDIATED_PENDING_FINAL_VALIDATION
+OPEN_CANDIDATE_FINDINGS = 0
+MERGE_AUTHORIZED = NO
+```
+
+No Strategy, Risk, Paper, Live, broker/order, ledger or real-money authority is introduced.

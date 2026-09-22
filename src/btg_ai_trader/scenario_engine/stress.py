@@ -50,6 +50,7 @@ def apply_economic_shocks(
     base: EconomicAssumptions,
     shocks: Sequence[ScenarioShock],
 ) -> EconomicAssumptions:
+    _validate_adverse_shocks(base, shocks)
     fee_schedule = base.fee_schedule
     slippage_model = base.slippage_model
     latency_model = base.latency_model
@@ -118,6 +119,8 @@ def _validate_adverse_shocks(
                 raise ValueError("slippage stress cannot improve baseline slippage")
         elif shock.target is ShockTarget.TRANSIT_LATENCY_US:
             integral = shock.value.to_integral_value()
+            if integral != shock.value:
+                raise ValueError("TRANSIT_LATENCY_US requires an integral Decimal")
             if int(integral) < base.latency_model.transit_latency_us:
                 raise ValueError("latency stress cannot improve baseline transit latency")
         else:
@@ -166,7 +169,11 @@ def run_economic_stress(
     if baseline_assumptions_hash != baseline_manifest.assumptions_hash:
         raise ValueError("base assumptions/end-of-window policy do not match baseline evidence")
 
-    _validate_adverse_shocks(base_assumptions, scenario.shocks)
+    scenario_revision = (
+        code_revision.value if isinstance(code_revision, CodeRevision) else code_revision
+    )
+    if scenario.code_revision != scenario_revision:
+        raise ValueError("ScenarioSpec code_revision must match execution code_revision")
     stressed_assumptions = apply_economic_shocks(base_assumptions, scenario.shocks)
     engine = DeterministicEconomicBacktester(
         instrument_economics=instrument_economics,

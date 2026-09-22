@@ -1,10 +1,8 @@
 """Comprehensive Sprint 6 Scenario Engine core tests."""
 
-from collections.abc import Mapping
-from dataclasses import dataclass, replace
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from enum import Enum
 
 import pytest
 
@@ -59,7 +57,10 @@ from btg_ai_trader.statistical_baselines.boundaries import (
     TemporalFold,
     WalkForwardPlan,
 )
-from btg_ai_trader.statistical_baselines.comparison import EvaluationHistory
+from btg_ai_trader.statistical_baselines.comparison import (
+    EvaluationHistory,
+    ProtectedEvidenceUse,
+)
 from btg_ai_trader.statistical_baselines.domain import (
     CandidateIdentity,
     EvaluationRole,
@@ -72,72 +73,9 @@ from btg_ai_trader.statistical_baselines.evaluation import (
     AggregateEvaluationResult,
     FoldEvaluationResult,
 )
-from btg_ai_trader.statistical_baselines.metrics import DEFAULT_NUMERIC_POLICY, NumericPolicy
+from btg_ai_trader.statistical_baselines.metrics import DEFAULT_NUMERIC_POLICY
 from btg_ai_trader.statistical_baselines.provenance import StatisticalEvaluationInputBoundary
 from btg_ai_trader.statistical_baselines.splits import EmbargoPolicy, PurgePolicy
-
-
-class FakeScope(str, Enum):
-    MODEL = "MODEL"
-
-
-class FakeDisposition(str, Enum):
-    INCONCLUSIVE = "INCONCLUSIVE"
-
-
-@dataclass(frozen=True, slots=True)
-class FakeModelReport:
-    candidate_id: str
-    evaluation_scope: object
-    role: EvaluationRole
-    dataset_digest: str
-    plan_digest: str
-    target_contract_digest: str
-    experimental_context_fingerprint: str
-    mean_metrics: Mapping[str, Decimal]
-    disposition: object
-    protected_boundary_id: str
-    numeric_policy: NumericPolicy
-
-
-@dataclass(frozen=True, slots=True)
-class FakeTrainingManifest:
-    candidate_id: str
-    target_contract_digest: str
-    code_revision: str
-    numeric_policy: NumericPolicy
-    scientific_root_digest: str
-    is_verified: bool = True
-
-
-def make_model_report(
-    *,
-    role: EvaluationRole = EvaluationRole.VALIDATION_SELECTION,
-    protected_boundary_id: str = "",
-) -> FakeModelReport:
-    return FakeModelReport(
-        candidate_id="candidate-1",
-        evaluation_scope=FakeScope.MODEL,
-        role=role,
-        dataset_digest="a" * 64,
-        plan_digest="b" * 64,
-        target_contract_digest="c" * 64,
-        experimental_context_fingerprint="d" * 64,
-        mean_metrics={"mae": Decimal("1.5")},
-        disposition=FakeDisposition.INCONCLUSIVE,
-        protected_boundary_id=protected_boundary_id,
-        numeric_policy=DEFAULT_NUMERIC_POLICY,
-    )
-
-
-def make_training_manifest() -> FakeTrainingManifest:
-    return FakeTrainingManifest(
-        candidate_id="candidate-1",
-        target_contract_digest="c" * 64,
-        code_revision="e" * 40,
-        numeric_policy=DEFAULT_NUMERIC_POLICY,
-        scientific_root_digest="f" * 64,
-    )
 
 
 def dt(second: int = 0) -> datetime:
@@ -156,6 +94,7 @@ def make_observation(
         variables={"vol": value},
         source_lineage_digest="a" * 64,
         event_time=event_time,
+        variable_units={"vol": "unitless"},
     )
 
 
@@ -224,14 +163,8 @@ def test_jsonable_canonical_fallbacks() -> None:
 
 def test_input_boundary_and_model_snapshot_validation() -> None:
     series = ObservedSeries(
-        "series",
-        "trades",
-        "trade",
-        "BRL",
-        (Decimal("1"), Decimal("2")),
-        ("o1", "o2"),
-        "source-root",
-        "REJECT",
+        "series", "trades", "trade", "BRL",
+        (Decimal("1"), Decimal("2")), ("o1", "o2"), "source-root", "REJECT",
     )
     boundary = ScenarioInputBoundary.from_observed_series(
         series,
@@ -243,7 +176,6 @@ def test_input_boundary_and_model_snapshot_validation() -> None:
     )
     assert boundary.is_verified
     assert boundary.source_digest == series.series_digest
-
     protected = ScenarioInputBoundary.from_observed_series(
         series,
         evaluation_role=EvaluationRole.PROTECTED_TEST,
@@ -253,7 +185,6 @@ def test_input_boundary_and_model_snapshot_validation() -> None:
         scenario_code_revision="d" * 40,
     )
     assert protected.protected_boundary_id == "protected-1"
-
     with pytest.raises(ValueError, match="PROTECTED_TEST requires"):
         ScenarioInputBoundary.from_observed_series(
             series,
@@ -281,112 +212,27 @@ def test_input_boundary_and_model_snapshot_validation() -> None:
             source_code_revision="",
             scenario_code_revision="d",
         )
-
-    report = make_model_report()
-    manifest = make_training_manifest()
-    snapshot = ModelEvidenceSnapshot.from_verified_evidence(report, (manifest,))
-    assert snapshot.is_verified
-    assert snapshot.protected_boundary_id is None
-    model_boundary = ScenarioInputBoundary.from_model_snapshot(
-        snapshot,
-        scenario_code_revision="f" * 40,
-    )
-    assert model_boundary.source_kind is SourceKind.MODEL_EVALUATION
-    assert model_boundary.numeric_policy_digest == snapshot.numeric_policy_digest
-    assert model_boundary.protected_boundary_id is None
-
-    protected_report = make_model_report(
-        role=EvaluationRole.PROTECTED_TEST,
-        protected_boundary_id="protected-model",
-    )
-    protected_snapshot = ModelEvidenceSnapshot.from_verified_evidence(
-        protected_report, (manifest,)
-    )
-    protected_boundary = ScenarioInputBoundary.from_model_snapshot(
-        protected_snapshot,
-        scenario_code_revision="f" * 40,
-    )
-    assert protected_boundary.protected_boundary_id == "protected-model"
-
     unverified_snapshot = ModelEvidenceSnapshot(
-        candidate_id=snapshot.candidate_id,
-        evaluation_scope=snapshot.evaluation_scope,
-        evaluation_role=snapshot.evaluation_role,
-        protected_boundary_id=snapshot.protected_boundary_id,
-        dataset_digest=snapshot.dataset_digest,
-        plan_digest=snapshot.plan_digest,
-        target_contract_digest=snapshot.target_contract_digest,
-        experimental_context_fingerprint=snapshot.experimental_context_fingerprint,
-        metrics=snapshot.metrics,
-        disposition=snapshot.disposition,
-        source_manifest_ids=snapshot.source_manifest_ids,
-        source_code_revision=snapshot.source_code_revision,
-        numeric_policy_digest=snapshot.numeric_policy_digest,
-        snapshot_digest=snapshot.snapshot_digest,
+        candidate_id="candidate-1",
+        evaluation_scope="MODEL",
+        evaluation_role=EvaluationRole.VALIDATION_SELECTION,
+        protected_boundary_id=None,
+        dataset_digest="a" * 64,
+        plan_digest="b" * 64,
+        target_contract_digest="c" * 64,
+        experimental_context_fingerprint="d" * 64,
+        metrics={"mae": Decimal("1.5")},
+        disposition="INCONCLUSIVE",
+        source_manifest_ids=("f" * 64,),
+        source_code_revision="e" * 40,
+        numeric_policy_digest="1" * 64,
+        snapshot_digest="2" * 64,
     )
+    assert not unverified_snapshot.is_verified
     with pytest.raises(ValueError, match="must be verified"):
         ScenarioInputBoundary.from_model_snapshot(
             unverified_snapshot,
             scenario_code_revision="f" * 40,
-        )
-
-    with pytest.raises(ValueError, match="MODEL evaluation scope"):
-        ModelEvidenceSnapshot.from_verified_evidence(
-            replace(report, evaluation_scope="STRATEGY"), (manifest,)
-        )
-    with pytest.raises(TypeError, match="expected enum or string"):
-        ModelEvidenceSnapshot.from_verified_evidence(
-            replace(report, evaluation_scope=object()), (manifest,)
-        )
-    with pytest.raises(TypeError, match="evaluation role"):
-        ModelEvidenceSnapshot.from_verified_evidence(
-            replace(report, role="not-a-role"),  # type: ignore[arg-type]
-            (manifest,),
-        )
-    with pytest.raises(ValueError, match="at least one verified"):
-        ModelEvidenceSnapshot.from_verified_evidence(report, ())
-    with pytest.raises(ValueError, match="must be verified"):
-        ModelEvidenceSnapshot.from_verified_evidence(
-            report, (replace(manifest, is_verified=False),)
-        )
-    with pytest.raises(ValueError, match="candidate identities differ"):
-        ModelEvidenceSnapshot.from_verified_evidence(
-            report, (replace(manifest, candidate_id="other"),)
-        )
-    with pytest.raises(ValueError, match="target contracts differ"):
-        ModelEvidenceSnapshot.from_verified_evidence(
-            report, (replace(manifest, target_contract_digest="other"),)
-        )
-    with pytest.raises(ValueError, match="numeric policies differ"):
-        other_policy = NumericPolicy(precision=20)
-        ModelEvidenceSnapshot.from_verified_evidence(
-            report, (replace(manifest, numeric_policy=other_policy),)
-        )
-    with pytest.raises(ValueError, match="share one code revision"):
-        ModelEvidenceSnapshot.from_verified_evidence(
-            report,
-            (
-                manifest,
-                replace(
-                    manifest,
-                    scientific_root_digest="9" * 64,
-                    code_revision="9" * 40,
-                ),
-            ),
-        )
-    with pytest.raises(ValueError, match="PROTECTED_TEST model evidence requires"):
-        ModelEvidenceSnapshot.from_verified_evidence(
-            make_model_report(role=EvaluationRole.PROTECTED_TEST),
-            (manifest,),
-        )
-    with pytest.raises(ValueError, match="non-protected model evidence"):
-        ModelEvidenceSnapshot.from_verified_evidence(
-            make_model_report(protected_boundary_id="unexpected"),
-            (manifest,),
-        )
-    with pytest.raises(ValueError, match="scientific roots"):
-        ModelEvidenceSnapshot.from_verified_evidence(
-            report, (replace(manifest, scientific_root_digest=""),)
         )
 
 
@@ -456,14 +302,10 @@ def make_verified_statistical_source() -> tuple[
 def test_statistical_evidence_boundary_is_verified_and_context_bound() -> None:
     input_boundary, aggregate = make_verified_statistical_source()
     boundary = ScenarioInputBoundary.from_statistical_evaluation(
-        input_boundary,
-        aggregate,
-        protected_boundary_id=None,
-        scenario_code_revision="s6",
+        input_boundary, aggregate, protected_boundary_id=None, scenario_code_revision="s6"
     )
     assert boundary.is_verified
     assert boundary.source_kind is SourceKind.STATISTICAL_EVALUATION
-
     unverified = StatisticalEvaluationInputBoundary(
         sample_ids=input_boundary.sample_ids,
         dataset_digest=input_boundary.dataset_digest,
@@ -485,29 +327,60 @@ def test_statistical_evidence_boundary_is_verified_and_context_bound() -> None:
     )
     with pytest.raises(ValueError, match="must be verified"):
         ScenarioInputBoundary.from_statistical_evaluation(
-            unverified,
-            aggregate,
-            protected_boundary_id=None,
-            scenario_code_revision="s6",
+            unverified, aggregate, protected_boundary_id=None, scenario_code_revision="s6"
         )
-
-    mismatched = AggregateEvaluationResult(
-        candidate_id="not-bound",
-        evaluation_role=aggregate.evaluation_role,
-        fold_results=aggregate.fold_results,
-        aggregate_metrics=aggregate.aggregate_metrics,
-        total_samples=aggregate.total_samples,
-        total_cold_starts=aggregate.total_cold_starts,
-        numeric_policy=aggregate.numeric_policy,
-        target_contract_id=aggregate.target_contract_id,
-        code_revision=aggregate.code_revision,
-        evaluation_context_fingerprint=aggregate.evaluation_context_fingerprint,
-    )
     with pytest.raises(ValueError, match="does not match verified"):
         ScenarioInputBoundary.from_statistical_evaluation(
             input_boundary,
-            mismatched,
+            replace(aggregate, candidate_id="not-bound"),
             protected_boundary_id=None,
+            scenario_code_revision="s6",
+        )
+    protected_record = ProtectedEvidenceUse(
+        candidate_id=aggregate.candidate_id,
+        protected_boundary_id="pb-real",
+        evaluation_role=EvaluationRole.PROTECTED_TEST,
+    )
+    protected_result = replace(
+        aggregate,
+        evaluation_role=EvaluationRole.PROTECTED_TEST,
+        fold_results=tuple(
+            replace(fold, evaluation_role=EvaluationRole.PROTECTED_TEST)
+            for fold in aggregate.fold_results
+        ),
+        protected_evidence_records=(protected_record,),
+    )
+    protected_boundary = ScenarioInputBoundary.from_statistical_evaluation(
+        input_boundary,
+        protected_result,
+        protected_boundary_id="pb-real",
+        scenario_code_revision="s6",
+    )
+    assert protected_boundary.protected_boundary_id == "pb-real"
+    with pytest.raises(ValueError, match="does not match statistical protected"):
+        ScenarioInputBoundary.from_statistical_evaluation(
+            input_boundary, protected_result,
+            protected_boundary_id="pb-wrong", scenario_code_revision="s6",
+        )
+    with pytest.raises(ValueError, match="canonical protected record"):
+        ScenarioInputBoundary.from_statistical_evaluation(
+            input_boundary,
+            replace(protected_result, protected_evidence_records=()),
+            protected_boundary_id="pb-real",
+            scenario_code_revision="s6",
+        )
+    with pytest.raises(ValueError, match="cannot carry protected"):
+        ScenarioInputBoundary.from_statistical_evaluation(
+            input_boundary,
+            replace(aggregate, protected_evidence_records=(protected_record,)),
+            protected_boundary_id=None,
+            scenario_code_revision="s6",
+        )
+    with pytest.raises(ValueError, match="does not match verified"):
+        ScenarioInputBoundary.from_statistical_evaluation(
+            input_boundary,
+            replace(protected_result, fold_results=aggregate.fold_results),
+            protected_boundary_id="pb-real",
             scenario_code_revision="s6",
         )
 
@@ -515,16 +388,27 @@ def test_statistical_evidence_boundary_is_verified_and_context_bound() -> None:
 def test_regime_contracts_classification_and_development_fit() -> None:
     obs = make_observation(event_time=dt())
     assert obs.variables["vol"] == Decimal("10")
-
+    assert obs.variable_units["vol"] == "unitless"
     with pytest.raises(ValueError, match="timezone-aware"):
-        RegimeObservation("x", datetime(2026, 1, 1), {"vol": Decimal(1)}, "a")
+        RegimeObservation(
+            "x", datetime(2026, 1, 1), {"vol": Decimal(1)}, "a",
+            variable_units={"vol": "unitless"},
+        )
     with pytest.raises(ValueError, match="timezone-aware"):
-        RegimeObservation("x", dt(), {"vol": Decimal(1)}, "a", datetime(2026, 1, 1))
+        RegimeObservation(
+            "x", dt(), {"vol": Decimal(1)}, "a",
+            datetime(2026, 1, 1), {"vol": "unitless"},
+        )
     with pytest.raises(ValueError, match="later than knowledge_time"):
-        RegimeObservation("x", dt(), {"vol": Decimal(1)}, "a", dt(1))
+        RegimeObservation(
+            "x", dt(), {"vol": Decimal(1)}, "a", dt(1), {"vol": "unitless"},
+        )
+    with pytest.raises(ValueError, match="exactly one unit"):
+        RegimeObservation("x", dt(), {"vol": Decimal(1)}, "a")
     with pytest.raises(TypeError, match="threshold"):
         ThresholdRule("vol", ComparisonOperator.LT, 1, "LOW")  # type: ignore[arg-type]
-
+    with pytest.raises(ValueError, match="unit"):
+        ThresholdRule("vol", ComparisonOperator.LT, Decimal(1), "LOW", "")
     for operator, value, expected in (
         (ComparisonOperator.LT, Decimal("9"), "YES"),
         (ComparisonOperator.LE, Decimal("10"), "YES"),
@@ -542,162 +426,133 @@ def test_regime_contracts_classification_and_development_fit() -> None:
             definition,
             make_observation(value=value),
             use_mode=RegimeUseMode.CAUSAL_STRATIFICATION,
+            as_of_time=dt(),
         ).label == expected
-
     assert classify_regime(
         RegimeDefinition(
-            "d-default",
-            RegimeDefinitionMode.PREDECLARED,
+            "d-default", RegimeDefinitionMode.PREDECLARED,
             (ThresholdRule("vol", ComparisonOperator.GT, Decimal("20"), "YES"),),
-            "NO",
-            "a" * 64,
+            "NO", "a" * 64,
         ),
         make_observation(value=Decimal("10")),
         use_mode=RegimeUseMode.CAUSAL_STRATIFICATION,
+        as_of_time=dt(),
     ).label == "NO"
-
     missing = RegimeObservation("m", dt(), {}, "a" * 64)
     assert classify_regime(
-        make_definition(), missing, use_mode=RegimeUseMode.CAUSAL_STRATIFICATION
+        make_definition(), missing,
+        use_mode=RegimeUseMode.CAUSAL_STRATIFICATION, as_of_time=dt(),
     ).label == "UNKNOWN"
-
     definition = make_definition()
-    with pytest.raises(ValueError, match="STRATEGY_BOUND"):
-        classify_regime(definition, obs, use_mode=RegimeUseMode.STRATEGY_BOUND)
-    bound = classify_regime(
-        definition,
-        obs,
-        use_mode=RegimeUseMode.STRATEGY_BOUND,
-        strategy_regime_definition_digest=definition.definition_digest,
-    )
-    assert bound.label == "HIGH"
-    assert bound.knowledge_time == dt()
-
+    with pytest.raises(ValueError, match="verified upstream regime-use evidence"):
+        classify_regime(
+            definition, obs, use_mode=RegimeUseMode.STRATEGY_BOUND, as_of_time=dt()
+        )
     retro = RegimeDefinition(
-        "retro",
-        RegimeDefinitionMode.RETROSPECTIVE_EXPLORATORY,
+        "retro", RegimeDefinitionMode.RETROSPECTIVE_EXPLORATORY,
         (ThresholdRule("vol", ComparisonOperator.GE, Decimal("0"), "RETRO"),),
-        "UNKNOWN",
-        "a" * 64,
+        "UNKNOWN", "a" * 64,
     )
     with pytest.raises(ValueError, match="exploratory-only"):
-        classify_regime(retro, obs, use_mode=RegimeUseMode.CAUSAL_STRATIFICATION)
+        classify_regime(
+            retro, obs, use_mode=RegimeUseMode.CAUSAL_STRATIFICATION, as_of_time=dt()
+        )
     assert classify_regime(
-        retro, obs, use_mode=RegimeUseMode.RETROSPECTIVE_EXPLORATORY
+        retro, obs,
+        use_mode=RegimeUseMode.RETROSPECTIVE_EXPLORATORY, as_of_time=dt(),
     ).label == "RETRO"
-
     with pytest.raises(ValueError, match="source lineage"):
         classify_regime(
             replace(make_definition(), source_lineage_digest="z" * 64),
-            obs,
-            use_mode=RegimeUseMode.CAUSAL_STRATIFICATION,
+            obs, use_mode=RegimeUseMode.CAUSAL_STRATIFICATION, as_of_time=dt(),
         )
-
+    with pytest.raises(ValueError, match="known after as_of_time"):
+        classify_regime(
+            definition, replace(obs, knowledge_time=dt(1)),
+            use_mode=RegimeUseMode.CAUSAL_STRATIFICATION, as_of_time=dt(),
+        )
+    with pytest.raises(ValueError, match="unit mismatch"):
+        classify_regime(
+            definition, replace(obs, variable_units={"vol": "percent"}),
+            use_mode=RegimeUseMode.CAUSAL_STRATIFICATION, as_of_time=dt(),
+        )
+    with pytest.raises(ValueError, match="timezone-aware"):
+        classify_regime(
+            definition, obs, use_mode=RegimeUseMode.CAUSAL_STRATIFICATION,
+            as_of_time=datetime(2026, 1, 1),
+        )
     with pytest.raises(ValueError, match="rules cannot be empty"):
         RegimeDefinition("x", RegimeDefinitionMode.PREDECLARED, (), "U", "a")
     with pytest.raises(ValueError, match="requires development_boundary_id"):
         RegimeDefinition(
-            "x",
-            RegimeDefinitionMode.DEVELOPMENT_FIT,
+            "x", RegimeDefinitionMode.DEVELOPMENT_FIT,
             (ThresholdRule("vol", ComparisonOperator.GE, Decimal(1), "H"),),
-            "U",
-            "a" * 64,
+            "U", "a" * 64,
         )
     with pytest.raises(ValueError, match="only valid for DEVELOPMENT_FIT"):
         RegimeDefinition(
-            "x",
-            RegimeDefinitionMode.PREDECLARED,
+            "x", RegimeDefinitionMode.PREDECLARED,
             (ThresholdRule("vol", ComparisonOperator.GE, Decimal(1), "H"),),
-            "U",
-            "a",
-            development_boundary_id="bad",
+            "U", "a", development_boundary_id="bad",
         )
-
     odd = fit_development_threshold_definition(
-        [
-            make_observation("1", Decimal(1)),
-            make_observation("2", Decimal(3)),
-            make_observation("3", Decimal(2)),
-        ],
-        variable_name="vol",
-        label_below="LOW",
-        label_at_or_above="HIGH",
-        definition_id="fit-odd",
-        development_boundary_id="dev-1",
-        source_lineage_digest="a" * 64,
-        evaluation_role=EvaluationRole.DEVELOPMENT,
+        [make_observation("1", Decimal(1)), make_observation("2", Decimal(3)),
+         make_observation("3", Decimal(2))],
+        variable_name="vol", label_below="LOW", label_at_or_above="HIGH",
+        definition_id="fit-odd", development_boundary_id="dev-1",
+        source_lineage_digest="a" * 64, evaluation_role=EvaluationRole.DEVELOPMENT,
     )
     assert odd.rules[0].threshold == Decimal(2)
-
     even = fit_development_threshold_definition(
         [make_observation("1", Decimal(1)), make_observation("2", Decimal(3))],
-        variable_name="vol",
-        label_below="LOW",
-        label_at_or_above="HIGH",
-        definition_id="fit-even",
-        development_boundary_id="dev-1",
-        source_lineage_digest="a" * 64,
-        evaluation_role=EvaluationRole.DEVELOPMENT,
+        variable_name="vol", label_below="LOW", label_at_or_above="HIGH",
+        definition_id="fit-even", development_boundary_id="dev-1",
+        source_lineage_digest="a" * 64, evaluation_role=EvaluationRole.DEVELOPMENT,
     )
     assert even.rules[0].threshold == Decimal(2)
-
     with pytest.raises(ValueError, match="only on DEVELOPMENT"):
         fit_development_threshold_definition(
-            [obs],
-            variable_name="vol",
-            label_below="L",
-            label_at_or_above="H",
-            definition_id="bad",
-            development_boundary_id="dev",
-            source_lineage_digest="a" * 64,
-            evaluation_role=EvaluationRole.PROTECTED_TEST,
+            [obs], variable_name="vol", label_below="L", label_at_or_above="H",
+            definition_id="bad", development_boundary_id="dev",
+            source_lineage_digest="a" * 64, evaluation_role=EvaluationRole.PROTECTED_TEST,
         )
     with pytest.raises(ValueError, match="cannot be empty"):
         fit_development_threshold_definition(
-            [],
-            variable_name="vol",
-            label_below="L",
-            label_at_or_above="H",
-            definition_id="bad",
-            development_boundary_id="dev",
-            source_lineage_digest="a" * 64,
-            evaluation_role=EvaluationRole.DEVELOPMENT,
+            [], variable_name="vol", label_below="L", label_at_or_above="H",
+            definition_id="bad", development_boundary_id="dev",
+            source_lineage_digest="a" * 64, evaluation_role=EvaluationRole.DEVELOPMENT,
         )
     with pytest.raises(ValueError, match="unique observation IDs"):
         fit_development_threshold_definition(
-            [
-                make_observation("dup", Decimal("1")),
-                make_observation("dup", Decimal("2")),
-            ],
-            variable_name="vol",
-            label_below="L",
-            label_at_or_above="H",
-            definition_id="bad",
-            development_boundary_id="dev",
-            source_lineage_digest="a" * 64,
-            evaluation_role=EvaluationRole.DEVELOPMENT,
+            [make_observation("dup", Decimal("1")), make_observation("dup", Decimal("2"))],
+            variable_name="vol", label_below="L", label_at_or_above="H",
+            definition_id="bad", development_boundary_id="dev",
+            source_lineage_digest="a" * 64, evaluation_role=EvaluationRole.DEVELOPMENT,
         )
     with pytest.raises(ValueError, match="lineage"):
         fit_development_threshold_definition(
-            [RegimeObservation("x", dt(), {"vol": Decimal("1")}, "z" * 64)],
-            variable_name="vol",
-            label_below="L",
-            label_at_or_above="H",
-            definition_id="bad",
-            development_boundary_id="dev",
-            source_lineage_digest="a" * 64,
-            evaluation_role=EvaluationRole.DEVELOPMENT,
+            [RegimeObservation(
+                "x", dt(), {"vol": Decimal("1")}, "z" * 64,
+                variable_units={"vol": "unitless"},
+            )],
+            variable_name="vol", label_below="L", label_at_or_above="H",
+            definition_id="bad", development_boundary_id="dev",
+            source_lineage_digest="a" * 64, evaluation_role=EvaluationRole.DEVELOPMENT,
         )
     with pytest.raises(ValueError, match="cannot silently drop"):
         fit_development_threshold_definition(
             [RegimeObservation("x", dt(), {}, "a" * 64)],
-            variable_name="vol",
-            label_below="L",
-            label_at_or_above="H",
-            definition_id="bad",
-            development_boundary_id="dev",
-            source_lineage_digest="a" * 64,
-            evaluation_role=EvaluationRole.DEVELOPMENT,
+            variable_name="vol", label_below="L", label_at_or_above="H",
+            definition_id="bad", development_boundary_id="dev",
+            source_lineage_digest="a" * 64, evaluation_role=EvaluationRole.DEVELOPMENT,
+        )
+    with pytest.raises(ValueError, match="units"):
+        fit_development_threshold_definition(
+            [replace(obs, variable_units={"vol": "percent"})],
+            variable_name="vol", label_below="L", label_at_or_above="H",
+            definition_id="bad-unit", development_boundary_id="dev",
+            source_lineage_digest="a" * 64, evaluation_role=EvaluationRole.DEVELOPMENT,
+            variable_unit="unitless",
         )
 
 
@@ -710,17 +565,19 @@ def test_scenario_grid_outcome_contracts_and_summary() -> None:
         ScenarioShock(ShockTarget.FEE_MULTIPLIER, Decimal("0.5"), "multiplier")
     with pytest.raises(ValueError, match="must be positive"):
         ScenarioShock(ShockTarget.MAX_SPREAD, Decimal("0"), "price")
+    with pytest.raises(ValueError, match="requires unit"):
+        ScenarioShock(ShockTarget.SLIPPAGE_POINTS, Decimal("1"), "microseconds")
 
     with pytest.raises(ValueError, match="at least one shock"):
         ScenarioSpec("x", "a", (), (), True, "h", "c")
     duplicate = (
-        ScenarioShock(ShockTarget.FEE_MULTIPLIER, Decimal("1"), "x"),
-        ScenarioShock(ShockTarget.FEE_MULTIPLIER, Decimal("2"), "x"),
+        ScenarioShock(ShockTarget.FEE_MULTIPLIER, Decimal("1"), "multiplier"),
+        ScenarioShock(ShockTarget.FEE_MULTIPLIER, Decimal("2"), "multiplier"),
     )
     with pytest.raises(ValueError, match="duplicate shock"):
         make_scenario(shocks=duplicate, constraints=("same-axis",))
     multi = (
-        ScenarioShock(ShockTarget.FEE_MULTIPLIER, Decimal("1"), "x"),
+        ScenarioShock(ShockTarget.FEE_MULTIPLIER, Decimal("1"), "multiplier"),
         ScenarioShock(ShockTarget.SLIPPAGE_POINTS, Decimal("1"), "points"),
     )
     with pytest.raises(ValueError, match="structural consistency"):
@@ -810,9 +667,15 @@ def test_observed_distribution_tail_and_path_semantics() -> None:
         "a",
         "REJECT",
     )
-    odd_summary = summarize_observed_series(odd)
+    odd_summary = summarize_observed_series(odd, loss_direction=LossDirection.LOWER_IS_LOSS)
     assert odd_summary.median == Decimal("2")
     assert odd_summary.empirical_probability_of_loss == Decimal(1) / Decimal(3)
+    upper_loss_summary = summarize_observed_series(
+        odd,
+        loss_direction=LossDirection.HIGHER_IS_LOSS,
+        loss_threshold=Decimal("2"),
+    )
+    assert upper_loss_summary.empirical_probability_of_loss == Decimal(1) / Decimal(3)
 
     even = ObservedSeries(
         "even",
@@ -824,7 +687,7 @@ def test_observed_distribution_tail_and_path_semantics() -> None:
         "a",
         "REJECT",
     )
-    assert summarize_observed_series(even).median == Decimal("2")
+    assert summarize_observed_series(even, loss_direction=LossDirection.LOWER_IS_LOSS).median == Decimal("2")
 
     with pytest.raises(ValueError, match="predeclared"):
         TailMetricPolicy(
@@ -890,6 +753,8 @@ def test_observed_distribution_tail_and_path_semantics() -> None:
     )
     lower = compute_tail_metrics(lower_series, lower_policy)
     assert lower.sufficient
+    with pytest.raises(ValueError, match="missing_policy"):
+        compute_tail_metrics(replace(lower_series, missing_policy="KEEP"), lower_policy)
     assert lower.value_at_risk == Decimal("-5")
     assert lower.expected_shortfall == Decimal("-7.5")
 
@@ -1060,6 +925,9 @@ def test_disposition_robustness_history_and_manifest() -> None:
     ) is RobustnessCharacterization.MIXED
 
     history = ScenarioResearchHistory()
+    history.record_artifact(
+        ResearchArtifactRecord("a" * 64, ResearchArtifactKind.REGIME_DEFINITION, True)
+    )
     nonprotected = ResearchAttemptRecord(
         "a" * 64, EvaluationRole.DEVELOPMENT, None, "FAVORABLE"
     )
@@ -1081,14 +949,40 @@ def test_disposition_robustness_history_and_manifest() -> None:
         history.record_protected_adaptation(
             ProtectedAdaptationRecord("pb", "source", "derived")
         )
+    with pytest.raises(ValueError, match="registered artifact"):
+        history.record_attempt(
+            ResearchAttemptRecord("missing", EvaluationRole.DEVELOPMENT, None, "INCONCLUSIVE")
+        )
 
     history.record_artifact(
-        ResearchArtifactRecord(
-            "source",
-            ResearchArtifactKind.SCENARIO_SPEC,
-            True,
-        )
+        ResearchArtifactRecord("source", ResearchArtifactKind.SCENARIO_SPEC, True)
     )
+    predecl_history = ScenarioResearchHistory()
+    predecl_spec = ScenarioSpec(
+        scenario_id="predeclared",
+        baseline_evidence_ref="b" * 64,
+        shocks=(ScenarioShock(
+            ShockTarget.FEE_MULTIPLIER, Decimal("1.5"), "multiplier"
+        ),),
+        structural_constraints=(),
+        predeclared=True,
+        research_history_ref=predecl_history.history_digest,
+        code_revision="c" * 40,
+    )
+    predecl_history.record_scenario_spec(predecl_spec)
+    predecl_grid = ScenarioGrid("predecl-grid", (predecl_spec,), True)
+    predecl_history.record_scenario_grid(predecl_grid)
+    assert predecl_history.history_digest
+    with pytest.raises(ValueError, match="history digest"):
+        ScenarioResearchHistory().record_scenario_spec(
+            replace(predecl_spec, research_history_ref="wrong")
+        )
+    with pytest.raises(ValueError, match="registered first"):
+        ScenarioResearchHistory().record_scenario_grid(predecl_grid)
+    with pytest.raises(ValueError, match="requires predeclared"):
+        ScenarioResearchHistory().record_scenario_spec(
+            replace(predecl_spec, predeclared=False)
+        )
     with pytest.raises(ValueError, match="previously registered"):
         history.record_artifact(
             ResearchArtifactRecord(
@@ -1205,12 +1099,15 @@ def test_disposition_robustness_history_and_manifest() -> None:
         scenario_grid_digest="c",
         observed_series_digest="d",
         disposition_policy_digest="e",
+        research_history_digest="h",
         result_digest="f",
         code_revision="1" * 40,
     )
     assert len(manifest.manifest_digest) == 64
     with pytest.raises(ValueError, match="boundary_digest"):
-        ScenarioRunManifest("", (), None, None, None, "f", "c")
+        ScenarioRunManifest("", (), None, None, None, "h", "f", "c")
+    with pytest.raises(ValueError, match="research_history_digest"):
+        ScenarioRunManifest("a", (), None, None, None, "", "f", "c")
 
 
 def test_regime_conditioned_summary_parity_and_experimental_parity() -> None:
@@ -1220,16 +1117,19 @@ def test_regime_conditioned_summary_parity_and_experimental_parity() -> None:
             definition,
             make_observation("a", Decimal("5")),
             use_mode=RegimeUseMode.CAUSAL_STRATIFICATION,
+        as_of_time=dt(),
         ),
         classify_regime(
             definition,
             make_observation("b", Decimal("15")),
             use_mode=RegimeUseMode.CAUSAL_STRATIFICATION,
+        as_of_time=dt(),
         ),
         classify_regime(
             definition,
             make_observation("c", Decimal("20")),
             use_mode=RegimeUseMode.CAUSAL_STRATIFICATION,
+        as_of_time=dt(),
         ),
     )
     summary = summarize_metric_by_regime(
@@ -1254,6 +1154,7 @@ def test_regime_conditioned_summary_parity_and_experimental_parity() -> None:
             label="HIGH",
             use_mode=RegimeUseMode.CAUSAL_STRATIFICATION,
             knowledge_time=dt(),
+        as_of_time=dt(),
         ),
     )
     with pytest.raises(ParityViolationError, match="cannot mix"):
@@ -1267,6 +1168,7 @@ def test_regime_conditioned_summary_parity_and_experimental_parity() -> None:
             label="HIGH",
             use_mode=RegimeUseMode.STRATEGY_BOUND,
             knowledge_time=dt(),
+        as_of_time=dt(),
         ),
     )
     with pytest.raises(ParityViolationError, match="cannot mix"):
@@ -1298,7 +1200,17 @@ def test_regime_conditioned_summary_parity_and_experimental_parity() -> None:
         source_code_revision="c" * 40,
         scenario_code_revision="f" * 40,
     )
-    assert len(verify_experimental_parity((boundary, same))) == 64
+    with pytest.raises(ParityViolationError, match="parity violation"):
+        verify_experimental_parity((boundary, same))
+    same_revision = ScenarioInputBoundary.from_observed_series(
+        parity_series,
+        evaluation_role=EvaluationRole.VALIDATION_SELECTION,
+        protected_boundary_id=None,
+        numeric_policy=DEFAULT_NUMERIC_POLICY,
+        source_code_revision="c" * 40,
+        scenario_code_revision="d" * 40,
+    )
+    assert len(verify_experimental_parity((boundary, same_revision))) == 64
     with pytest.raises(ValueError, match="cannot be empty"):
         verify_experimental_parity(())
     unverified = ScenarioInputBoundary(
@@ -1393,6 +1305,7 @@ def test_typed_research_history_upstream_evaluation_history_and_determinism() ->
         scenario_grid_digest="c",
         observed_series_digest="d",
         disposition_policy_digest="e",
+        research_history_digest="h",
         result_digest="f",
         code_revision="1" * 40,
     )
@@ -1402,6 +1315,7 @@ def test_typed_research_history_upstream_evaluation_history_and_determinism() ->
         scenario_grid_digest="c",
         observed_series_digest="d",
         disposition_policy_digest="e",
+        research_history_digest="h",
         result_digest="f",
         code_revision="1" * 40,
     )
@@ -1412,6 +1326,7 @@ def test_typed_research_history_upstream_evaluation_history_and_determinism() ->
         scenario_grid_digest="c",
         observed_series_digest="d",
         disposition_policy_digest="e",
+        research_history_digest="h",
         result_digest="different",
         code_revision="1" * 40,
     )

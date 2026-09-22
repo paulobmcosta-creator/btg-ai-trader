@@ -480,6 +480,11 @@ def test_run_economic_stress_rejects_non_adverse_assumption_changes() -> None:
     assert fixed_points_ok.result.manifest.verify_integrity()
 
     with pytest.raises(ValueError, match="cannot improve baseline slippage"):
+        apply_economic_shocks(
+            slippage_base,
+            (ScenarioShock(ShockTarget.SLIPPAGE_POINTS, Decimal("0.25"), "points"),),
+        )
+    with pytest.raises(ValueError, match="cannot improve baseline slippage"):
         run_economic_stress(
             scenario(
                 slippage_baseline,
@@ -613,6 +618,26 @@ def test_run_economic_stress_rejects_non_adverse_assumption_changes() -> None:
     )
     assert evidence.result.manifest.verify_integrity()
     assert evidence.result.manifest.assumptions_hash != baseline.manifest.assumptions_hash
+
+
+def test_run_economic_stress_rejects_scenario_code_revision_mismatch() -> None:
+    _, econ, assumptions, actions, schedule, baseline = fixture_bundle()
+    spec = scenario(
+        baseline,
+        "revision-mismatch",
+        (ScenarioShock(ShockTarget.FEE_MULTIPLIER, Decimal("2"), "multiplier"),),
+    )
+    with pytest.raises(ValueError, match="code_revision"):
+        run_economic_stress(
+            replace(spec, code_revision="different"),
+            baseline_result=baseline,
+            actions=actions,
+            replay_schedule=schedule,
+            instrument_economics=econ,
+            base_assumptions=assumptions,
+            end_of_window_policy=EndOfWindowPolicy.KEEP_OPEN,
+            code_revision=REV,
+        )
 
 
 def test_run_economic_stress_detects_kernel_output_drift(

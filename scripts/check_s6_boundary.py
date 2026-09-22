@@ -147,12 +147,27 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                     )
         elif isinstance(node, ast.ImportFrom):
             module = node.module or ""
-            if _is_forbidden_import(module):
+            is_ml_adapter = normalized.endswith("/scenario_engine/ml_adapter.py")
+            optional_ml_import = (
+                is_ml_adapter and module.startswith("btg_ai_trader.ml_engine")
+            )
+            if _is_forbidden_import(module) and not optional_ml_import:
                 findings.append(Finding(normalized, node.lineno, f"forbidden import: {module}"))
+            if (
+                normalized.endswith("/scenario_engine/__init__.py")
+                and module == "btg_ai_trader.scenario_engine.ml_adapter"
+            ):
+                findings.append(
+                    Finding(
+                        normalized,
+                        node.lineno,
+                        "optional ML adapter must not be imported by scenario_engine initializer",
+                    )
+                )
             for alias in node.names:
                 canonical = f"{module}.{alias.name}" if module else alias.name
                 aliases[alias.asname or alias.name] = canonical
-                if _is_forbidden_import(canonical):
+                if _is_forbidden_import(canonical) and not optional_ml_import:
                     findings.append(
                         Finding(normalized, node.lineno, f"forbidden import: {canonical}")
                     )
