@@ -162,62 +162,46 @@ def test_jsonable_canonical_fallbacks() -> None:
 
 
 def test_private_model_snapshot_issuer_fails_closed() -> None:
-    valid: dict[str, object] = {
-        "candidate_id": "candidate-1",
-        "evaluation_scope": "MODEL",
-        "evaluation_role": EvaluationRole.VALIDATION_SELECTION,
-        "protected_boundary_id": None,
-        "dataset_digest": "a" * 64,
-        "plan_digest": "b" * 64,
-        "target_contract_digest": "c" * 64,
-        "experimental_context_fingerprint": "d" * 64,
-        "metrics": {"mae": Decimal("1")},
-        "disposition": "INCONCLUSIVE",
-        "source_manifest_ids": ("m" * 64,),
-        "source_code_revision": "e" * 40,
-        "numeric_policy": DEFAULT_NUMERIC_POLICY,
-        "issuer_token": scenario_core._MODEL_SNAPSHOT_ISSUER_TOKEN,
-    }
-    issued = scenario_core._issue_model_evidence_snapshot(**valid)  # type: ignore[arg-type]
-    assert issued.is_verified
+    def issue(
+        *,
+        evaluation_scope: str = "MODEL",
+        evaluation_role: EvaluationRole = EvaluationRole.VALIDATION_SELECTION,
+        protected_boundary_id: str | None = None,
+        source_manifest_ids: tuple[str, ...] = ("m" * 64,),
+        issuer_token: object = scenario_core._MODEL_SNAPSHOT_ISSUER_TOKEN,
+    ) -> ModelEvidenceSnapshot:
+        return scenario_core._issue_model_evidence_snapshot(
+            candidate_id="candidate-1",
+            evaluation_scope=evaluation_scope,
+            evaluation_role=evaluation_role,
+            protected_boundary_id=protected_boundary_id,
+            dataset_digest="a" * 64,
+            plan_digest="b" * 64,
+            target_contract_digest="c" * 64,
+            experimental_context_fingerprint="d" * 64,
+            metrics={"mae": Decimal("1")},
+            disposition="INCONCLUSIVE",
+            source_manifest_ids=source_manifest_ids,
+            source_code_revision="e" * 40,
+            numeric_policy=DEFAULT_NUMERIC_POLICY,
+            issuer_token=issuer_token,
+        )
 
+    assert issue().is_verified
     with pytest.raises(PermissionError, match="verified S5 adapter"):
-        scenario_core._issue_model_evidence_snapshot(
-            **(valid | {"issuer_token": object()})  # type: ignore[arg-type]
-        )
+        issue(issuer_token=object())
     with pytest.raises(ValueError, match="MODEL evaluation scope"):
-        scenario_core._issue_model_evidence_snapshot(
-            **(valid | {"evaluation_scope": "STRATEGY"})  # type: ignore[arg-type]
-        )
+        issue(evaluation_scope="STRATEGY")
     with pytest.raises(ValueError, match="requires protected_boundary_id"):
-        scenario_core._issue_model_evidence_snapshot(
-            **(
-                valid
-                | {
-                    "evaluation_role": EvaluationRole.PROTECTED_TEST,
-                    "protected_boundary_id": None,
-                }
-            )  # type: ignore[arg-type]
-        )
+        issue(evaluation_role=EvaluationRole.PROTECTED_TEST)
     with pytest.raises(ValueError, match="non-protected"):
-        scenario_core._issue_model_evidence_snapshot(
-            **(valid | {"protected_boundary_id": "pb"})  # type: ignore[arg-type]
-        )
+        issue(protected_boundary_id="pb")
     with pytest.raises(ValueError, match="non-empty immutable identities"):
-        scenario_core._issue_model_evidence_snapshot(
-            **(valid | {"source_manifest_ids": ()})  # type: ignore[arg-type]
-        )
+        issue(source_manifest_ids=())
     with pytest.raises(ValueError, match="non-empty immutable identities"):
-        scenario_core._issue_model_evidence_snapshot(
-            **(valid | {"source_manifest_ids": ("",)})  # type: ignore[arg-type]
-        )
+        issue(source_manifest_ids=("",))
     with pytest.raises(ValueError, match="must be unique"):
-        scenario_core._issue_model_evidence_snapshot(
-            **(
-                valid
-                | {"source_manifest_ids": ("m" * 64, "m" * 64)}
-            )  # type: ignore[arg-type]
-        )
+        issue(source_manifest_ids=("m" * 64, "m" * 64))
 
 
 def test_input_boundary_and_model_snapshot_validation() -> None:

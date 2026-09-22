@@ -36,7 +36,11 @@ def training_manifest(
         numeric_policy=DEFAULT_NUMERIC_POLICY,
     )
     if verified:
-        object.__setattr__(manifest, "_verification_token", ml_provenance._MANIFEST_VERIFICATION_TOKEN)
+        object.__setattr__(
+            manifest,
+            "_verification_token",
+            ml_provenance._MANIFEST_VERIFICATION_TOKEN,
+        )
     return manifest
 
 
@@ -120,7 +124,12 @@ def test_snapshot_from_s5_fails_closed_on_invalid_upstream_evidence() -> None:
         snapshot_from_s5(report(protected_boundary_id="unexpected"), (manifest,))
     with pytest.raises(ValueError, match="at least one verified"):
         snapshot_from_s5(report(), ())
-    with pytest.raises(ValueError, match="verified ml_provenance.ModelTrainingManifest"):
+    with pytest.raises(ValueError, match="verified ModelTrainingManifest"):
+        snapshot_from_s5(
+            report(),
+            (object(),),  # type: ignore[arg-type]
+        )
+    with pytest.raises(ValueError, match="verified ModelTrainingManifest"):
         snapshot_from_s5(report(), (training_manifest(verified=False),))
     with pytest.raises(ValueError, match="candidate identities differ"):
         snapshot_from_s5(report(), (training_manifest(candidate_id="other"),))
@@ -146,5 +155,5 @@ def test_snapshot_from_s5_fails_closed_on_invalid_upstream_evidence() -> None:
         )
     unverified = dataclasses.replace(manifest)
     assert not unverified.is_verified
-    with pytest.raises(ValueError, match="verified ml_provenance.ModelTrainingManifest"):
+    with pytest.raises(ValueError, match="verified ModelTrainingManifest"):
         snapshot_from_s5(report(), (unverified,))
