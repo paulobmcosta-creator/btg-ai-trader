@@ -113,7 +113,9 @@ Protected-informed artifact -> same protected boundary confirmation
 ```text
 S6_ENTRY_GATE = PASS
 S6_PREAUTH_REMEDIATION = PASS
-SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+SPRINT_6_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED
+FUNCTIONAL_WORK_BRANCH = s6/02-full-scenario-engine
+MERGE_AUTHORIZED = NO
 ```
 
 The remediation contract passed independent re-audit, PR #82 was merged by explicit human authorization, and the merge SHA passed post-merge Entry Gate CI and pinned upstream. Functional implementation was explicitly authorized on 2026-09-22 under Issue #83 and is now in progress on `s6/02-full-scenario-engine`. Merge remains separately unauthorized.
