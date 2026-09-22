@@ -2,7 +2,7 @@
 
 ```text
 SPRINT_6_STATUS = ENTRY_GATE_APPROVED
-SPRINT_6_LIFECYCLE = PREAUTH_REMEDIATION_PASS_CANDIDATE
+SPRINT_6_LIFECYCLE = AWAITING_FUNCTIONAL_AUTHORIZATION
 SPRINT_6_CANONICAL_BRANCH = sprint/6-scenario-engine
 PREAUTH_REMEDIATION_BRANCH = s6/01-preauth-remediation
 PREAUTH_REMEDIATION_ISSUE = #81
@@ -14,7 +14,7 @@ S6_ENTRY_GATE_FINAL_CANONICAL_HEAD = 616849f8e77ecf3624b2b9362c1ef42c7fb9bcc1
 S6_ENTRY_GATE_FINAL_CI_RUN = 35474371811
 S6_ENTRY_GATE_FINAL_UPSTREAM_RUN = 35474371852
 
-S6_PREAUTH_REMEDIATION = PASS_CANDIDATE_PENDING_MERGE
+S6_PREAUTH_REMEDIATION = PASS
 SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 PROMOTION_TO_S6_FUNCTIONAL_IMPLEMENTATION = NO
 
@@ -110,8 +110,8 @@ Protected-informed artifact -> same protected boundary confirmation
 
 ```text
 S6_ENTRY_GATE = PASS
-S6_PREAUTH_REMEDIATION = PASS_CANDIDATE_PENDING_MERGE
+S6_PREAUTH_REMEDIATION = PASS
 SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 ```
 
-The remediation contract has passed independent re-audit and is a PASS candidate. Final exact-head CI/upstream on the reconciled PR head is still required before merge eligibility is final. Merge requires explicit human authorization. Functional implementation remains a separate later authorization even after remediation merge.
+The remediation contract passed independent re-audit, PR #82 was merged by explicit human authorization, and the merge SHA passed post-merge Entry Gate CI and pinned upstream. Sprint 6 now awaits a separate explicit human authorization for functional implementation.
