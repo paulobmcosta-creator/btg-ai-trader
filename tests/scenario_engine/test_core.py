@@ -516,7 +516,7 @@ def test_regime_contracts_classification_and_development_fit() -> None:
             mode=RegimeDefinitionMode.PREDECLARED,
             rules=(ThresholdRule("vol", operator, Decimal("10"), "YES"),),
             default_label="NO",
-            source_lineage_digest="a",
+            source_lineage_digest="a" * 64,
         )
         assert classify_regime(
             definition,
@@ -530,7 +530,7 @@ def test_regime_contracts_classification_and_development_fit() -> None:
             RegimeDefinitionMode.PREDECLARED,
             (ThresholdRule("vol", ComparisonOperator.GT, Decimal("20"), "YES"),),
             "NO",
-            "a",
+            "a" * 64,
         ),
         make_observation(value=Decimal("10")),
         use_mode=RegimeUseMode.CAUSAL_STRATIFICATION,
@@ -581,7 +581,7 @@ def test_regime_contracts_classification_and_development_fit() -> None:
             RegimeDefinitionMode.DEVELOPMENT_FIT,
             (ThresholdRule("vol", ComparisonOperator.GE, Decimal(1), "H"),),
             "U",
-            "a",
+            "a" * 64,
         )
     with pytest.raises(ValueError, match="only valid for DEVELOPMENT_FIT"):
         RegimeDefinition(
