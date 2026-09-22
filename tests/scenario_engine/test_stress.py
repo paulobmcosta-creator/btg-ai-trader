@@ -54,7 +54,6 @@ from btg_ai_trader.scenario_engine.stress import (
 from btg_ai_trader.statistical_baselines.domain import EvaluationRole
 from btg_ai_trader.statistical_baselines.metrics import DEFAULT_NUMERIC_POLICY
 
-
 REV = CodeRevision("b" * 40)
 
 
