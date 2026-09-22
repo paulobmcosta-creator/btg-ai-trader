@@ -23,6 +23,14 @@ S6_ENTRY_GATE_MERGE_SHA = d74e632f47fafab9f441574acbacb3ae7f1a7a72
 S6_ENTRY_GATE_POST_MERGE_CI_RUN = 35474259990
 S6_ENTRY_GATE_POST_MERGE_UPSTREAM_RUN = 35474259986
 S6_ENTRY_GATE_INDEPENDENT_REVIEW = PASS
+S6_ENTRY_GATE_FINAL_CANONICAL_HEAD = 616849f8e77ecf3624b2b9362c1ef42c7fb9bcc1
+S6_ENTRY_GATE_FINAL_CANONICAL_CI_RUN = 35474371811
+S6_ENTRY_GATE_FINAL_CANONICAL_UPSTREAM_RUN = 35474371852
+
+S6_PREAUTH_REVIEW = CHANGES_REQUIRED_REMEDIATED
+S6_PREAUTH_REMEDIATION_ISSUE = #81
+S6_PREAUTH_REMEDIATION_BRANCH = s6/01-preauth-remediation
+S6_PREAUTH_REMEDIATION_STATUS = PASS_CANDIDATE_PENDING_MERGE
 
 FINANCIAL_AUTHORITY = ABSENT
 STRATEGY_OPERATIONAL_PATH = ABSENT
@@ -76,4 +84,16 @@ SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 PROMOTION_TO_S6_FUNCTIONAL_IMPLEMENTATION = NO
 ```
 
-The Sprint 6 Entry Gate is canonical and approved. This approval does not authorize functional Scenario Engine implementation. A separate explicit human authorization is required before creating functional Scenario Engine code.
+The Sprint 6 Entry Gate is canonical and approved. Its historical merge SHA is `d74e632f...`; the final reconciled Entry Gate head before preauthorization remediation is `616849f8...`, with final CI/upstream runs `35474371811` and `35474371852` PASS.
+
+A subsequent pre-authorization review identified contract-hardening findings recorded in Issue #81. These findings do not revoke the Entry Gate PASS, but they must be remediated and independently revalidated before a functional-authorization decision.
+
+```text
+S6_ENTRY_GATE = PASS
+S6_PREAUTH_REVIEW = CHANGES_REQUIRED_REMEDIATED
+S6_PREAUTH_REMEDIATION_STATUS = PASS_CANDIDATE_PENDING_MERGE
+S6_PREAUTH_REAUDIT = PASS
+S6_PREAUTH_REMEDIATION_PR = #82
+OPEN_PREAUTH_BLOCKERS = 0
+SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+```
