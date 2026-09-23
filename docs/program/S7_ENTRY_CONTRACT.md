@@ -156,7 +156,9 @@ A `REJECT` never creates an authorization.
 
 `AuthorizationAllocation` is downstream of RiskAuthorization and upstream of OrderIntent under ADR 0016. Initial S7 does not create OrderIntent or ExecutionOrder.
 
-The semantic distinction between available capacity, reserved capacity, committed capacity, realized exposure and released capacity is mandatory. Physical concurrent locking/reservation and allocation consumption may remain deferred until the first downstream composition that can actually consume authorization.
+The semantic distinction between available capacity, reserved capacity, committed capacity, realized exposure and released capacity is mandatory.
+
+A `RiskAuthorization` **does not reserve capacity by itself**. Any future downstream consumer must create a distinct `AuthorizationAllocation` against then-current capacity before an `OrderIntent` can exist. That allocation step must revalidate authorization validity and prevent aggregate allocation from exceeding available capacity. Physical concurrent locking/reservation and allocation consumption remain deferred until the first downstream composition that can actually consume authorization.
 
 ---
 
@@ -255,6 +257,9 @@ A Risk Engine may recommend or expose a safety-posture consequence, but it does 
 
 The Entry Gate does not prematurely decide physical mechanisms whose first material dependency remains Paper/Execution:
 
+- durable operational snapshot/checkpoint format while no durable Risk checkpoint exists;
+- automation-vs-human policy for production operational authorities beyond the S7 human-unlatch rule;
+- physical process watchdog / production kill-switch implementation;
 - concrete order-type / TIF catalog;
 - execution idempotency-key scheme;
 - cancel/replace protocol;

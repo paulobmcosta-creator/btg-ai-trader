@@ -14,7 +14,7 @@
 | **S7-EG-AC-08** | DD-64 adjudicated | aggregate exposure/reservation semantics | PASS |
 | **S7-EG-AC-09** | DD-107 adjudicated | policy-local predeclared tail limits | PASS |
 | **S7-EG-AC-10** | DD-121 adjudicated | policy-local exposure/daily-loss limits | PASS |
-| **S7-EG-AC-11** | S8-dependent S7-owner DDs remain deferred | Decision Register | PASS |
+| **S7-EG-AC-11** | S8/S9-dependent mechanisms remain deferred | DD-27/DD-34/DD-39 and S7-owner deferred decisions | PASS |
 | **S7-EG-AC-12** | No functional Risk code/tests | exact diff vs S6 head | PENDING_CI |
 | **S7-EG-AC-13** | No dependency change | exact diff vs S6 head | PENDING_CI |
 | **S7-EG-AC-14** | Frozen Foundation | entry-gate CI | PENDING_CI |
@@ -65,6 +65,7 @@
 | **S7-AC-38** | Exact-head CI and pinned upstream | program governance | REQUIRED_AFTER_AUTHORIZATION |
 | **S7-AC-39** | Zero additional recurring cost | project constraint | REQUIRED_AFTER_AUTHORIZATION |
 | **S7-AC-40** | No new mandatory runtime dependency | S7-D-26 | REQUIRED_AFTER_AUTHORIZATION |
+| **S7-AC-41** | RiskAuthorization alone does not reserve capacity; downstream allocation revalidates current capacity | ADR 0016; S7-D-16 | REQUIRED_AFTER_AUTHORIZATION |
 
 ## 3. Negative capabilities that must remain absent
 
@@ -100,3 +101,4 @@
 | **S7-NC-28** | Model retraining / Strategy selection | ABSENT |
 | **S7-NC-29** | Paid external risk service | ABSENT |
 | **S7-NC-30** | Functional S7 implementation before explicit authorization | ABSENT |
+| **S7-NC-31** | RiskAuthorization treated as capacity reservation / consumed without AuthorizationAllocation | ABSENT |

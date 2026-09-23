@@ -7,8 +7,11 @@ Foundation IDs from `docs/foundation/0F-B_deferred_decision_register.md` are pre
 | ID | Decision | Sprint 7 adjudication | Gate consequence |
 |---|---|---|---|
 | **DD-07** | Physical locking / concurrent risk-capacity reservation | `SEMANTIC_RESERVATION_TRIGGERED_PHYSICAL_LOCKING_DEFERRED_TO_S8` | S7 defines capacity/reservation semantics; no I/O locking in Entry Gate or initial pure core. |
+| **DD-27** | Physical format of operational-state snapshots | `NOT_TRIGGERED_NO_DURABLE_S7_CHECKPOINT` | S7 may use immutable in-memory RiskStateSnapshot values; no durable checkpoint/storage format is introduced. |
+| **DD-34** | Automation vs human intervention for operational authorities | `CONSTRAINED_NOT_TRIGGERED_FOR_PRODUCTION_AUTOMATION` | S7 fixes human confirmation for restrictive unlatch only; broader production automation remains S9. |
 | **DD-37** | Safety transition thresholds / degradation policies | `RISK_SPECIFIC_POLICY_LOCAL` | Risk thresholds are explicit policy; no hidden global runtime transition automation. |
 | **DD-38** | Human confirmation to unlatch restrictive posture | `TRIGGERED_REQUIRED` | Restrictive risk latch requires explicit human confirmation to unlatch. |
+| **DD-39** | Physical process watchdog / emergency kill switch | `NOT_TRIGGERED_DEFER_TO_S9` | S7 circuit breaker is a logical authorization gate, not a process watchdog or external kill switch. |
 | **DD-64** | Aggregate exposure reservation/tracking model | `TRIGGERED_AND_DESIGN_ADJUDICATED` | Distinguish current, committed/potential, reserved capacity and worst-case exposure. |
 | **DD-107** | Tail-risk operational cutoffs (VaR/ES) | `TRIGGERED_POLICY_LOCAL_PREDECLARED` | No universal project constant; each RiskPolicyBundle declares tail level and limit with governed empirical evidence. |
 | **DD-121** | Quantitative exposure and maximum daily-loss limits | `TRIGGERED_POLICY_LOCAL_PREDECLARED` | Limits require explicit scope, currency/unit, session/timezone and hard/advisory semantics. |
@@ -79,8 +82,8 @@ ScenarioOutcomeSet may trigger deterministic stress veto but cannot be a probabi
 ### S7-D-15 — Capacity reservation is not market exposure
 RiskCapacityReservation consumes risk budget but is not PositionExposure.
 
-### S7-D-16 — Physical concurrent allocation locking is deferred
-Initial S7 may model capacity/reservations immutably but does not introduce execution-facing locking or allocation consumption.
+### S7-D-16 — Authorization is not a capacity reservation
+RiskAuthorization alone consumes no capacity reservation. A future AuthorizationAllocation must revalidate authorization and then reserve capacity against the current state before OrderIntent can exist. Physical concurrent allocation locking is deferred to the first downstream execution-capable composition.
 
 ### S7-D-17 — Restrictive circuit states latch
 A hard risk circuit may block new authorizations until an explicit governed unlatch event.

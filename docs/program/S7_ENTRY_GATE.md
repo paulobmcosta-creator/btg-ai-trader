@@ -49,14 +49,18 @@ ADDITIONAL_RECURRING_COST = ZERO
 | **S7-EG-08** | DD-107 tail thresholds adjudicated policy-locally | PASS |
 | **S7-EG-09** | DD-121 exposure/daily-loss limits adjudicated policy-locally | PASS |
 | **S7-EG-10** | SAFE_HALT no-auto-flatten/cancel | PASS |
-| **S7-EG-11** | S8-dependent mechanisms remain deferred | PASS |
-| **S7-EG-12** | Entry Gate has zero financial side effects | PASS |
-| **S7-EG-13** | No functional src/tests delta | PENDING EXACT-HEAD CI |
-| **S7-EG-14** | No dependency delta | PENDING EXACT-HEAD CI |
-| **S7-EG-15** | Foundation integrity | PENDING EXACT-HEAD CI |
-| **S7-EG-16** | Pinned upstream | PENDING EXACT-HEAD CI |
-| **S7-EG-17** | Independent review | PENDING |
-| **S7-EG-18** | Human merge authorization | NOT YET REQUESTED |
+| **S7-EG-11** | DD-27 durable snapshot format reviewed and not triggered | PASS |
+| **S7-EG-12** | DD-34 broader operational automation remains deferred to S9 | PASS |
+| **S7-EG-13** | DD-39 physical watchdog/kill switch remains deferred to S9 | PASS |
+| **S7-EG-14** | RiskAuthorization explicitly does not reserve capacity | PASS |
+| **S7-EG-15** | S8-dependent mechanisms remain deferred | PASS |
+| **S7-EG-16** | Entry Gate has zero financial side effects | PASS |
+| **S7-EG-17** | No functional src/tests delta | PENDING EXACT-HEAD CI |
+| **S7-EG-18** | No dependency delta | PENDING EXACT-HEAD CI |
+| **S7-EG-19** | Foundation integrity | PENDING EXACT-HEAD CI |
+| **S7-EG-20** | Pinned upstream | PENDING EXACT-HEAD CI |
+| **S7-EG-21** | Independent review | PENDING |
+| **S7-EG-22** | Human merge authorization | NOT YET REQUESTED |
 
 ## Candidate conclusion
 
