@@ -70,13 +70,19 @@ jobs:
           grep -F "STRESS_SCENARIO != FORECAST" docs/program/S6_ENTRY_CONTRACT.md
 
           if test -e src/btg_ai_trader/scenario_engine; then
-            # Later lifecycle: functional implementation exists only after an explicit
-            # authorization recorded in living governance and a dedicated workstream.
-            grep -F "SPRINT_6_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED" docs/program/S6_ENTRY_CONTRACT.md
-            grep -F "SPRINT_6_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED" docs/sprints/SPRINT_6.md
+            # Later lifecycle: functional implementation must be explicitly authorized
+            # or canonically completed after an explicitly authorized merge.
             grep -F "S6_FUNCTIONAL_AUTHORIZATION_DATE = 2026-09-22" docs/program/S6_ENTRY_CONTRACT.md
             test -f docs/program/workstreams/S6-FULL-SCENARIO-ENGINE.md
-            grep -F "MERGE = FORBIDDEN" docs/program/workstreams/S6-FULL-SCENARIO-ENGINE.md
+            if grep -F "SPRINT_6_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED" docs/program/S6_ENTRY_CONTRACT.md; then
+              grep -F "SPRINT_6_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED" docs/sprints/SPRINT_6.md
+              grep -F "MERGE = FORBIDDEN" docs/program/workstreams/S6-FULL-SCENARIO-ENGINE.md
+            else
+              grep -F "SPRINT_6_FUNCTIONAL_IMPLEMENTATION = COMPLETED" docs/program/S6_ENTRY_CONTRACT.md
+              grep -F "SPRINT_6_FUNCTIONAL_IMPLEMENTATION = COMPLETED" docs/sprints/SPRINT_6.md
+              grep -F "S6_FUNCTIONAL_MERGE_SHA" docs/program/S6_ENTRY_CONTRACT.md
+              grep -F "MERGE = COMPLETED_BY_EXPLICIT_HUMAN_AUTHORIZATION" docs/program/workstreams/S6-FULL-SCENARIO-ENGINE.md
+            fi
           else
             # Historical entry-gate mode: no functional code may exist.
             grep -F "SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED" docs/program/S6_ENTRY_GATE.md
