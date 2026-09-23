@@ -63,15 +63,25 @@ jobs:
             test -f "${path}"
           done
 
-          grep -F "SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED" docs/program/S6_ENTRY_GATE.md
           if ! grep -F "S6_ENTRY_GATE_CANDIDATE = PASS" docs/program/S6_ENTRY_GATE.md; then
             grep -F "S6_ENTRY_GATE = PASS" docs/program/S6_ENTRY_GATE.md
           fi
           grep -F "DD-89" docs/program/S6_DECISION_REGISTER.md
           grep -F "STRESS_SCENARIO != FORECAST" docs/program/S6_ENTRY_CONTRACT.md
 
-          git diff --quiet "${S5_BASE_SHA}" HEAD -- src tests pyproject.toml
-          test ! -e src/btg_ai_trader/scenario_engine
+          if test -e src/btg_ai_trader/scenario_engine; then
+            # Later lifecycle: functional implementation exists only after an explicit
+            # authorization recorded in living governance and a dedicated workstream.
+            grep -F "SPRINT_6_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED" docs/program/S6_ENTRY_CONTRACT.md
+            grep -F "SPRINT_6_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED" docs/sprints/SPRINT_6.md
+            grep -F "S6_FUNCTIONAL_AUTHORIZATION_DATE = 2026-09-22" docs/program/S6_ENTRY_CONTRACT.md
+            test -f docs/program/workstreams/S6-FULL-SCENARIO-ENGINE.md
+            grep -F "MERGE = FORBIDDEN" docs/program/workstreams/S6-FULL-SCENARIO-ENGINE.md
+          else
+            # Historical entry-gate mode: no functional code may exist.
+            grep -F "SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED" docs/program/S6_ENTRY_GATE.md
+            git diff --quiet "${S5_BASE_SHA}" HEAD -- src tests pyproject.toml
+          fi
 
       - name: Check diff whitespace
         shell: bash

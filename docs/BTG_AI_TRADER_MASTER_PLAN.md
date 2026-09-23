@@ -376,10 +376,10 @@ Research ML Engine formalmente fechado após reauditoria independente PASS, merg
 ```text
 PROMOTION_TO_SPRINT_6_GATE = YES
 SPRINT_6_ENTRY_GATE = AUTHORIZED
-SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+SPRINT_6_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED
 ```
 
-### Sprint 6 — Scenario Engine — ENTRY_GATE_APPROVED / PREAUTH_REMEDIATION
+### Sprint 6 — Scenario Engine — FUNCTIONAL_IMPLEMENTATION_IN_PROGRESS
 
 O Gate de Entrada do Sprint 6 foi materializado a partir do head canônico final do Sprint 5. O escopo futuro proposto é research-only: regimes causalmente mensuráveis, segmentação retrospectiva apenas exploratória, cenários/stress determinísticos predeclarados e análise de distribuições empíricas/downside/path sem autoridade de risco.
 
@@ -396,7 +396,10 @@ S6_PREAUTH_REMEDIATION_CANONICAL = PASS
 S6_PREAUTH_REMEDIATION_MERGE_SHA = 7df047b25633527e505b3e4772c0a0c43e1ab10c
 S6_PREAUTH_POST_MERGE_ENTRY_GATE_CI_RUN = 35759318235
 S6_PREAUTH_POST_MERGE_UPSTREAM_RUN = 35759318238
-SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+S6_FUNCTIONAL_ISSUE = #83
+S6_FUNCTIONAL_WORK_BRANCH = s6/02-full-scenario-engine
+S6_FUNCTIONAL_AUTHORIZATION_DATE = 2026-09-22
+SPRINT_6_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED
 ```
 
 Monte Carlo, bootstrap inferencial, Strategy, Risk, Paper, Live, broker orders, FinancialLedger mutation e dinheiro real não são autorizados pelo Gate de Entrada.
@@ -485,7 +488,7 @@ Direção futura de produção continua separando Trading Node, Research/AI Node
 - Entry Gate do Sprint 6: canônico / PASS;
 - head canônico final do gate antes da remediação: `616849f8e77ecf3624b2b9362c1ef42c7fb9bcc1`;
 - remediação pré-autorização: canônica PASS; PR #82 mergeado em `7df047b25633527e505b3e4772c0a0c43e1ab10c`; Issue #81 em fechamento;
-- implementação funcional do Sprint 6: `NOT_AUTHORIZED`;
+- implementação funcional do Sprint 6: `AUTHORIZED_IN_WORK_BRANCH` (`s6/02-full-scenario-engine`); merge `NOT_AUTHORIZED`;
 - Sprints 4 e 5 permanecem formalmente fechados (`FORMALLY_CLOSED` / `PASS`).
 
 ### 12.2. Segurança do repositório
@@ -571,13 +574,17 @@ A revisão pré-autorização preservou o Entry Gate como PASS, mas classificou 
 
 ### 2026-09-22 — fechamento canônico da remediação pré-autorização
 
-A remediação passou reauditoria independente no exact head `485b70af4333cf3aeb3cef4d5b11a8909dc05597`. O PR #82 foi mergeado por autorização humana no SHA `7df047b25633527e505b3e4772c0a0c43e1ab10c`. A validação pós-merge registrou Entry Gate CI `35759318235` PASS 2/2 e pinned upstream `35759318238` PASS 2/2. A remediação está canônica PASS e a implementação funcional do Sprint 6 permanece `NOT_AUTHORIZED`.
+A remediação passou reauditoria independente no exact head `485b70af4333cf3aeb3cef4d5b11a8909dc05597`. O PR #82 foi mergeado por autorização humana no SHA `7df047b25633527e505b3e4772c0a0c43e1ab10c`. A validação pós-merge registrou Entry Gate CI `35759318235` PASS 2/2 e pinned upstream `35759318238` PASS 2/2. A remediação está canônica PASS; naquele checkpoint, antes da autorização funcional posterior de 2026-09-22, a implementação do Sprint 6 permanecia `NOT_AUTHORIZED`.
+
+### 2026-09-22 — autorização funcional do Sprint 6
+
+Após o fechamento canônico da remediação pré-autorização, foi concedida autorização humana explícita para implementação funcional research-only do Scenario Engine sob Issue #83 e branch `s6/02-full-scenario-engine`. A autorização não inclui merge, Strategy, Risk, Paper, Live, broker-order, FinancialLedger mutation ou dinheiro real.
 
 ---
 
 ## 16. Próxima ação oficial
 
-A próxima ação oficial é uma decisão humana separada sobre a **autorização da implementação funcional do Sprint 6 — Scenario Engine**, agora sob Entry Gate e remediação pré-autorização canônicos PASS.
+A próxima ação oficial é concluir a **implementação funcional research-only do Sprint 6 — Scenario Engine** no branch `s6/02-full-scenario-engine`, executar CI/exact-head e auditoria independente e parar antes do merge.
 
 ```text
 PROMOTION_TO_SPRINT_6_GATE = YES
@@ -585,7 +592,7 @@ SPRINT_6_ENTRY_GATE = PASS
 SPRINT_6_ENTRY_GATE_CANONICAL = PASS
 S6_PREAUTH_REVIEW = CHANGES_REQUIRED_REMEDIATED
 S6_PREAUTH_REMEDIATION = PASS
-SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+SPRINT_6_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED
 ```
 
-A implementação funcional do Scenario Engine permanece `NOT_AUTHORIZED` e exige decisão humana explícita separada. Não há autorização para negociação automática, envio de ordens, Strategy, Risk, Paper, Live ou uso de dinheiro real.
+A implementação funcional research-only do Scenario Engine está `AUTHORIZED` exclusivamente no work branch `s6/02-full-scenario-engine`; merge e qualquer autoridade financeira permanecem não autorizados. Não há autorização para negociação automática, envio de ordens, Strategy, Risk, Paper, Live ou uso de dinheiro real.

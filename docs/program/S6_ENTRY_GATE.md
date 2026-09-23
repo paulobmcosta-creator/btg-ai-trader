@@ -17,8 +17,8 @@ ISSUE = #79
 
 S6_ENTRY_GATE_ADJUDICATION = PASS
 S6_ENTRY_GATE_CANONICAL = PASS
-SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
-PROMOTION_TO_S6_FUNCTIONAL_IMPLEMENTATION = NO
+SPRINT_6_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED
+PROMOTION_TO_S6_FUNCTIONAL_IMPLEMENTATION = YES
 S6_ENTRY_GATE_MERGE_SHA = d74e632f47fafab9f441574acbacb3ae7f1a7a72
 S6_ENTRY_GATE_POST_MERGE_CI_RUN = 35474259990
 S6_ENTRY_GATE_POST_MERGE_UPSTREAM_RUN = 35474259986
@@ -80,13 +80,13 @@ S6_ENTRY_GATE_MERGE_COMPLETED = YES
 S6_ENTRY_GATE_POST_MERGE_VALIDATION = PASS
 OPEN_BLOCKERS = 0
 
-SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
-PROMOTION_TO_S6_FUNCTIONAL_IMPLEMENTATION = NO
+SPRINT_6_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED
+PROMOTION_TO_S6_FUNCTIONAL_IMPLEMENTATION = YES
 ```
 
 The Sprint 6 Entry Gate is canonical and approved. Its historical merge SHA is `d74e632f...`; the final reconciled Entry Gate head before preauthorization remediation is `616849f8...`, with final CI/upstream runs `35474371811` and `35474371852` PASS.
 
-A subsequent pre-authorization review identified contract-hardening findings recorded in Issue #81. Those findings were remediated, independently re-audited PASS, merged through PR #82 by explicit human authorization, and validated post-merge. The Entry Gate remains PASS; functional implementation remains separately unauthorized.
+A subsequent pre-authorization review identified contract-hardening findings recorded in Issue #81. Those findings were remediated, independently re-audited PASS, merged through PR #82 by explicit human authorization, and validated post-merge. The Entry Gate remains PASS. Functional implementation was subsequently authorized by explicit human decision on 2026-09-22 under Issue #83 and work branch `s6/02-full-scenario-engine`; merge and financial authority remain separately unauthorized.
 
 ```text
 S6_ENTRY_GATE = PASS
@@ -99,5 +99,8 @@ S6_PREAUTH_REMEDIATION_MERGE_SHA = 7df047b25633527e505b3e4772c0a0c43e1ab10c
 S6_PREAUTH_POST_MERGE_ENTRY_GATE_CI_RUN = 35759318235
 S6_PREAUTH_POST_MERGE_UPSTREAM_RUN = 35759318238
 OPEN_PREAUTH_BLOCKERS = 0
-SPRINT_6_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+S6_FUNCTIONAL_AUTHORIZATION_DATE = 2026-09-22
+S6_FUNCTIONAL_ISSUE = #83
+S6_FUNCTIONAL_WORK_BRANCH = s6/02-full-scenario-engine
+SPRINT_6_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED
 ```
