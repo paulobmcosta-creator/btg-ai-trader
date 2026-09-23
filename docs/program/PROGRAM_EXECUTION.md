@@ -121,12 +121,22 @@ SPRINT_6_POST_MERGE_UPSTREAM_RUN = 35898585983
 SPRINT_6_FINAL_VERDICT = PASS
 OPEN_SPRINT_6_BLOCKERS = 0
 PROMOTION_TO_SPRINT_7_GATE = YES
-SPRINT_7_STATUS = ENTRY_GATE_IN_PROGRESS
-SPRINT_7_LIFECYCLE = ENTRY_GATE
+SPRINT_7_STATUS = ENTRY_GATE_CANONICAL
+SPRINT_7_LIFECYCLE = AWAITING_FUNCTIONAL_AUTHORIZATION
 SPRINT_7_ENTRY_GATE_ISSUE = #86
 SPRINT_7_CANONICAL_BRANCH = sprint/7-risk-engine
 SPRINT_7_ENTRY_GATE_WORK_BRANCH = s7/00-entry-gate
-S7_ENTRY_GATE_CANDIDATE = PASS_PENDING_VALIDATION
+S7_ENTRY_GATE = PASS
+S7_ENTRY_GATE_CANONICAL = PASS
+S7_ENTRY_GATE_PR = #87
+S7_ENTRY_GATE_PR_HEAD = 0aac73fca2e291e7355f683ceda25fdcb3650d2e
+S7_ENTRY_GATE_INDEPENDENT_REVIEW = PASS
+S7_ENTRY_GATE_REVIEW_ID = 5295358543
+S7_ENTRY_GATE_MERGE_SHA = 8d475abd8751d0042d06840012604de140e18d21
+S7_ENTRY_GATE_POST_MERGE_CI_RUN = 35909666368
+S7_ENTRY_GATE_POST_MERGE_UPSTREAM_RUN = 35909666371
+OPEN_S7_ENTRY_GATE_BLOCKERS = 0
+PROMOTION_TO_S7_FUNCTIONAL_IMPLEMENTATION = NO
 SPRINT_7_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 
 OFFICIAL_CODEX_SECURITY_DIFF_SCAN = NOT_EXECUTED
@@ -298,12 +308,12 @@ SPRINT_6_FUNCTIONAL_IMPLEMENTATION = COMPLETED
 
 ## Canonical next action
 
-Sprint 6 is formally closed PASS. Sprint 7 has been explicitly authorized **only for Entry Gate materialization** under Issue #86 and work branch `s7/00-entry-gate`.
+Sprint 6 is formally closed PASS. The Sprint 7 Entry Gate was independently reviewed PASS and merged by explicit human authorization through PR #87 at `8d475abd8751d0042d06840012604de140e18d21`, with post-merge Entry Gate CI `35909666368` and pinned upstream `35909666371` PASS.
 
-The immediate work is to validate the S7 governance packet, exact predecessor, no-functional-diff boundary, pinned upstream and independent review. A PASS Entry Gate will not authorize functional Risk Engine implementation; that requires a distinct explicit human decision.
+The current boundary is a distinct human decision on functional Risk Engine authorization. No such authorization is implied by the Entry Gate closure.
 
 ```text
-SPRINT_7_ENTRY_GATE = IN_PROGRESS
+SPRINT_7_ENTRY_GATE = PASS_CANONICAL
 SPRINT_7_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 PAPER_TRADING = NO
 LIVE_TRADING = NO

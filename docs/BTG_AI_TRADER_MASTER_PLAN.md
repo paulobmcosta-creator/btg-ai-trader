@@ -410,18 +410,18 @@ S6_POST_MERGE_UPSTREAM_RUN = 35898585983
 S6_FINAL_VERDICT = PASS
 OPEN_S6_BLOCKERS = 0
 PROMOTION_TO_SPRINT_7_GATE = YES
-SPRINT_7_STATUS = ENTRY_GATE_IN_PROGRESS
-SPRINT_7_LIFECYCLE = ENTRY_GATE
+SPRINT_7_STATUS = ENTRY_GATE_CANONICAL
+SPRINT_7_LIFECYCLE = AWAITING_FUNCTIONAL_AUTHORIZATION
 SPRINT_7_ENTRY_GATE_ISSUE = #86
 SPRINT_7_CANONICAL_BRANCH = sprint/7-risk-engine
 SPRINT_7_ENTRY_GATE_WORK_BRANCH = s7/00-entry-gate
-S7_ENTRY_GATE_CANDIDATE = PASS_PENDING_VALIDATION
+S7_ENTRY_GATE = PASS_CANONICAL
 SPRINT_7_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 ```
 
 Monte Carlo, bootstrap inferencial, Strategy, Risk, Paper, Live, broker orders, FinancialLedger mutation e dinheiro real não são autorizados pelo Gate de Entrada.
 
-### Sprint 7 — Risk Engine — ENTRY_GATE_IN_PROGRESS
+### Sprint 7 — Risk Engine — ENTRY_GATE_CANONICAL
 
 Limites, sizing de teto de risco, circuit breakers, veto, drawdown, daily loss e fail-safe.
 
@@ -429,7 +429,16 @@ Limites, sizing de teto de risco, circuit breakers, veto, drawdown, daily loss e
 S7_ENTRY_GATE_ISSUE = #86
 S7_CANONICAL_BRANCH = sprint/7-risk-engine
 S7_ENTRY_GATE_WORK_BRANCH = s7/00-entry-gate
-S7_ENTRY_GATE_CANDIDATE = PASS_PENDING_VALIDATION
+S7_ENTRY_GATE = PASS_CANONICAL
+S7_ENTRY_GATE_PR = #87
+S7_ENTRY_GATE_PR_HEAD = 0aac73fca2e291e7355f683ceda25fdcb3650d2e
+S7_ENTRY_GATE_INDEPENDENT_REVIEW = PASS
+S7_ENTRY_GATE_REVIEW_ID = 5295358543
+S7_ENTRY_GATE_MERGE_SHA = 8d475abd8751d0042d06840012604de140e18d21
+S7_ENTRY_GATE_POST_MERGE_CI_RUN = 35909666368
+S7_ENTRY_GATE_POST_MERGE_UPSTREAM_RUN = 35909666371
+OPEN_S7_ENTRY_GATE_BLOCKERS = 0
+PROMOTION_TO_S7_FUNCTIONAL_IMPLEMENTATION = NO
 S7_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 ```
 
@@ -611,7 +620,7 @@ Após a remediação pré-autorização, o Sprint 6 funcional foi autorizado, im
 
 ## 16. Próxima ação oficial
 
-O Sprint 6 — Scenario Engine está formalmente fechado/PASS após reauditoria independente, merge humano do PR #85 e validação pós-merge. Uma decisão humana posterior autorizou exclusivamente o Sprint 7 Entry Gate sob Issue #86; implementação funcional de Risk continua separadamente não autorizada.
+O Sprint 6 — Scenario Engine está formalmente fechado/PASS. O Sprint 7 Entry Gate foi reaudita​do PASS, mergeado por autorização humana via PR #87 em `8d475abd8751d0042d06840012604de140e18d21` e validado pós-merge. A implementação funcional de Risk continua separadamente não autorizada.
 
 ```text
 PROMOTION_TO_SPRINT_6_GATE = YES

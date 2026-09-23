@@ -15,11 +15,11 @@
 | **S7-EG-AC-09** | DD-107 adjudicated | policy-local predeclared tail limits | PASS |
 | **S7-EG-AC-10** | DD-121 adjudicated | policy-local exposure/daily-loss limits | PASS |
 | **S7-EG-AC-11** | S8/S9-dependent mechanisms remain deferred | DD-27/DD-34/DD-39 and S7-owner deferred decisions | PASS |
-| **S7-EG-AC-12** | No functional Risk code/tests | exact diff vs S6 head | PENDING_CI |
-| **S7-EG-AC-13** | No dependency change | exact diff vs S6 head | PENDING_CI |
-| **S7-EG-AC-14** | Frozen Foundation | entry-gate CI | PENDING_CI |
-| **S7-EG-AC-15** | Pinned upstream | exact-head workflow | PENDING_CI |
-| **S7-EG-AC-16** | Independent review | exact PR head | PENDING_REVIEW |
+| **S7-EG-AC-12** | No functional Risk code/tests | exact diff vs S6 head | PASS |
+| **S7-EG-AC-13** | No dependency change | exact diff vs S6 head | PASS |
+| **S7-EG-AC-14** | Frozen Foundation | post-merge Entry Gate CI `35909666368` | PASS |
+| **S7-EG-AC-15** | Pinned upstream | post-merge run `35909666371` | PASS |
+| **S7-EG-AC-16** | Independent review | review `5295358543` on PR head `0aac73fc...` | PASS |
 
 ## 2. Functional positive capabilities required after a future explicit authorization
 
@@ -102,3 +102,22 @@
 | **S7-NC-29** | Paid external risk service | ABSENT |
 | **S7-NC-30** | Functional S7 implementation before explicit authorization | ABSENT |
 | **S7-NC-31** | RiskAuthorization treated as capacity reservation / consumed without AuthorizationAllocation | ABSENT |
+
+
+## 4. Canonical Entry Gate closure
+
+```text
+S7_ENTRY_GATE = PASS
+S7_ENTRY_GATE_CANONICAL = PASS
+S7_ENTRY_GATE_PR = #87
+S7_ENTRY_GATE_PR_HEAD = 0aac73fca2e291e7355f683ceda25fdcb3650d2e
+S7_ENTRY_GATE_INDEPENDENT_REVIEW = PASS
+S7_ENTRY_GATE_REVIEW_ID = 5295358543
+S7_ENTRY_GATE_MERGE_SHA = 8d475abd8751d0042d06840012604de140e18d21
+S7_ENTRY_GATE_POST_MERGE_CI_RUN = 35909666368
+S7_ENTRY_GATE_POST_MERGE_UPSTREAM_RUN = 35909666371
+OPEN_S7_ENTRY_GATE_BLOCKERS = 0
+
+S7_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+PROMOTION_TO_S7_FUNCTIONAL_IMPLEMENTATION = NO
+```

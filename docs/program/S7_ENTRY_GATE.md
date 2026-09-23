@@ -12,10 +12,18 @@ CANONICAL_SPRINT_7_BRANCH = sprint/7-risk-engine
 WORK_BRANCH = s7/00-entry-gate
 ISSUE = #86
 
-S7_ENTRY_GATE_CANDIDATE = PASS
-S7_ENTRY_GATE_CANONICAL = NO
+S7_ENTRY_GATE = PASS
+S7_ENTRY_GATE_CANONICAL = PASS
+S7_ENTRY_GATE_PR = #87
+S7_ENTRY_GATE_PR_HEAD = 0aac73fca2e291e7355f683ceda25fdcb3650d2e
+S7_ENTRY_GATE_INDEPENDENT_REVIEW = PASS
+S7_ENTRY_GATE_REVIEW_ID = 5295358543
+S7_ENTRY_GATE_MERGE_SHA = 8d475abd8751d0042d06840012604de140e18d21
+S7_ENTRY_GATE_POST_MERGE_CI_RUN = 35909666368
+S7_ENTRY_GATE_POST_MERGE_UPSTREAM_RUN = 35909666371
+OPEN_S7_ENTRY_GATE_BLOCKERS = 0
 S7_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
-S7_ENTRY_GATE_MERGE = NOT_AUTHORIZED
+S7_ENTRY_GATE_MERGE = COMPLETED_BY_EXPLICIT_HUMAN_AUTHORIZATION
 
 STRATEGY_OPERATIONAL_PATH = ABSENT
 RISK_OPERATIONAL_PATH = FORBIDDEN_UNTIL_FUNCTIONAL_AUTHORIZATION
@@ -55,12 +63,12 @@ ADDITIONAL_RECURRING_COST = ZERO
 | **S7-EG-14** | RiskAuthorization explicitly does not reserve capacity | PASS |
 | **S7-EG-15** | S8-dependent mechanisms remain deferred | PASS |
 | **S7-EG-16** | Entry Gate has zero financial side effects | PASS |
-| **S7-EG-17** | No functional src/tests delta | PENDING EXACT-HEAD CI |
-| **S7-EG-18** | No dependency delta | PENDING EXACT-HEAD CI |
-| **S7-EG-19** | Foundation integrity | PENDING EXACT-HEAD CI |
-| **S7-EG-20** | Pinned upstream | PENDING EXACT-HEAD CI |
-| **S7-EG-21** | Independent review | PENDING |
-| **S7-EG-22** | Human merge authorization | NOT YET REQUESTED |
+| **S7-EG-17** | No functional src/tests delta | PASS |
+| **S7-EG-18** | No dependency delta | PASS |
+| **S7-EG-19** | Foundation integrity | PASS |
+| **S7-EG-20** | Pinned upstream | PASS |
+| **S7-EG-21** | Independent review | PASS |
+| **S7-EG-22** | Human merge authorization | COMPLETED |
 
 ## Candidate conclusion
 
@@ -70,5 +78,5 @@ The normative design is sufficient for an Entry Gate candidate. It intentionally
 S7_ENTRY_GATE_CANDIDATE = PASS
 OPEN_GATE_DESIGN_BLOCKERS = 0
 S7_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
-MERGE_RECOMMENDATION = PENDING_CI_AND_INDEPENDENT_REVIEW
+MERGE_RECOMMENDATION = PASS_CI_AND_INDEPENDENT_REVIEW
 ```
