@@ -11,6 +11,8 @@ on:
       - "sprint/5-ml-engine"
       - "s6/**"
       - "sprint/6-scenario-engine"
+      - "s7/**"
+      - "sprint/7-risk-engine"
   pull_request:
     branches:
       - "s11/**"
@@ -24,6 +26,7 @@ on:
       - "sprint/4-statistical-baselines"
       - "sprint/5-ml-engine"
       - "sprint/6-scenario-engine"
+      - "sprint/7-risk-engine"
 
 permissions:
   contents: read

@@ -120,7 +120,14 @@ SPRINT_6_POST_MERGE_ENTRY_GATE_CI_RUN = 35898586113
 SPRINT_6_POST_MERGE_UPSTREAM_RUN = 35898585983
 SPRINT_6_FINAL_VERDICT = PASS
 OPEN_SPRINT_6_BLOCKERS = 0
-PROMOTION_TO_SPRINT_7_GATE = NO
+PROMOTION_TO_SPRINT_7_GATE = YES
+SPRINT_7_STATUS = ENTRY_GATE_IN_PROGRESS
+SPRINT_7_LIFECYCLE = ENTRY_GATE
+SPRINT_7_ENTRY_GATE_ISSUE = #86
+SPRINT_7_CANONICAL_BRANCH = sprint/7-risk-engine
+SPRINT_7_ENTRY_GATE_WORK_BRANCH = s7/00-entry-gate
+S7_ENTRY_GATE_CANDIDATE = PASS_PENDING_VALIDATION
+SPRINT_7_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 
 OFFICIAL_CODEX_SECURITY_DIFF_SCAN = NOT_EXECUTED
 SPRINT1_GITHUB_NATIVE_SECURITY_GATE = PASS
@@ -291,4 +298,14 @@ SPRINT_6_FUNCTIONAL_IMPLEMENTATION = COMPLETED
 
 ## Canonical next action
 
-The pre-authorization remediation is canonical PASS. Functional Sprint 6 implementation passed independent re-audit, was merged through PR #85 at `0e9438590338e2a322e96306a4dd8cb43d957535`, and passed post-merge Python CI `35898586034`, Entry Gate CI `35898586113`, and pinned upstream `35898585983`. Sprint 6 is formally closed PASS. Sprint 7 remains unauthorized; Strategy, Risk, Paper, Live, broker-order, FinancialLedger mutation and real-money authority remain prohibited.
+Sprint 6 is formally closed PASS. Sprint 7 has been explicitly authorized **only for Entry Gate materialization** under Issue #86 and work branch `s7/00-entry-gate`.
+
+The immediate work is to validate the S7 governance packet, exact predecessor, no-functional-diff boundary, pinned upstream and independent review. A PASS Entry Gate will not authorize functional Risk Engine implementation; that requires a distinct explicit human decision.
+
+```text
+SPRINT_7_ENTRY_GATE = IN_PROGRESS
+SPRINT_7_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+PAPER_TRADING = NO
+LIVE_TRADING = NO
+REAL_MONEY = NO
+```

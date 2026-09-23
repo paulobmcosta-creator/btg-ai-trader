@@ -1,0 +1,92 @@
+name: Sprint 7 Entry Gate CI
+
+on:
+  push:
+    branches:
+      - "s7/**"
+      - "sprint/7-risk-engine"
+  pull_request:
+    branches:
+      - "sprint/7-risk-engine"
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: s7-entry-gate-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  foundation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out exact reviewed commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+      - name: Verify frozen Foundation contracts
+        run: python scripts/check_foundation_contract.py
+
+  entry-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out exact reviewed commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify S7 entry-gate documents and authority boundary
+        shell: bash
+        env:
+          S6_BASE_SHA: 58e870925e9a1bf4ccbc0f796610d6297bcc57e2
+        run: |
+          set -euo pipefail
+          required=(
+            docs/program/S7_ENTRY_CONTRACT.md
+            docs/program/S7_DECISION_REGISTER.md
+            docs/program/S7_CAPABILITY_MATRIX.md
+            docs/program/S7_ENTRY_GATE.md
+            docs/program/workstreams/S7-ENTRY-GATE.md
+            docs/sprints/SPRINT_7.md
+          )
+          for path in "${required[@]}"; do
+            test -f "${path}"
+          done
+
+          git merge-base --is-ancestor "${S6_BASE_SHA}" HEAD
+          grep -F "S7_ENTRY_GATE_CANDIDATE = PASS" docs/program/S7_ENTRY_GATE.md
+          grep -F "SPRINT_7_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED" docs/sprints/SPRINT_7.md
+          grep -F "DD-107" docs/program/S7_DECISION_REGISTER.md
+          grep -F "DD-121" docs/program/S7_DECISION_REGISTER.md
+          grep -F "SAFE_HALT != AUTO_FLATTEN" docs/program/S7_ENTRY_CONTRACT.md
+          grep -F "RISK_OPERATIONAL_PATH = FORBIDDEN_UNTIL_FUNCTIONAL_AUTHORIZATION" docs/program/S7_ENTRY_CONTRACT.md
+          test ! -e src/btg_ai_trader/risk_engine
+          git diff --quiet "${S6_BASE_SHA}" HEAD -- src tests pyproject.toml
+
+      - name: Check diff whitespace
+        shell: bash
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+          INITIAL_BASE_SHA: 58e870925e9a1bf4ccbc0f796610d6297bcc57e2
+        run: |
+          set -euo pipefail
+          if [[ -n "${PR_BASE_SHA}" ]]; then
+            comparison_base="${PR_BASE_SHA}"
+          elif [[ -n "${PUSH_BEFORE_SHA}" && ! "${PUSH_BEFORE_SHA}" =~ ^0+$ ]]; then
+            comparison_base="${PUSH_BEFORE_SHA}"
+          else
+            comparison_base="${INITIAL_BASE_SHA}"
+          fi
+          git cat-file -e "${comparison_base}^{commit}"
+          git diff --check "${comparison_base}" HEAD
