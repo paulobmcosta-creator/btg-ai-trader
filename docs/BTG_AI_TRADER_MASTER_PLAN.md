@@ -409,14 +409,31 @@ S6_POST_MERGE_ENTRY_GATE_CI_RUN = 35898586113
 S6_POST_MERGE_UPSTREAM_RUN = 35898585983
 S6_FINAL_VERDICT = PASS
 OPEN_S6_BLOCKERS = 0
-PROMOTION_TO_SPRINT_7_GATE = NO
+PROMOTION_TO_SPRINT_7_GATE = YES
+SPRINT_7_STATUS = ENTRY_GATE_IN_PROGRESS
+SPRINT_7_LIFECYCLE = ENTRY_GATE
+SPRINT_7_ENTRY_GATE_ISSUE = #86
+SPRINT_7_CANONICAL_BRANCH = sprint/7-risk-engine
+SPRINT_7_ENTRY_GATE_WORK_BRANCH = s7/00-entry-gate
+S7_ENTRY_GATE_CANDIDATE = PASS_PENDING_VALIDATION
+SPRINT_7_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 ```
 
 Monte Carlo, bootstrap inferencial, Strategy, Risk, Paper, Live, broker orders, FinancialLedger mutation e dinheiro real não são autorizados pelo Gate de Entrada.
 
-### Sprint 7 — Risk Engine
+### Sprint 7 — Risk Engine — ENTRY_GATE_IN_PROGRESS
 
-Limites, sizing, circuit breakers, veto, drawdown, daily loss e fail-safe.
+Limites, sizing de teto de risco, circuit breakers, veto, drawdown, daily loss e fail-safe.
+
+```text
+S7_ENTRY_GATE_ISSUE = #86
+S7_CANONICAL_BRANCH = sprint/7-risk-engine
+S7_ENTRY_GATE_WORK_BRANCH = s7/00-entry-gate
+S7_ENTRY_GATE_CANDIDATE = PASS_PENDING_VALIDATION
+S7_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+```
+
+O Entry Gate separa explicitamente `RiskDecision`, `RiskAuthorization`, capacity reservation e exposure; preserva `SAFE_HALT != AUTO_FLATTEN`; e mantém ordens, Paper, Live, FinancialLedger mutation e dinheiro real fora do escopo.
 
 ### Sprint 8 — Paper Trader
 
@@ -594,7 +611,7 @@ Após a remediação pré-autorização, o Sprint 6 funcional foi autorizado, im
 
 ## 16. Próxima ação oficial
 
-O Sprint 6 — Scenario Engine está formalmente fechado/PASS após reauditoria independente, merge humano do PR #85 e validação pós-merge. A próxima fronteira é uma decisão humana separada sobre eventual Sprint 7 — Risk Engine; nenhuma autorização de Sprint 7 é inferida.
+O Sprint 6 — Scenario Engine está formalmente fechado/PASS após reauditoria independente, merge humano do PR #85 e validação pós-merge. Uma decisão humana posterior autorizou exclusivamente o Sprint 7 Entry Gate sob Issue #86; implementação funcional de Risk continua separadamente não autorizada.
 
 ```text
 PROMOTION_TO_SPRINT_6_GATE = YES

@@ -96,7 +96,14 @@ SPRINT_6_POST_MERGE_ENTRY_GATE_CI_RUN = 35898586113
 SPRINT_6_POST_MERGE_UPSTREAM_RUN = 35898585983
 SPRINT_6_FINAL_VERDICT = PASS
 OPEN_SPRINT_6_BLOCKERS = 0
-PROMOTION_TO_SPRINT_7_GATE = NO
+PROMOTION_TO_SPRINT_7_GATE = YES
+SPRINT_7_STATUS = ENTRY_GATE_IN_PROGRESS
+SPRINT_7_LIFECYCLE = ENTRY_GATE
+SPRINT_7_ENTRY_GATE_ISSUE = #86
+SPRINT_7_CANONICAL_BRANCH = sprint/7-risk-engine
+SPRINT_7_ENTRY_GATE_WORK_BRANCH = s7/00-entry-gate
+S7_ENTRY_GATE_CANDIDATE = PASS_PENDING_VALIDATION
+SPRINT_7_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 STOP_FOR_INDEPENDENT_AUDIT = NO_FORMALLY_CLOSED
 ```
 
@@ -104,7 +111,7 @@ O Sprint 2 tratou exclusivamente de **Data Platform & Causal Market Replay** den
 
 O Sprint 3 — **Deterministic Economic Backtesting** — foi formalmente concluído após auditoria independente, merge do PR #72 no commit canônico `6333b8f431d43be9c40f3222fbbe17cf06509033` e validação pós-merge dos runs `35256018204` e `35256018048`.
 
-O Sprint 4 — **Statistical Baselines** — permanece formalmente fechado. O Sprint 5 — **Supervised Machine Learning Research Engine** — também está formalmente fechado após reauditoria independente PASS, merge humano do PR #78 em `8b09a34ecc7c3b0b180e30ada0702d22d61d96d2` e validação pós-merge dos runs `35473144900` (Sprint 5 Python CI, 13/13) e `35473144855` (Pinned upstream, 2/2). O Sprint 6 Entry Gate foi aprovado e integrado pelo PR #80. O head final reconciliado do gate antes da remediação pré-autorização é `616849f8e77ecf3624b2b9362c1ef42c7fb9bcc1`, validado pelos runs `35474371811` e `35474371852`. A revisão pré-autorização classificou o contrato funcional como `CHANGES_REQUIRED`; os findings foram remediados e reaudita​dos PASS no PR #82, que foi mergeado por autorização humana e validado pós-merge. A remediação está canônica PASS, com 0 blockers substantivos. A implementação funcional research-only do Sprint 6 foi reaudita​da PASS, integrada pelo PR #85 no merge SHA `0e9438590338e2a322e96306a4dd8cb43d957535` e validada pós-merge pelos runs `35898586034`, `35898586113` e `35898585983`. O Sprint 6 está formalmente fechado; Sprint 7 permanece não autorizado. Negociação automática, envio de ordens, Paper operacional, Live operacional, Risk operacional, Strategy operacional, execução financeira e uso de dinheiro real permanecem estritamente proibidos.
+O Sprint 4 — **Statistical Baselines** — permanece formalmente fechado. O Sprint 5 — **Supervised Machine Learning Research Engine** — também está formalmente fechado após reauditoria independente PASS, merge humano do PR #78 em `8b09a34ecc7c3b0b180e30ada0702d22d61d96d2` e validação pós-merge dos runs `35473144900` (Sprint 5 Python CI, 13/13) e `35473144855` (Pinned upstream, 2/2). O Sprint 6 Entry Gate foi aprovado e integrado pelo PR #80. O head final reconciliado do gate antes da remediação pré-autorização é `616849f8e77ecf3624b2b9362c1ef42c7fb9bcc1`, validado pelos runs `35474371811` e `35474371852`. A revisão pré-autorização classificou o contrato funcional como `CHANGES_REQUIRED`; os findings foram remediados e reaudita​dos PASS no PR #82, que foi mergeado por autorização humana e validado pós-merge. A remediação está canônica PASS, com 0 blockers substantivos. A implementação funcional research-only do Sprint 6 foi reaudita​da PASS, integrada pelo PR #85 no merge SHA `0e9438590338e2a322e96306a4dd8cb43d957535` e validada pós-merge pelos runs `35898586034`, `35898586113` e `35898585983`. O Sprint 6 está formalmente fechado. Por autorização humana subsequente, o Sprint 7 foi aberto exclusivamente no modo Entry Gate sob Issue #86; implementação funcional do Risk Engine permanece não autorizada. Negociação automática, envio de ordens, Paper operacional, Live operacional, Risk operacional, Strategy operacional, execução financeira e uso de dinheiro real permanecem estritamente proibidos.
 
 ## Autoridade normativa e realidade implementada
 
@@ -183,7 +190,7 @@ Integração em branches canônicas de sprint/staging exige testes, typing, lint
 
 O Sprint 1 preservou `READ_ONLY_BY_CONSTRUCTION` e `STRUCTURAL_ESCALATION`; os Sprints 2 e 3 herdaram essas barreiras e todas as negative financial capabilities. Dinheiro real, credenciais de negociação, ordens de broker e ativação financeira permanecem proibidos.
 
-Os Sprints 3, 4 e 5 estão formalmente fechados. O Sprint 5 foi integrado pelo PR #78 no merge SHA `8b09a34ecc7c3b0b180e30ada0702d22d61d96d2` e validado pós-merge. O Sprint 6 Entry Gate está canônico e aprovado. A remediação pré-autorização #81 passou reauditoria, foi mergeada via PR #82 e validada pós-merge. A decisão humana explícita para implementação funcional research-only do Sprint 6 foi concedida em 2026-09-22. Essa autorização não inclui merge nem qualquer authority financeira.
+Os Sprints 3, 4, 5 e 6 estão formalmente fechados. O Sprint 7 foi autorizado apenas para Entry Gate sob Issue #86, com branches `sprint/7-risk-engine` e `s7/00-entry-gate`; implementação funcional de Risk, Paper, Live, broker-order e dinheiro real permanecem não autorizados.
 
 Arquitetura e dry-run de sprints futuros podem avançar isoladamente como pesquisa, mas promoção ou ativação exige gate próprio. Decisões in-sprint são registradas antes da primeira dependência material; mudanças arquiteturais materiais seguem ADR. A Issue #6 preserva a errata histórica do 0F-F e `TRACEABILITY.md` continua autoridade canônica das QPIs.
 
