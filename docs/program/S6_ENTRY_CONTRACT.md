@@ -25,7 +25,16 @@ S6_PREAUTH_REMEDIATION_CANONICAL = PASS
 S6_FUNCTIONAL_AUTHORIZATION_DATE = 2026-09-22
 S6_FUNCTIONAL_IMPLEMENTATION_ISSUE = #83
 S6_FUNCTIONAL_WORK_BRANCH = s6/02-full-scenario-engine
-SPRINT_6_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED
+SPRINT_6_FUNCTIONAL_IMPLEMENTATION = COMPLETED
+S6_FUNCTIONAL_PR = #85
+S6_FUNCTIONAL_PR_HEAD = 69b5797306027a91b5366d44c4d22f2ab1caa37f
+S6_FUNCTIONAL_INDEPENDENT_REAUDIT = PASS
+S6_FUNCTIONAL_MERGE_SHA = 0e9438590338e2a322e96306a4dd8cb43d957535
+S6_POST_MERGE_PYTHON_CI_RUN = 35898586034
+S6_POST_MERGE_ENTRY_GATE_CI_RUN = 35898586113
+S6_POST_MERGE_UPSTREAM_RUN = 35898585983
+S6_FINAL_VERDICT = PASS
+OPEN_FUNCTIONAL_BLOCKERS = 0
 PROMOTION_TO_S6_FUNCTIONAL_IMPLEMENTATION = YES
 
 FINANCIAL_AUTHORITY = ABSENT
@@ -536,7 +545,7 @@ OPEN_PREAUTH_BLOCKERS = 0
 S6_FUNCTIONAL_AUTHORIZATION_DATE = 2026-09-22
 S6_FUNCTIONAL_IMPLEMENTATION_ISSUE = #83
 S6_FUNCTIONAL_WORK_BRANCH = s6/02-full-scenario-engine
-SPRINT_6_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED
+SPRINT_6_FUNCTIONAL_IMPLEMENTATION = COMPLETED
 ```
 
-PR #82 was merged by explicit human authorization and the remediation is canonical PASS. A distinct explicit human authorization was subsequently granted on 2026-09-22 for functional Sprint 6 implementation under Issue #83 and branch `s6/02-full-scenario-engine`. This authorization does not grant merge, Strategy, Risk, Paper, Live, broker-order, FinancialLedger or real-money authority.
+PR #82 was merged by explicit human authorization and the remediation is canonical PASS. Functional Sprint 6 implementation was subsequently authorized, independently re-audited PASS, merged through PR #85 at `0e9438590338e2a322e96306a4dd8cb43d957535`, and validated post-merge. This completion does not grant Strategy, Risk, Paper, Live, broker-order, FinancialLedger or real-money authority.

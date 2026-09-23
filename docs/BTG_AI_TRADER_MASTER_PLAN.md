@@ -376,10 +376,10 @@ Research ML Engine formalmente fechado após reauditoria independente PASS, merg
 ```text
 PROMOTION_TO_SPRINT_6_GATE = YES
 SPRINT_6_ENTRY_GATE = AUTHORIZED
-SPRINT_6_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED
+SPRINT_6_FUNCTIONAL_IMPLEMENTATION = COMPLETED
 ```
 
-### Sprint 6 — Scenario Engine — FUNCTIONAL_IMPLEMENTATION_IN_PROGRESS
+### Sprint 6 — Scenario Engine — FORMALLY_CLOSED
 
 O Gate de Entrada do Sprint 6 foi materializado a partir do head canônico final do Sprint 5. O escopo futuro proposto é research-only: regimes causalmente mensuráveis, segmentação retrospectiva apenas exploratória, cenários/stress determinísticos predeclarados e análise de distribuições empíricas/downside/path sem autoridade de risco.
 
@@ -399,7 +399,17 @@ S6_PREAUTH_POST_MERGE_UPSTREAM_RUN = 35759318238
 S6_FUNCTIONAL_ISSUE = #83
 S6_FUNCTIONAL_WORK_BRANCH = s6/02-full-scenario-engine
 S6_FUNCTIONAL_AUTHORIZATION_DATE = 2026-09-22
-SPRINT_6_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED
+SPRINT_6_FUNCTIONAL_IMPLEMENTATION = COMPLETED
+S6_FUNCTIONAL_PR = #85
+S6_FUNCTIONAL_PR_HEAD = 69b5797306027a91b5366d44c4d22f2ab1caa37f
+S6_FUNCTIONAL_INDEPENDENT_REAUDIT = PASS
+S6_FUNCTIONAL_MERGE_SHA = 0e9438590338e2a322e96306a4dd8cb43d957535
+S6_POST_MERGE_PYTHON_CI_RUN = 35898586034
+S6_POST_MERGE_ENTRY_GATE_CI_RUN = 35898586113
+S6_POST_MERGE_UPSTREAM_RUN = 35898585983
+S6_FINAL_VERDICT = PASS
+OPEN_S6_BLOCKERS = 0
+PROMOTION_TO_SPRINT_7_GATE = NO
 ```
 
 Monte Carlo, bootstrap inferencial, Strategy, Risk, Paper, Live, broker orders, FinancialLedger mutation e dinheiro real não são autorizados pelo Gate de Entrada.
@@ -578,13 +588,13 @@ A remediação passou reauditoria independente no exact head `485b70af4333cf3aeb
 
 ### 2026-09-22 — autorização funcional do Sprint 6
 
-Após o fechamento canônico da remediação pré-autorização, foi concedida autorização humana explícita para implementação funcional research-only do Scenario Engine sob Issue #83 e branch `s6/02-full-scenario-engine`. A autorização não inclui merge, Strategy, Risk, Paper, Live, broker-order, FinancialLedger mutation ou dinheiro real.
+Após a remediação pré-autorização, o Sprint 6 funcional foi autorizado, implementado, reaudita​do PASS e integrado pelo PR #85 em `0e9438590338e2a322e96306a4dd8cb43d957535`. O fechamento do Sprint 6 não autoriza Strategy, Risk operacional, Paper, Live, broker-order, FinancialLedger mutation ou dinheiro real.
 
 ---
 
 ## 16. Próxima ação oficial
 
-A próxima ação oficial é concluir a **implementação funcional research-only do Sprint 6 — Scenario Engine** no branch `s6/02-full-scenario-engine`, executar CI/exact-head e auditoria independente e parar antes do merge.
+O Sprint 6 — Scenario Engine está formalmente fechado/PASS após reauditoria independente, merge humano do PR #85 e validação pós-merge. A próxima fronteira é uma decisão humana separada sobre eventual Sprint 7 — Risk Engine; nenhuma autorização de Sprint 7 é inferida.
 
 ```text
 PROMOTION_TO_SPRINT_6_GATE = YES
@@ -592,7 +602,7 @@ SPRINT_6_ENTRY_GATE = PASS
 SPRINT_6_ENTRY_GATE_CANONICAL = PASS
 S6_PREAUTH_REVIEW = CHANGES_REQUIRED_REMEDIATED
 S6_PREAUTH_REMEDIATION = PASS
-SPRINT_6_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED
+SPRINT_6_FUNCTIONAL_IMPLEMENTATION = COMPLETED
 ```
 
 A implementação funcional research-only do Scenario Engine está `AUTHORIZED` exclusivamente no work branch `s6/02-full-scenario-engine`; merge e qualquer autoridade financeira permanecem não autorizados. Não há autorização para negociação automática, envio de ordens, Strategy, Risk, Paper, Live ou uso de dinheiro real.

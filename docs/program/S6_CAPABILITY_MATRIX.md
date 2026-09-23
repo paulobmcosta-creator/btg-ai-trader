@@ -10,7 +10,7 @@
 | **S6-EG-AC-04** | Final canonical gate CI | run `35474371811` | PASS |
 | **S6-EG-AC-05** | Final canonical pinned upstream | run `35474371852` | PASS |
 | **S6-EG-AC-06** | DD-89 adjudicated | S6 Decision Register | PASS |
-| **S6-EG-AC-07** | Functional implementation remains unauthorized | S6 governance docs | PASS |
+| **S6-EG-AC-07** | Functional implementation was authorized and completed | S6 governance docs | PASS |
 | **S6-EG-AC-08** | Zero additional recurring cost | no paid service/dependency | PASS |
 
 ## 2. Pre-authorization remediation requirements
@@ -39,58 +39,58 @@ These requirements must be fully materialized and independently reviewed before 
 
 ## 3. Functional positive capabilities required after future explicit authorization
 
-These are requirements, not current implementation claims.
+These capabilities are satisfied by the canonical Sprint 6 implementation merged through PR #85.
 
 | ID | Required capability | Governing source | Entry status |
 |---|---|---|---|
-| **S6-AC-01** | Immutable `RegimeDefinition` contract | 0E-C; DD-89 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-02** | Point-in-time causal regime assignment | C-HQI-16; QPI-02 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-03** | Development-only learned-threshold fitting | S6-D-04 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-04** | Retrospective regime analysis exploratory-only | C-HQI-15; QPI-04 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-05** | Regime-definition digest/provenance | S6-D-15 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-06** | Explicit UNKNOWN regime state | QPI-11 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-07** | Explicit `RegimeUseMode`; `STRATEGY_BOUND` fails closed because current upstream artifacts do not prove actual regime consumption | S6-D-21 | IMPLEMENTED_CANDIDATE_FAIL_CLOSED |
-| **S6-AC-08** | Verified immutable `ScenarioInputBoundary` with mandatory evaluation role/role provenance | S6-D-17 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-09** | Protected-evidence integration with existing `EvaluationHistory` plus scenario research history | S6-D-18; QPI-04 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-10** | Same-boundary protected reuse rejection | S6-D-18 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-11** | Neutral `ModelEvidenceSnapshot` | S6-D-19 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-12** | Deterministic `ScenarioSpec` | 0E-E; S6-D-06 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-13** | Finite canonical `ScenarioGrid` | DD-108; QPI-04 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-14** | Scenario predeclaration evidence | E-HQI-38 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-15** | Internally consistent multi-variable stress | E-HQI-51 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-16** | Stress separated from probability forecast | E-HQI-39 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-17** | Sprint 3 delegated execution-economic stress: fee/slippage/latency plus adverse max-spread execution constraint; synthetic quote widening remains `NOT_TRIGGERED` because replay market events are immutable | S6-D-23; S6-D-24 | IMPLEMENTED_CANDIDATE_WITH_NOT_TRIGGERED_SUBCAPABILITY |
-| **S6-AC-18** | Action/replay identity preservation under stress | S6-D-24 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-19** | Baseline/stressed manifest lineage | S6-D-23 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-20** | Regime-conditioned evaluation summaries | PR-0E-C-05 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-21** | Immutable `ObservedSeries` | S6-D-25 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-22** | `ScenarioOutcomeSet` distinct from observed distribution | S6-D-20 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-23** | Governed empirical distribution summary | 0E-E; S6-D-11 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-24** | Predeclared `TailMetricPolicy` | S6-D-26 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-25** | Sample/tail sufficiency diagnostics | E-HQI-20 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-26** | Observed extreme-tail preservation | E-HQI-40 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-27** | Path metrics guarded by order/time/denominator semantics | S6-D-25 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-28** | Predeclared `ScenarioDispositionPolicy` using canonical 0E-F dispositions | S6-D-22 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-29** | Separate governed robustness characterization (`ROBUST_WITHIN_DECLARED_SCOPE`/`FRAGILE`/`MIXED`) | S6-D-22 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-30** | Non-compensatory `INVALID` disposition | QPI-10; S6-D-22 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-31** | `INCONCLUSIVE` on insufficient required evidence | QPI-11; E-HQI-53 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-32** | Complete scenario/regime/policy search history | QPI-04 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-33** | Experimental parity checks | QPI-01 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-34** | Deterministic repeated-run equivalence | S6-D-10 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-35** | Scenario/regime provenance manifest | S6-D-15 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-36** | Dedicated S6 boundary verifier | program governance | IMPLEMENTED_CANDIDATE |
-| **S6-AC-37** | Adversarial causal/post-hoc tests | 0E-C | IMPLEMENTED_CANDIDATE |
-| **S6-AC-38** | Adversarial protected-evidence tests | S6-D-18 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-39** | Adversarial stress/probability tests | 0E-E | IMPLEMENTED_CANDIDATE |
-| **S6-AC-40** | Adversarial observed-vs-synthetic distribution tests | S6-D-20 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-41** | Adversarial path/tail sufficiency tests | S6-D-25/26 | PENDING_FINAL_VALIDATION |
-| **S6-AC-42** | S6 package 100% statement coverage | S6-D-28 | PENDING_FINAL_VALIDATION |
-| **S6-AC-43** | S6 package 100% branch coverage | S6-D-28 | PENDING_FINAL_VALIDATION |
-| **S6-AC-44** | Ruff + strict mypy + compile + dependency audit | S6-D-28 | PENDING_FINAL_VALIDATION |
-| **S6-AC-45** | Full S1-S5 regression preservation | program governance | PENDING_FINAL_VALIDATION |
-| **S6-AC-46** | Exact-head CI / pinned upstream evidence | program governance | PENDING_FINAL_VALIDATION |
-| **S6-AC-47** | Security surface scanner | S6-D-29 | IMPLEMENTED_CANDIDATE |
-| **S6-AC-48** | Zero additional recurring cost | project constraint | IMPLEMENTED_CANDIDATE |
+| **S6-AC-01** | Immutable `RegimeDefinition` contract | 0E-C; DD-89 | PASS |
+| **S6-AC-02** | Point-in-time causal regime assignment | C-HQI-16; QPI-02 | PASS |
+| **S6-AC-03** | Development-only learned-threshold fitting | S6-D-04 | PASS |
+| **S6-AC-04** | Retrospective regime analysis exploratory-only | C-HQI-15; QPI-04 | PASS |
+| **S6-AC-05** | Regime-definition digest/provenance | S6-D-15 | PASS |
+| **S6-AC-06** | Explicit UNKNOWN regime state | QPI-11 | PASS |
+| **S6-AC-07** | Explicit `RegimeUseMode`; `STRATEGY_BOUND` fails closed because current upstream artifacts do not prove actual regime consumption | S6-D-21 | PASS_FAIL_CLOSED |
+| **S6-AC-08** | Verified immutable `ScenarioInputBoundary` with mandatory evaluation role/role provenance | S6-D-17 | PASS |
+| **S6-AC-09** | Protected-evidence integration with existing `EvaluationHistory` plus scenario research history | S6-D-18; QPI-04 | PASS |
+| **S6-AC-10** | Same-boundary protected reuse rejection | S6-D-18 | PASS |
+| **S6-AC-11** | Neutral `ModelEvidenceSnapshot` | S6-D-19 | PASS |
+| **S6-AC-12** | Deterministic `ScenarioSpec` | 0E-E; S6-D-06 | PASS |
+| **S6-AC-13** | Finite canonical `ScenarioGrid` | DD-108; QPI-04 | PASS |
+| **S6-AC-14** | Scenario predeclaration evidence | E-HQI-38 | PASS |
+| **S6-AC-15** | Internally consistent multi-variable stress | E-HQI-51 | PASS |
+| **S6-AC-16** | Stress separated from probability forecast | E-HQI-39 | PASS |
+| **S6-AC-17** | Sprint 3 delegated execution-economic stress: fee/slippage/latency plus adverse max-spread execution constraint; synthetic quote widening remains `NOT_TRIGGERED` because replay market events are immutable | S6-D-23; S6-D-24 | PASS_WITH_NOT_TRIGGERED_SUBCAPABILITY |
+| **S6-AC-18** | Action/replay identity preservation under stress | S6-D-24 | PASS |
+| **S6-AC-19** | Baseline/stressed manifest lineage | S6-D-23 | PASS |
+| **S6-AC-20** | Regime-conditioned evaluation summaries | PR-0E-C-05 | PASS |
+| **S6-AC-21** | Immutable `ObservedSeries` | S6-D-25 | PASS |
+| **S6-AC-22** | `ScenarioOutcomeSet` distinct from observed distribution | S6-D-20 | PASS |
+| **S6-AC-23** | Governed empirical distribution summary | 0E-E; S6-D-11 | PASS |
+| **S6-AC-24** | Predeclared `TailMetricPolicy` | S6-D-26 | PASS |
+| **S6-AC-25** | Sample/tail sufficiency diagnostics | E-HQI-20 | PASS |
+| **S6-AC-26** | Observed extreme-tail preservation | E-HQI-40 | PASS |
+| **S6-AC-27** | Path metrics guarded by order/time/denominator semantics | S6-D-25 | PASS |
+| **S6-AC-28** | Predeclared `ScenarioDispositionPolicy` using canonical 0E-F dispositions | S6-D-22 | PASS |
+| **S6-AC-29** | Separate governed robustness characterization (`ROBUST_WITHIN_DECLARED_SCOPE`/`FRAGILE`/`MIXED`) | S6-D-22 | PASS |
+| **S6-AC-30** | Non-compensatory `INVALID` disposition | QPI-10; S6-D-22 | PASS |
+| **S6-AC-31** | `INCONCLUSIVE` on insufficient required evidence | QPI-11; E-HQI-53 | PASS |
+| **S6-AC-32** | Complete scenario/regime/policy search history | QPI-04 | PASS |
+| **S6-AC-33** | Experimental parity checks | QPI-01 | PASS |
+| **S6-AC-34** | Deterministic repeated-run equivalence | S6-D-10 | PASS |
+| **S6-AC-35** | Scenario/regime provenance manifest | S6-D-15 | PASS |
+| **S6-AC-36** | Dedicated S6 boundary verifier | program governance | PASS |
+| **S6-AC-37** | Adversarial causal/post-hoc tests | 0E-C | PASS |
+| **S6-AC-38** | Adversarial protected-evidence tests | S6-D-18 | PASS |
+| **S6-AC-39** | Adversarial stress/probability tests | 0E-E | PASS |
+| **S6-AC-40** | Adversarial observed-vs-synthetic distribution tests | S6-D-20 | PASS |
+| **S6-AC-41** | Adversarial path/tail sufficiency tests | S6-D-25/26 | PASS |
+| **S6-AC-42** | S6 package 100% statement coverage | S6-D-28 | PASS |
+| **S6-AC-43** | S6 package 100% branch coverage | S6-D-28 | PASS |
+| **S6-AC-44** | Ruff + strict mypy + compile + dependency audit | S6-D-28 | PASS |
+| **S6-AC-45** | Full S1-S5 regression preservation | program governance | PASS |
+| **S6-AC-46** | Exact-head CI / pinned upstream evidence | program governance | PASS |
+| **S6-AC-47** | Security surface scanner | S6-D-29 | PASS |
+| **S6-AC-48** | Zero additional recurring cost | project constraint | PASS |
 
 ## 4. Negative capabilities that must remain absent
 
@@ -135,3 +135,19 @@ These are requirements, not current implementation claims.
 | **S6-NC-37** | Paid external scenario/risk service | ABSENT |
 | **S6-NC-38** | New mandatory runtime dependency | ABSENT |
 | **S6-NC-39** | Functional Scenario Engine implementation before human authorization | ABSENT |
+
+
+## 5. Canonical functional closure
+
+```text
+S6_FUNCTIONAL_PR = #85
+S6_FUNCTIONAL_PR_HEAD = 69b5797306027a91b5366d44c4d22f2ab1caa37f
+S6_FUNCTIONAL_INDEPENDENT_REAUDIT = PASS
+S6_FUNCTIONAL_MERGE_SHA = 0e9438590338e2a322e96306a4dd8cb43d957535
+S6_POST_MERGE_PYTHON_CI_RUN = 35898586034
+S6_POST_MERGE_ENTRY_GATE_CI_RUN = 35898586113
+S6_POST_MERGE_UPSTREAM_RUN = 35898585983
+S6_FINAL_VERDICT = PASS
+OPEN_FUNCTIONAL_BLOCKERS = 0
+PROMOTION_TO_SPRINT_7_GATE = NO
+```

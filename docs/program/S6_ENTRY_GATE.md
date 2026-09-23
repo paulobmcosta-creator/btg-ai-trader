@@ -17,7 +17,7 @@ ISSUE = #79
 
 S6_ENTRY_GATE_ADJUDICATION = PASS
 S6_ENTRY_GATE_CANONICAL = PASS
-SPRINT_6_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED
+SPRINT_6_FUNCTIONAL_IMPLEMENTATION = COMPLETED
 PROMOTION_TO_S6_FUNCTIONAL_IMPLEMENTATION = YES
 S6_ENTRY_GATE_MERGE_SHA = d74e632f47fafab9f441574acbacb3ae7f1a7a72
 S6_ENTRY_GATE_POST_MERGE_CI_RUN = 35474259990
@@ -80,13 +80,13 @@ S6_ENTRY_GATE_MERGE_COMPLETED = YES
 S6_ENTRY_GATE_POST_MERGE_VALIDATION = PASS
 OPEN_BLOCKERS = 0
 
-SPRINT_6_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED
+SPRINT_6_FUNCTIONAL_IMPLEMENTATION = COMPLETED
 PROMOTION_TO_S6_FUNCTIONAL_IMPLEMENTATION = YES
 ```
 
 The Sprint 6 Entry Gate is canonical and approved. Its historical merge SHA is `d74e632f...`; the final reconciled Entry Gate head before preauthorization remediation is `616849f8...`, with final CI/upstream runs `35474371811` and `35474371852` PASS.
 
-A subsequent pre-authorization review identified contract-hardening findings recorded in Issue #81. Those findings were remediated, independently re-audited PASS, merged through PR #82 by explicit human authorization, and validated post-merge. The Entry Gate remains PASS. Functional implementation was subsequently authorized by explicit human decision on 2026-09-22 under Issue #83 and work branch `s6/02-full-scenario-engine`; merge and financial authority remain separately unauthorized.
+A subsequent pre-authorization review identified contract-hardening findings that were remediated and independently re-audited PASS. Functional implementation was later authorized, re-audited PASS, merged through PR #85 at `0e9438590338e2a322e96306a4dd8cb43d957535`, and validated post-merge. Sprint 6 is formally closed PASS; financial authority and Sprint 7 remain separately unauthorized.
 
 ```text
 S6_ENTRY_GATE = PASS
@@ -102,5 +102,14 @@ OPEN_PREAUTH_BLOCKERS = 0
 S6_FUNCTIONAL_AUTHORIZATION_DATE = 2026-09-22
 S6_FUNCTIONAL_ISSUE = #83
 S6_FUNCTIONAL_WORK_BRANCH = s6/02-full-scenario-engine
-SPRINT_6_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED
+SPRINT_6_FUNCTIONAL_IMPLEMENTATION = COMPLETED
+S6_FUNCTIONAL_PR = #85
+S6_FUNCTIONAL_PR_HEAD = 69b5797306027a91b5366d44c4d22f2ab1caa37f
+S6_FUNCTIONAL_INDEPENDENT_REAUDIT = PASS
+S6_FUNCTIONAL_MERGE_SHA = 0e9438590338e2a322e96306a4dd8cb43d957535
+S6_POST_MERGE_PYTHON_CI_RUN = 35898586034
+S6_POST_MERGE_ENTRY_GATE_CI_RUN = 35898586113
+S6_POST_MERGE_UPSTREAM_RUN = 35898585983
+S6_FINAL_VERDICT = PASS
+OPEN_FUNCTIONAL_BLOCKERS = 0
 ```
