@@ -382,5 +382,12 @@ def test_neg_cap_10_runtime_graph_excludes_future_execution_modules(tmp_path: Pa
         "btg_ai_trader.research.replay",
     )
     loaded = set(sys.modules)
-    assert not any(name.startswith(forbidden_prefixes) for name in loaded)
+
+    def is_forbidden_module(name: str) -> bool:
+        return any(
+            name == prefix or name.startswith(prefix + ".")
+            for prefix in forbidden_prefixes
+        )
+
+    assert not any(is_forbidden_module(name) for name in loaded)
     assert FORBIDDEN_SURFACE.isdisjoint(dir(instance))

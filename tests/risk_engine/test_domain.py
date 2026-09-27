@@ -32,17 +32,10 @@ from btg_ai_trader.risk_engine import (
     SafetyPosture,
     TailEvidenceSourceKind,
     TailRiskEvidence,
+    core as rc,
     initial_circuit_state,
     latch_circuit,
     unlatch_circuit,
-)
-from btg_ai_trader.risk_engine.core import (
-    _digest,
-    _freeze_metrics,
-    _jsonable,
-    _require_aware,
-    _require_decimal,
-    _require_text,
 )
 from btg_ai_trader.statistical_baselines.metrics import DEFAULT_NUMERIC_POLICY
 
@@ -230,27 +223,27 @@ def test_canonical_json_helpers_and_text_numeric_guards() -> None:
         "sequence": (Decimal("3"), "x"),
         "plain": True,
     }
-    converted = _jsonable(payload)
+    converted = rc._jsonable(payload)
     assert isinstance(converted, dict)
     assert converted["decimal"] == "1.25"
     assert converted["instrument"] == INSTRUMENT.value
     assert converted["sequence"] == ["3", "x"]
-    assert _digest({"x": Decimal("1")}) == _digest({"x": Decimal("1")})
+    assert rc._digest({"x": Decimal("1")}) == rc._digest({"x": Decimal("1")})
 
     with pytest.raises(ValueError, match="nonempty text"):
-        _require_text(" x ", "x")
+        rc._require_text(" x ", "x")
     with pytest.raises(ValueError, match="timezone-aware"):
-        _require_aware(datetime(2026, 9, 26), "when")
+        rc._require_aware(datetime(2026, 9, 26), "when")
     with pytest.raises(ValueError, match="finite Decimal"):
-        _require_decimal(Decimal("NaN"), "x")
+        rc._require_decimal(Decimal("NaN"), "x")
     with pytest.raises(ValueError, match="non-negative"):
-        _require_decimal(Decimal("-1"), "x", nonnegative=True)
+        rc._require_decimal(Decimal("-1"), "x", nonnegative=True)
     with pytest.raises(ValueError, match="positive"):
-        _require_decimal(Decimal("0"), "x", positive=True)
+        rc._require_decimal(Decimal("0"), "x", positive=True)
     with pytest.raises(ValueError, match="metric_name"):
-        _freeze_metrics({"": Decimal("1")})
+        rc._freeze_metrics({"": Decimal("1")})
     with pytest.raises(ValueError, match="finite Decimal"):
-        _freeze_metrics({"x": Decimal("NaN")})
+        rc._freeze_metrics({"x": Decimal("NaN")})
 
 
 def test_proposal_exposure_daily_drawdown_and_tail_validation() -> None:

@@ -18,8 +18,8 @@ from btg_ai_trader.risk_engine import (
     EvidenceQuality,
     ExposureState,
     LimitOperator,
-    RiskDecision,
     RiskAuthorization,
+    RiskDecision,
     RiskDecisionRecord,
     RiskEvaluationBoundary,
     RiskLimitRule,
@@ -30,16 +30,12 @@ from btg_ai_trader.risk_engine import (
     SafetyPosture,
     TailEvidenceSourceKind,
     TailRiskEvidence,
+    core as rc,
     evaluate_risk,
     initial_circuit_state,
     latch_circuit,
     validate_authorization,
     verify_deterministic_equivalence,
-)
-from btg_ai_trader.risk_engine.core import (
-    _ENGINE_AUTHORIZATION_TOKEN,
-    _metric_value,
-    _projected_base,
 )
 from btg_ai_trader.statistical_baselines.metrics import DEFAULT_NUMERIC_POLICY
 
@@ -287,7 +283,7 @@ def boundary(
 
 
 def preserve_issuer(auth: RiskAuthorization) -> RiskAuthorization:
-    object.__setattr__(auth, "_issuer_token", _ENGINE_AUTHORIZATION_TOKEN)
+    object.__setattr__(auth, "_issuer_token", rc._ENGINE_AUTHORIZATION_TOKEN)
     return auth
 
 
@@ -375,7 +371,7 @@ def test_projected_limits_cap_authorization_without_becoming_strategy_sizing() -
     assert "HARD_LIMIT_BREACH:01-capacity" in no_capacity.decision.reasons
 
     with pytest.raises(ValueError, match="not a projected"):
-        _projected_base(boundary(), RiskMetric.DAILY_LOSS)
+        rc._projected_base(boundary(), RiskMetric.DAILY_LOSS)
 
 
 @pytest.mark.parametrize(
@@ -631,7 +627,29 @@ def test_unverified_boundary_is_rejected() -> None:
 
 def test_metric_dispatch_invalid_enum_fails_explicitly() -> None:
     with pytest.raises(AssertionError, match="unsupported risk metric"):
-        _metric_value(boundary(), "NOT_A_METRIC")  # type: ignore[arg-type]
+        rc._metric_value(boundary(), "NOT_A_METRIC")  # type: ignore[arg-type]
+
+
+def test_internal_metric_dispatch_covers_remaining_guard_paths() -> None:
+    p = policy()
+    stale_exposure_state = state(p, exposure_quality=EvidenceQuality.STALE)
+    stale_boundary = boundary(risk_policy=p, risk_state=stale_exposure_state)
+    value, unit, missing = rc._metric_value(stale_boundary, RiskMetric.DAILY_LOSS)
+    assert (value, unit, missing) == (Decimal("20"), "BRL", None)
+
+    mismatch_boundary = boundary(
+        risk_policy=p,
+        risk_proposal=proposal(exposure_unit="USD"),
+    )
+    value, unit, missing = rc._metric_value(
+        mismatch_boundary,
+        RiskMetric.PROJECTED_WORST_CASE_EXPOSURE,
+    )
+    assert (value, unit, missing) == (None, "BRL", "EXPOSURE_UNIT_MISMATCH")
+
+    reasons = ["ALREADY_PRESENT"]
+    rc._append_unique(reasons, "ALREADY_PRESENT")
+    assert reasons == ["ALREADY_PRESENT"]
 
 
 def test_authorization_validation_detects_all_invalidity_classes() -> None:
