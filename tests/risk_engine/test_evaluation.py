@@ -14,12 +14,17 @@ from btg_ai_trader.observer.identity import TradableInstrumentId
 from btg_ai_trader.risk_engine import (
     AuthorizationInvalidity,
     CommitmentReadiness,
+    DailyLossPolicySemantics,
     DailyLossState,
+    DrawdownDenominatorConvention,
+    DrawdownPolicySemantics,
+    DrawdownSeriesKind,
     DrawdownState,
     EconomicDirection,
     EvidenceQuality,
     ExposureState,
     LimitOperator,
+    PnlLossConvention,
     RiskAuthorization,
     RiskDecision,
     RiskDecisionRecord,
@@ -31,7 +36,10 @@ from btg_ai_trader.risk_engine import (
     RiskStateSnapshot,
     SafetyPosture,
     TailEvidenceSourceKind,
+    TailLossDirection,
+    TailQuantileConvention,
     TailRiskEvidence,
+    TailRiskPolicySemantics,
     core as rc,
     evaluate_risk,
     initial_circuit_state,
@@ -74,6 +82,40 @@ def rule(
     )
 
 
+def daily_semantics() -> DailyLossPolicySemantics:
+    return DailyLossPolicySemantics(
+        currency="BRL",
+        pnl_source_id="portfolio-pnl",
+        include_unrealized=False,
+        loss_sign_convention=PnlLossConvention.NEGATIVE_PNL_IS_LOSS,
+        session_calendar_id="B3",
+        timezone_name="America/Sao_Paulo",
+        reset_semantics="SESSION_BOUNDARY",
+    )
+
+
+def drawdown_semantics(
+    denominator_convention: DrawdownDenominatorConvention | None = (
+        DrawdownDenominatorConvention.EXPLICIT_POSITIVE_CAPITAL
+    ),
+) -> DrawdownPolicySemantics:
+    return DrawdownPolicySemantics(
+        source_id="portfolio-equity",
+        series_kind=DrawdownSeriesKind.EQUITY,
+        denominator_convention=denominator_convention,
+    )
+
+
+def tail_semantics() -> TailRiskPolicySemantics:
+    return TailRiskPolicySemantics(
+        tail_fraction=Decimal("0.05"),
+        loss_direction=TailLossDirection.LOWER_IS_LOSS,
+        quantile_convention=TailQuantileConvention.NEAREST_RANK,
+        missing_policy="REJECT",
+        source_policy_digest="tail-policy",
+    )
+
+
 def policy(
     *,
     extra_rules: tuple[RiskLimitRule, ...] = (),
@@ -104,6 +146,9 @@ def policy(
         rules=tuple(sorted(all_rules, key=lambda item: item.rule_id)),
         allowed_safety_postures=postures,
         authorization_ttl_seconds=ttl,
+        daily_loss_semantics=daily_semantics(),
+        drawdown_semantics=drawdown_semantics(),
+        tail_semantics=tail_semantics(),
         numeric_policy=DEFAULT_NUMERIC_POLICY,
     )
 
@@ -156,11 +201,15 @@ def make_daily(
     return DailyLossState(
         recognized_pnl=Decimal(pnl),
         currency="BRL",
+        pnl_source_id="portfolio-pnl",
         include_unrealized=False,
+        loss_sign_convention=PnlLossConvention.NEGATIVE_PNL_IS_LOSS,
         session_id="session",
         session_start=dt(0),
         session_end=dt(100),
+        session_calendar_id="B3",
         timezone_name="America/Sao_Paulo",
+        reset_semantics="SESSION_BOUNDARY",
         source_digest="daily-source",
         quality=quality,
     )
@@ -171,11 +220,21 @@ def make_drawdown(
     quality: EvidenceQuality = EvidenceQuality.VALID,
     denominator: Decimal | None = Decimal("1000"),
 ) -> DrawdownState:
+    convention = (
+        DrawdownDenominatorConvention.EXPLICIT_POSITIVE_CAPITAL
+        if denominator is not None
+        else None
+    )
     return DrawdownState(
         peak_value=Decimal("1000"),
         current_value=Decimal("900"),
         unit="BRL",
         capital_denominator=denominator,
+        denominator_convention=convention,
+        source_id="portfolio-equity",
+        series_kind=DrawdownSeriesKind.EQUITY,
+        peak_id="peak-1",
+        current_id="current-1",
         source_digest="drawdown-source",
         quality=quality,
     )
@@ -193,6 +252,10 @@ def make_tail(
         expected_shortfall=Decimal("60"),
         unit="BRL",
         tail_fraction=Decimal("0.05"),
+        loss_direction=TailLossDirection.LOWER_IS_LOSS,
+        quantile_convention=TailQuantileConvention.NEAREST_RANK,
+        missing_policy="REJECT",
+        source_policy_digest="tail-policy",
         total_count=100,
         tail_count=5,
         sufficient=sufficient,
@@ -513,6 +576,91 @@ def test_required_metric_evidence_fails_closed(
     assert f"{expected}:02-required" in result.decision.reasons
 
 
+def test_policy_semantics_are_bound_to_runtime_evidence() -> None:
+    bare = dataclasses.replace(
+        policy(),
+        daily_loss_semantics=None,
+        drawdown_semantics=None,
+        tail_semantics=None,
+    )
+    bare_boundary = boundary(risk_policy=bare, risk_state=state(bare))
+    assert rc._metric_value(
+        bare_boundary,
+        RiskMetric.DAILY_LOSS,
+    )[2] == "DAILY_LOSS_POLICY_MISSING"
+    assert rc._metric_value(
+        bare_boundary,
+        RiskMetric.DRAWDOWN_AMOUNT,
+    )[2] == "DRAWDOWN_POLICY_MISSING"
+    assert rc._metric_value(
+        bare_boundary,
+        RiskMetric.VALUE_AT_RISK,
+    )[2] == "TAIL_POLICY_MISSING"
+
+    daily_rule = rule("02-daily", RiskMetric.DAILY_LOSS, "100", "BRL")
+    daily_policy = policy(extra_rules=(daily_rule,))
+    daily_state = dataclasses.replace(
+        state(daily_policy),
+        daily_loss=dataclasses.replace(
+            make_daily(),
+            pnl_source_id="other-source",
+        ),
+    )
+    daily_result = evaluate_risk(
+        boundary(risk_policy=daily_policy, risk_state=daily_state)
+    )
+    assert daily_result.decision.decision is RiskDecision.REJECT
+    assert "DAILY_LOSS_POLICY_MISMATCH:02-daily" in daily_result.decision.reasons
+
+    draw_rule = rule("02-draw", RiskMetric.DRAWDOWN_AMOUNT, "200", "BRL")
+    draw_policy = policy(extra_rules=(draw_rule,))
+    draw_state = dataclasses.replace(
+        state(draw_policy),
+        drawdown=dataclasses.replace(
+            make_drawdown(),
+            source_id="other-equity-source",
+        ),
+    )
+    draw_result = evaluate_risk(
+        boundary(risk_policy=draw_policy, risk_state=draw_state)
+    )
+    assert draw_result.decision.decision is RiskDecision.REJECT
+    assert "DRAWDOWN_POLICY_MISMATCH:02-draw" in draw_result.decision.reasons
+
+    ratio_policy = policy(
+        extra_rules=(
+            rule("02-ratio", RiskMetric.DRAWDOWN_RATIO, "0.2", "ratio"),
+        )
+    )
+    ratio_state = dataclasses.replace(
+        state(ratio_policy),
+        drawdown=dataclasses.replace(
+            make_drawdown(),
+            denominator_convention=None,
+            capital_denominator=None,
+        ),
+    )
+    ratio_result = evaluate_risk(
+        boundary(risk_policy=ratio_policy, risk_state=ratio_state)
+    )
+    assert "DRAWDOWN_DENOMINATOR_MISSING:02-ratio" in ratio_result.decision.reasons
+
+    tail_rule = rule("02-var", RiskMetric.VALUE_AT_RISK, "100", "BRL")
+    tail_policy = policy(extra_rules=(tail_rule,))
+    tail_state = dataclasses.replace(
+        state(tail_policy),
+        tail_risk=dataclasses.replace(
+            make_tail(),
+            source_policy_digest="other-tail-policy",
+        ),
+    )
+    tail_result = evaluate_risk(
+        boundary(risk_policy=tail_policy, risk_state=tail_state)
+    )
+    assert tail_result.decision.decision is RiskDecision.REJECT
+    assert "TAIL_POLICY_MISMATCH:02-var" in tail_result.decision.reasons
+
+
 def test_advisory_missing_and_breach_do_not_override_permit() -> None:
     advisory_missing = rule(
         "02-daily",
@@ -652,6 +800,13 @@ def test_internal_metric_dispatch_covers_remaining_guard_paths() -> None:
     reasons = ["ALREADY_PRESENT"]
     rc._append_unique(reasons, "ALREADY_PRESENT")
     assert reasons == ["ALREADY_PRESENT"]
+
+
+def test_authorization_validity_is_truncated_by_policy_expiry() -> None:
+    p = policy(effective_until=dt(15), ttl=30)
+    result = evaluate_risk(boundary(risk_policy=p))
+    assert result.authorization is not None
+    assert result.authorization.valid_until == dt(15)
 
 
 def test_authorization_validation_detects_all_invalidity_classes() -> None:

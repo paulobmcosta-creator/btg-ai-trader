@@ -15,12 +15,17 @@ from btg_ai_trader.risk_engine import (
     CircuitBreakerState,
     CircuitStatus,
     CommitmentReadiness,
+    DailyLossPolicySemantics,
     DailyLossState,
+    DrawdownDenominatorConvention,
+    DrawdownPolicySemantics,
+    DrawdownSeriesKind,
     DrawdownState,
     EconomicDirection,
     EvidenceQuality,
     ExposureState,
     LimitOperator,
+    PnlLossConvention,
     RiskAuthorization,
     RiskDecision,
     RiskDecisionRecord,
@@ -33,7 +38,10 @@ from btg_ai_trader.risk_engine import (
     RiskStateSnapshot,
     SafetyPosture,
     TailEvidenceSourceKind,
+    TailLossDirection,
+    TailQuantileConvention,
     TailRiskEvidence,
+    TailRiskPolicySemantics,
     core as rc,
     initial_circuit_state,
     latch_circuit,
@@ -77,6 +85,40 @@ def rules() -> tuple[RiskLimitRule, ...]:
     )
 
 
+def daily_semantics() -> DailyLossPolicySemantics:
+    return DailyLossPolicySemantics(
+        currency="BRL",
+        pnl_source_id="portfolio-pnl",
+        include_unrealized=False,
+        loss_sign_convention=PnlLossConvention.NEGATIVE_PNL_IS_LOSS,
+        session_calendar_id="B3",
+        timezone_name="America/Sao_Paulo",
+        reset_semantics="SESSION_BOUNDARY",
+    )
+
+
+def drawdown_semantics(
+    denominator_convention: DrawdownDenominatorConvention | None = (
+        DrawdownDenominatorConvention.EXPLICIT_POSITIVE_CAPITAL
+    ),
+) -> DrawdownPolicySemantics:
+    return DrawdownPolicySemantics(
+        source_id="portfolio-equity",
+        series_kind=DrawdownSeriesKind.EQUITY,
+        denominator_convention=denominator_convention,
+    )
+
+
+def tail_semantics() -> TailRiskPolicySemantics:
+    return TailRiskPolicySemantics(
+        tail_fraction=Decimal("0.05"),
+        loss_direction=TailLossDirection.LOWER_IS_LOSS,
+        quantile_convention=TailQuantileConvention.NEAREST_RANK,
+        missing_policy="REJECT",
+        source_policy_digest="tail-policy",
+    )
+
+
 def policy(
     *,
     rule_set: tuple[RiskLimitRule, ...] | None = None,
@@ -98,6 +140,9 @@ def policy(
         rules=rule_set or rules(),
         allowed_safety_postures=postures,
         authorization_ttl_seconds=ttl,
+        daily_loss_semantics=daily_semantics(),
+        drawdown_semantics=drawdown_semantics(),
+        tail_semantics=tail_semantics(),
         numeric_policy=DEFAULT_NUMERIC_POLICY,
         predeclared=predeclared,
     )
@@ -139,21 +184,35 @@ def daily_loss() -> DailyLossState:
     return DailyLossState(
         recognized_pnl=Decimal("-20"),
         currency="BRL",
+        pnl_source_id="portfolio-pnl",
         include_unrealized=False,
+        loss_sign_convention=PnlLossConvention.NEGATIVE_PNL_IS_LOSS,
         session_id="2026-09-26-B3",
         session_start=dt(0),
         session_end=dt(100),
+        session_calendar_id="B3",
         timezone_name="America/Sao_Paulo",
+        reset_semantics="SESSION_BOUNDARY",
         source_digest="pnl-source",
     )
 
 
 def drawdown(*, denominator: Decimal | None = Decimal("1000")) -> DrawdownState:
+    convention = (
+        DrawdownDenominatorConvention.EXPLICIT_POSITIVE_CAPITAL
+        if denominator is not None
+        else None
+    )
     return DrawdownState(
         peak_value=Decimal("1000"),
         current_value=Decimal("900"),
         unit="BRL",
         capital_denominator=denominator,
+        denominator_convention=convention,
+        source_id="portfolio-equity",
+        series_kind=DrawdownSeriesKind.EQUITY,
+        peak_id="peak-1",
+        current_id="current-1",
         source_digest="drawdown-source",
     )
 
@@ -165,6 +224,10 @@ def tail() -> TailRiskEvidence:
         expected_shortfall=Decimal("60"),
         unit="BRL",
         tail_fraction=Decimal("0.05"),
+        loss_direction=TailLossDirection.LOWER_IS_LOSS,
+        quantile_convention=TailQuantileConvention.NEAREST_RANK,
+        missing_policy="REJECT",
+        source_policy_digest="tail-policy",
         total_count=100,
         tail_count=5,
         sufficient=True,
@@ -271,6 +334,7 @@ def test_proposal_exposure_daily_drawdown_and_tail_validation() -> None:
     assert dataclasses.replace(loss, recognized_pnl=Decimal("10")).loss_amount == Decimal("0")
     with pytest.raises(ValueError, match="positive duration"):
         dataclasses.replace(loss, session_end=loss.session_start)
+    assert len(daily_semantics().semantics_digest) == 64
 
     dd = drawdown()
     assert dd.amount == Decimal("100")
@@ -280,6 +344,16 @@ def test_proposal_exposure_daily_drawdown_and_tail_validation() -> None:
         dataclasses.replace(dd, current_value=Decimal("1001"))
     with pytest.raises(ValueError, match="positive"):
         dataclasses.replace(dd, capital_denominator=Decimal("0"))
+    with pytest.raises(ValueError, match="requires explicit denominator_convention"):
+        dataclasses.replace(dd, denominator_convention=None)
+    with pytest.raises(ValueError, match="requires an explicit capital_denominator"):
+        dataclasses.replace(
+            drawdown(denominator=None),
+            denominator_convention=(
+                DrawdownDenominatorConvention.EXPLICIT_POSITIVE_CAPITAL
+            ),
+        )
+    assert len(drawdown_semantics().semantics_digest) == 64
 
     evidence = tail()
     assert len(evidence.tail_evidence_digest) == 64
@@ -291,6 +365,10 @@ def test_proposal_exposure_daily_drawdown_and_tail_validation() -> None:
         dataclasses.replace(evidence, tail_count=101)
     with pytest.raises(ValueError, match="requires VaR and ES"):
         dataclasses.replace(evidence, value_at_risk=None)
+    semantics = tail_semantics()
+    assert len(semantics.semantics_digest) == 64
+    with pytest.raises(ValueError, match="must not exceed 0.5"):
+        dataclasses.replace(semantics, tail_fraction=Decimal("0.6"))
 
 
 def test_circuit_breaker_is_latched_and_requires_human_unlatch() -> None:
@@ -467,6 +545,63 @@ def test_policy_rule_validation_and_canonicalization() -> None:
         )
     with pytest.raises(ValueError, match="positive"):
         dataclasses.replace(valid, authorization_ttl_seconds=0)
+
+    bare = dataclasses.replace(
+        valid,
+        daily_loss_semantics=None,
+        drawdown_semantics=None,
+        tail_semantics=None,
+    )
+    assert len(bare.policy_digest) == 64
+
+    default_policy = policy()
+    with pytest.raises(ValueError, match="DAILY_LOSS rule requires"):
+        dataclasses.replace(default_policy, daily_loss_semantics=None)
+
+    draw_rule = RiskLimitRule(
+        "02-draw",
+        RiskMetric.DRAWDOWN_AMOUNT,
+        LimitOperator.LTE,
+        Decimal("100"),
+        "BRL",
+        True,
+    )
+    with pytest.raises(ValueError, match="drawdown rule requires"):
+        dataclasses.replace(
+            valid,
+            rules=(projected, draw_rule),
+            drawdown_semantics=None,
+        )
+
+    ratio_rule = RiskLimitRule(
+        "02-ratio",
+        RiskMetric.DRAWDOWN_RATIO,
+        LimitOperator.LTE,
+        Decimal("0.2"),
+        "ratio",
+        True,
+    )
+    with pytest.raises(ValueError, match="explicit denominator convention"):
+        dataclasses.replace(
+            valid,
+            rules=(projected, ratio_rule),
+            drawdown_semantics=drawdown_semantics(None),
+        )
+
+    tail_rule = RiskLimitRule(
+        "02-var",
+        RiskMetric.VALUE_AT_RISK,
+        LimitOperator.LTE,
+        Decimal("100"),
+        "BRL",
+        True,
+    )
+    with pytest.raises(ValueError, match="VaR/ES rule requires"):
+        dataclasses.replace(
+            valid,
+            rules=(projected, tail_rule),
+            tail_semantics=None,
+        )
 
 
 def test_boundary_factory_fails_closed_and_marks_verified() -> None:

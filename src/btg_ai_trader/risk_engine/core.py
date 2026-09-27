@@ -138,6 +138,29 @@ class TailEvidenceSourceKind(str, Enum):
     SYNTHETIC_SCENARIO = "SYNTHETIC_SCENARIO"
 
 
+class PnlLossConvention(str, Enum):
+    NEGATIVE_PNL_IS_LOSS = "NEGATIVE_PNL_IS_LOSS"
+
+
+class DrawdownSeriesKind(str, Enum):
+    EQUITY = "EQUITY"
+    NAV = "NAV"
+    CAPITAL = "CAPITAL"
+
+
+class DrawdownDenominatorConvention(str, Enum):
+    EXPLICIT_POSITIVE_CAPITAL = "EXPLICIT_POSITIVE_CAPITAL"
+
+
+class TailLossDirection(str, Enum):
+    LOWER_IS_LOSS = "LOWER_IS_LOSS"
+    HIGHER_IS_LOSS = "HIGHER_IS_LOSS"
+
+
+class TailQuantileConvention(str, Enum):
+    NEAREST_RANK = "NEAREST_RANK"
+
+
 class CircuitStatus(str, Enum):
     NORMAL = "NORMAL"
     LATCHED = "LATCHED"
@@ -249,11 +272,15 @@ class ExposureState:
 class DailyLossState:
     recognized_pnl: Decimal
     currency: str
+    pnl_source_id: str
     include_unrealized: bool
+    loss_sign_convention: PnlLossConvention
     session_id: str
     session_start: datetime
     session_end: datetime
+    session_calendar_id: str
     timezone_name: str
+    reset_semantics: str
     source_digest: str
     quality: EvidenceQuality = EvidenceQuality.VALID
     daily_loss_digest: str = field(init=False)
@@ -261,12 +288,15 @@ class DailyLossState:
     def __post_init__(self) -> None:
         _require_decimal(self.recognized_pnl, "recognized_pnl")
         _require_text(self.currency, "currency")
+        _require_text(self.pnl_source_id, "pnl_source_id")
         _require_text(self.session_id, "session_id")
         _require_aware(self.session_start, "session_start")
         _require_aware(self.session_end, "session_end")
         if self.session_end <= self.session_start:
             raise ValueError("daily-loss session must have positive duration")
+        _require_text(self.session_calendar_id, "session_calendar_id")
         _require_text(self.timezone_name, "timezone_name")
+        _require_text(self.reset_semantics, "reset_semantics")
         _require_text(self.source_digest, "source_digest")
         object.__setattr__(
             self,
@@ -275,11 +305,15 @@ class DailyLossState:
                 {
                     "recognized_pnl": self.recognized_pnl,
                     "currency": self.currency,
+                    "pnl_source_id": self.pnl_source_id,
                     "include_unrealized": self.include_unrealized,
+                    "loss_sign_convention": self.loss_sign_convention,
                     "session_id": self.session_id,
                     "session_start": self.session_start,
                     "session_end": self.session_end,
+                    "session_calendar_id": self.session_calendar_id,
                     "timezone_name": self.timezone_name,
+                    "reset_semantics": self.reset_semantics,
                     "source_digest": self.source_digest,
                     "quality": self.quality,
                 }
@@ -292,11 +326,53 @@ class DailyLossState:
 
 
 @dataclass(frozen=True, slots=True)
+class DailyLossPolicySemantics:
+    currency: str
+    pnl_source_id: str
+    include_unrealized: bool
+    loss_sign_convention: PnlLossConvention
+    session_calendar_id: str
+    timezone_name: str
+    reset_semantics: str
+    semantics_digest: str = field(init=False)
+
+    def __post_init__(self) -> None:
+        for value, name in (
+            (self.currency, "currency"),
+            (self.pnl_source_id, "pnl_source_id"),
+            (self.session_calendar_id, "session_calendar_id"),
+            (self.timezone_name, "timezone_name"),
+            (self.reset_semantics, "reset_semantics"),
+        ):
+            _require_text(value, name)
+        object.__setattr__(
+            self,
+            "semantics_digest",
+            _digest(
+                {
+                    "currency": self.currency,
+                    "pnl_source_id": self.pnl_source_id,
+                    "include_unrealized": self.include_unrealized,
+                    "loss_sign_convention": self.loss_sign_convention,
+                    "session_calendar_id": self.session_calendar_id,
+                    "timezone_name": self.timezone_name,
+                    "reset_semantics": self.reset_semantics,
+                }
+            ),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class DrawdownState:
     peak_value: Decimal
     current_value: Decimal
     unit: str
     capital_denominator: Decimal | None
+    denominator_convention: DrawdownDenominatorConvention | None
+    source_id: str
+    series_kind: DrawdownSeriesKind
+    peak_id: str
+    current_id: str
     source_digest: str
     quality: EvidenceQuality = EvidenceQuality.VALID
     drawdown_digest: str = field(init=False)
@@ -312,7 +388,18 @@ class DrawdownState:
                 "capital_denominator",
                 positive=True,
             )
+            if self.denominator_convention is None:
+                raise ValueError(
+                    "capital_denominator requires explicit denominator_convention"
+                )
+        elif self.denominator_convention is not None:
+            raise ValueError(
+                "denominator_convention requires an explicit capital_denominator"
+            )
         _require_text(self.unit, "unit")
+        _require_text(self.source_id, "source_id")
+        _require_text(self.peak_id, "peak_id")
+        _require_text(self.current_id, "current_id")
         _require_text(self.source_digest, "source_digest")
         object.__setattr__(
             self,
@@ -323,6 +410,11 @@ class DrawdownState:
                     "current_value": self.current_value,
                     "unit": self.unit,
                     "capital_denominator": self.capital_denominator,
+                    "denominator_convention": self.denominator_convention,
+                    "source_id": self.source_id,
+                    "series_kind": self.series_kind,
+                    "peak_id": self.peak_id,
+                    "current_id": self.current_id,
                     "source_digest": self.source_digest,
                     "quality": self.quality,
                 }
@@ -341,12 +433,38 @@ class DrawdownState:
 
 
 @dataclass(frozen=True, slots=True)
+class DrawdownPolicySemantics:
+    source_id: str
+    series_kind: DrawdownSeriesKind
+    denominator_convention: DrawdownDenominatorConvention | None
+    semantics_digest: str = field(init=False)
+
+    def __post_init__(self) -> None:
+        _require_text(self.source_id, "source_id")
+        object.__setattr__(
+            self,
+            "semantics_digest",
+            _digest(
+                {
+                    "source_id": self.source_id,
+                    "series_kind": self.series_kind,
+                    "denominator_convention": self.denominator_convention,
+                }
+            ),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class TailRiskEvidence:
     source_kind: TailEvidenceSourceKind
     value_at_risk: Decimal | None
     expected_shortfall: Decimal | None
     unit: str
     tail_fraction: Decimal
+    loss_direction: TailLossDirection
+    quantile_convention: TailQuantileConvention
+    missing_policy: str
+    source_policy_digest: str
     total_count: int
     tail_count: int
     sufficient: bool
@@ -365,12 +483,15 @@ class TailRiskEvidence:
         _require_decimal(self.tail_fraction, "tail_fraction", positive=True)
         if self.tail_fraction > Decimal("0.5"):
             raise ValueError("tail_fraction must not exceed 0.5")
-        if self.total_count <= 0 or self.tail_count <= 0:
+        _require_text(self.missing_policy, "missing_policy")
+        _require_text(self.source_policy_digest, "source_policy_digest")
+        if min(self.total_count, self.tail_count) <= 0:
             raise ValueError("tail counts must be positive")
         if self.tail_count > self.total_count:
             raise ValueError("tail_count cannot exceed total_count")
-        if self.sufficient and (
-            self.value_at_risk is None or self.expected_shortfall is None
+        if self.sufficient and None in (
+            self.value_at_risk,
+            self.expected_shortfall,
         ):
             raise ValueError("sufficient tail evidence requires VaR and ES")
         _require_text(self.source_digest, "source_digest")
@@ -384,11 +505,45 @@ class TailRiskEvidence:
                     "expected_shortfall": self.expected_shortfall,
                     "unit": self.unit,
                     "tail_fraction": self.tail_fraction,
+                    "loss_direction": self.loss_direction,
+                    "quantile_convention": self.quantile_convention,
+                    "missing_policy": self.missing_policy,
+                    "source_policy_digest": self.source_policy_digest,
                     "total_count": self.total_count,
                     "tail_count": self.tail_count,
                     "sufficient": self.sufficient,
                     "source_digest": self.source_digest,
                     "quality": self.quality,
+                }
+            ),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class TailRiskPolicySemantics:
+    tail_fraction: Decimal
+    loss_direction: TailLossDirection
+    quantile_convention: TailQuantileConvention
+    missing_policy: str
+    source_policy_digest: str
+    semantics_digest: str = field(init=False)
+
+    def __post_init__(self) -> None:
+        _require_decimal(self.tail_fraction, "tail_fraction", positive=True)
+        if self.tail_fraction > Decimal("0.5"):
+            raise ValueError("tail_fraction must not exceed 0.5")
+        _require_text(self.missing_policy, "missing_policy")
+        _require_text(self.source_policy_digest, "source_policy_digest")
+        object.__setattr__(
+            self,
+            "semantics_digest",
+            _digest(
+                {
+                    "tail_fraction": self.tail_fraction,
+                    "loss_direction": self.loss_direction,
+                    "quantile_convention": self.quantile_convention,
+                    "missing_policy": self.missing_policy,
+                    "source_policy_digest": self.source_policy_digest,
                 }
             ),
         )
@@ -589,6 +744,9 @@ class RiskPolicyBundle:
     rules: tuple[RiskLimitRule, ...]
     allowed_safety_postures: tuple[SafetyPosture, ...]
     authorization_ttl_seconds: int
+    daily_loss_semantics: DailyLossPolicySemantics | None = None
+    drawdown_semantics: DrawdownPolicySemantics | None = None
+    tail_semantics: TailRiskPolicySemantics | None = None
     numeric_policy: NumericPolicy = DEFAULT_NUMERIC_POLICY
     predeclared: bool = True
     policy_digest: str = field(init=False)
@@ -638,6 +796,38 @@ class RiskPolicyBundle:
             raise ValueError("allowed_safety_postures must be unique")
         if self.authorization_ttl_seconds <= 0:
             raise ValueError("authorization_ttl_seconds must be positive")
+        metrics = {rule.metric for rule in self.rules}
+        if (
+            RiskMetric.DAILY_LOSS in metrics
+            and self.daily_loss_semantics is None
+        ):
+            raise ValueError(
+                "DAILY_LOSS rule requires DailyLossPolicySemantics"
+            )
+        drawdown_metrics = {
+            RiskMetric.DRAWDOWN_AMOUNT,
+            RiskMetric.DRAWDOWN_RATIO,
+        }
+        if metrics.intersection(drawdown_metrics):
+            if self.drawdown_semantics is None:
+                raise ValueError(
+                    "drawdown rule requires DrawdownPolicySemantics"
+                )
+            if (
+                RiskMetric.DRAWDOWN_RATIO in metrics
+                and self.drawdown_semantics.denominator_convention is None
+            ):
+                raise ValueError(
+                    "DRAWDOWN_RATIO requires an explicit denominator convention"
+                )
+        tail_metrics = {
+            RiskMetric.VALUE_AT_RISK,
+            RiskMetric.EXPECTED_SHORTFALL,
+        }
+        if metrics.intersection(tail_metrics) and self.tail_semantics is None:
+            raise ValueError(
+                "VaR/ES rule requires TailRiskPolicySemantics"
+            )
         object.__setattr__(
             self,
             "policy_digest",
@@ -662,6 +852,21 @@ class RiskPolicyBundle:
                     ),
                     "allowed_safety_postures": self.allowed_safety_postures,
                     "authorization_ttl_seconds": self.authorization_ttl_seconds,
+                    "daily_loss_semantics_digest": (
+                        self.daily_loss_semantics.semantics_digest
+                        if self.daily_loss_semantics is not None
+                        else None
+                    ),
+                    "drawdown_semantics_digest": (
+                        self.drawdown_semantics.semantics_digest
+                        if self.drawdown_semantics is not None
+                        else None
+                    ),
+                    "tail_semantics_digest": (
+                        self.tail_semantics.semantics_digest
+                        if self.tail_semantics is not None
+                        else None
+                    ),
                     "numeric_policy": self.numeric_policy.to_canonical_dict(),
                     "predeclared": self.predeclared,
                 }
@@ -920,6 +1125,29 @@ def _metric_value(
             return None, None, "DAILY_LOSS_MISSING"
         if state.daily_loss.quality is not EvidenceQuality.VALID:
             return None, state.daily_loss.currency, "DAILY_LOSS_QUALITY"
+        semantics = boundary.policy.daily_loss_semantics
+        if semantics is None:
+            return None, state.daily_loss.currency, "DAILY_LOSS_POLICY_MISSING"
+        actual_daily_semantics = (
+            state.daily_loss.currency,
+            state.daily_loss.pnl_source_id,
+            state.daily_loss.include_unrealized,
+            state.daily_loss.loss_sign_convention,
+            state.daily_loss.session_calendar_id,
+            state.daily_loss.timezone_name,
+            state.daily_loss.reset_semantics,
+        )
+        expected_daily_semantics = (
+            semantics.currency,
+            semantics.pnl_source_id,
+            semantics.include_unrealized,
+            semantics.loss_sign_convention,
+            semantics.session_calendar_id,
+            semantics.timezone_name,
+            semantics.reset_semantics,
+        )
+        if actual_daily_semantics != expected_daily_semantics:
+            return None, state.daily_loss.currency, "DAILY_LOSS_POLICY_MISMATCH"
         return state.daily_loss.loss_amount, state.daily_loss.currency, None
 
     if metric in {RiskMetric.DRAWDOWN_AMOUNT, RiskMetric.DRAWDOWN_RATIO}:
@@ -927,11 +1155,32 @@ def _metric_value(
             return None, None, "DRAWDOWN_MISSING"
         if state.drawdown.quality is not EvidenceQuality.VALID:
             return None, state.drawdown.unit, "DRAWDOWN_QUALITY"
+        semantics = boundary.policy.drawdown_semantics
+        if semantics is None:
+            return None, state.drawdown.unit, "DRAWDOWN_POLICY_MISSING"
+        if (
+            state.drawdown.source_id,
+            state.drawdown.series_kind,
+        ) != (
+            semantics.source_id,
+            semantics.series_kind,
+        ):
+            return None, state.drawdown.unit, "DRAWDOWN_POLICY_MISMATCH"
         if metric is RiskMetric.DRAWDOWN_AMOUNT:
+            if (
+                state.drawdown.denominator_convention
+                is not semantics.denominator_convention
+            ):
+                return None, state.drawdown.unit, "DRAWDOWN_POLICY_MISMATCH"
             return state.drawdown.amount, state.drawdown.unit, None
         ratio = state.drawdown.ratio
         if ratio is None:
             return None, "ratio", "DRAWDOWN_DENOMINATOR_MISSING"
+        if (
+            state.drawdown.denominator_convention
+            is not semantics.denominator_convention
+        ):
+            return None, "ratio", "DRAWDOWN_POLICY_MISMATCH"
         return ratio, "ratio", None
 
     if metric in {RiskMetric.VALUE_AT_RISK, RiskMetric.EXPECTED_SHORTFALL}:
@@ -940,6 +1189,25 @@ def _metric_value(
         tail = state.tail_risk
         if tail.quality is not EvidenceQuality.VALID:
             return None, tail.unit, "TAIL_EVIDENCE_QUALITY"
+        semantics = boundary.policy.tail_semantics
+        if semantics is None:
+            return None, tail.unit, "TAIL_POLICY_MISSING"
+        actual_tail_semantics = (
+            tail.tail_fraction,
+            tail.loss_direction,
+            tail.quantile_convention,
+            tail.missing_policy,
+            tail.source_policy_digest,
+        )
+        expected_tail_semantics = (
+            semantics.tail_fraction,
+            semantics.loss_direction,
+            semantics.quantile_convention,
+            semantics.missing_policy,
+            semantics.source_policy_digest,
+        )
+        if actual_tail_semantics != expected_tail_semantics:
+            return None, tail.unit, "TAIL_POLICY_MISMATCH"
         if tail.source_kind is not TailEvidenceSourceKind.EMPIRICAL_OBSERVED:
             return None, tail.unit, "SYNTHETIC_TAIL_EVIDENCE_FORBIDDEN"
         if not tail.sufficient:
@@ -998,6 +1266,12 @@ def _build_authorization(
     with localcontext(boundary.policy.numeric_policy.get_context()):
         ratio = max_exposure / proposal.requested_exposure
         max_quantity = proposal.requested_quantity * ratio
+    ttl_valid_until = boundary.as_of_time + timedelta(
+        seconds=boundary.policy.authorization_ttl_seconds
+    )
+    valid_until = ttl_valid_until
+    if boundary.policy.effective_until is not None:
+        valid_until = min(valid_until, boundary.policy.effective_until)
     authorization = RiskAuthorization(
         decision_digest=decision.decision_digest,
         proposal_digest=proposal.proposal_digest,
@@ -1008,8 +1282,7 @@ def _build_authorization(
         max_exposure=max_exposure,
         exposure_unit=proposal.exposure_unit,
         valid_from=boundary.as_of_time,
-        valid_until=boundary.as_of_time
-        + timedelta(seconds=boundary.policy.authorization_ttl_seconds),
+        valid_until=valid_until,
         engine_revision=boundary.engine_revision,
     )
     object.__setattr__(authorization, "_issuer_token", _ENGINE_AUTHORIZATION_TOKEN)
