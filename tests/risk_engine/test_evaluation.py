@@ -1,5 +1,7 @@
 """Evaluation and authorization tests for Sprint 7 Risk Engine."""
 
+# ruff: noqa: I001
+
 from __future__ import annotations
 
 import dataclasses

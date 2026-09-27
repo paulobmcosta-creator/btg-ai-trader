@@ -1,5 +1,7 @@
 """Domain and provenance tests for Sprint 7 Risk Engine."""
 
+# ruff: noqa: I001
+
 from __future__ import annotations
 
 import dataclasses
