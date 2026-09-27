@@ -8,7 +8,6 @@ from decimal import Decimal
 
 import pytest
 
-import btg_ai_trader.risk_engine.core as rc
 from btg_ai_trader.observer.identity import TradableInstrumentId
 from btg_ai_trader.risk_engine import (
     CircuitBreakerState,
@@ -37,6 +36,14 @@ from btg_ai_trader.risk_engine import (
     latch_circuit,
     unlatch_circuit,
 )
+from btg_ai_trader.risk_engine.core import (
+    _digest,
+    _freeze_metrics,
+    _jsonable,
+    _require_aware,
+    _require_decimal,
+    _require_text,
+)
 from btg_ai_trader.statistical_baselines.metrics import DEFAULT_NUMERIC_POLICY
 
 
@@ -46,6 +53,12 @@ OTHER_INSTRUMENT = TradableInstrumentId("22222222-2222-2222-2222-222222222222")
 
 def dt(seconds: int = 0) -> datetime:
     return datetime(2026, 9, 26, 12, 0, tzinfo=UTC) + timedelta(seconds=seconds)
+
+
+T0 = dt(0)
+T5 = dt(5)
+T9 = dt(9)
+T10 = dt(10)
 
 
 def rules() -> tuple[RiskLimitRule, ...]:
@@ -74,7 +87,7 @@ def policy(
     rule_set: tuple[RiskLimitRule, ...] | None = None,
     portfolio_id: str = "portfolio-1",
     instrument_id: TradableInstrumentId | None = INSTRUMENT,
-    effective_from: datetime = dt(0),
+    effective_from: datetime = T0,
     effective_until: datetime | None = None,
     postures: tuple[SafetyPosture, ...] = (SafetyPosture.NORMAL,),
     ttl: int = 30,
@@ -99,7 +112,7 @@ def proposal(
     *,
     instrument_id: TradableInstrumentId = INSTRUMENT,
     portfolio_id: str = "portfolio-1",
-    created_at: datetime = dt(5),
+    created_at: datetime = T5,
 ) -> RiskProposal:
     return RiskProposal(
         proposal_id="proposal-1",
@@ -170,8 +183,8 @@ def state(
     circuit: CircuitBreakerState | None = None,
     instrument_id: TradableInstrumentId = INSTRUMENT,
     portfolio_id: str = "portfolio-1",
-    as_of_time: datetime = dt(10),
-    knowledge_time: datetime = dt(9),
+    as_of_time: datetime = T10,
+    knowledge_time: datetime = T9,
 ) -> RiskStateSnapshot:
     actual_circuit = circuit or initial_circuit_state(
         policy_digest=risk_policy.policy_digest,
@@ -217,27 +230,27 @@ def test_canonical_json_helpers_and_text_numeric_guards() -> None:
         "sequence": (Decimal("3"), "x"),
         "plain": True,
     }
-    converted = rc._jsonable(payload)
+    converted = _jsonable(payload)
     assert isinstance(converted, dict)
     assert converted["decimal"] == "1.25"
     assert converted["instrument"] == INSTRUMENT.value
     assert converted["sequence"] == ["3", "x"]
-    assert rc._digest({"x": Decimal("1")}) == rc._digest({"x": Decimal("1")})
+    assert _digest({"x": Decimal("1")}) == _digest({"x": Decimal("1")})
 
     with pytest.raises(ValueError, match="nonempty text"):
-        rc._require_text(" x ", "x")
+        _require_text(" x ", "x")
     with pytest.raises(ValueError, match="timezone-aware"):
-        rc._require_aware(datetime(2026, 9, 26), "when")
+        _require_aware(datetime(2026, 9, 26), "when")
     with pytest.raises(ValueError, match="finite Decimal"):
-        rc._require_decimal(Decimal("NaN"), "x")
+        _require_decimal(Decimal("NaN"), "x")
     with pytest.raises(ValueError, match="non-negative"):
-        rc._require_decimal(Decimal("-1"), "x", nonnegative=True)
+        _require_decimal(Decimal("-1"), "x", nonnegative=True)
     with pytest.raises(ValueError, match="positive"):
-        rc._require_decimal(Decimal("0"), "x", positive=True)
+        _require_decimal(Decimal("0"), "x", positive=True)
     with pytest.raises(ValueError, match="metric_name"):
-        rc._freeze_metrics({"": Decimal("1")})
+        _freeze_metrics({"": Decimal("1")})
     with pytest.raises(ValueError, match="finite Decimal"):
-        rc._freeze_metrics({"x": Decimal("NaN")})
+        _freeze_metrics({"x": Decimal("NaN")})
 
 
 def test_proposal_exposure_daily_drawdown_and_tail_validation() -> None:

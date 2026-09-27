@@ -8,7 +8,6 @@ from decimal import Decimal
 
 import pytest
 
-import btg_ai_trader.risk_engine.core as rc
 from btg_ai_trader.observer.identity import TradableInstrumentId
 from btg_ai_trader.risk_engine import (
     AuthorizationInvalidity,
@@ -20,6 +19,7 @@ from btg_ai_trader.risk_engine import (
     ExposureState,
     LimitOperator,
     RiskDecision,
+    RiskAuthorization,
     RiskDecisionRecord,
     RiskEvaluationBoundary,
     RiskLimitRule,
@@ -36,6 +36,11 @@ from btg_ai_trader.risk_engine import (
     validate_authorization,
     verify_deterministic_equivalence,
 )
+from btg_ai_trader.risk_engine.core import (
+    _ENGINE_AUTHORIZATION_TOKEN,
+    _metric_value,
+    _projected_base,
+)
 from btg_ai_trader.statistical_baselines.metrics import DEFAULT_NUMERIC_POLICY
 
 
@@ -45,6 +50,11 @@ OTHER_INSTRUMENT = TradableInstrumentId("22222222-2222-2222-2222-222222222222")
 
 def dt(seconds: int = 0) -> datetime:
     return datetime(2026, 9, 26, 12, 0, tzinfo=UTC) + timedelta(seconds=seconds)
+
+
+T0 = dt(0)
+T5 = dt(5)
+T10 = dt(10)
 
 
 def rule(
@@ -72,7 +82,7 @@ def policy(
     capacity_threshold: str = "1000",
     portfolio_id: str = "portfolio-1",
     instrument_id: TradableInstrumentId | None = INSTRUMENT,
-    effective_from: datetime = dt(0),
+    effective_from: datetime = T0,
     effective_until: datetime | None = None,
     postures: tuple[SafetyPosture, ...] = (SafetyPosture.NORMAL,),
     ttl: int = 30,
@@ -107,7 +117,7 @@ def proposal(
     quantity: str = "10",
     portfolio_id: str = "portfolio-1",
     instrument_id: TradableInstrumentId = INSTRUMENT,
-    created_at: datetime = dt(5),
+    created_at: datetime = T5,
     source_digest: str = "proposal-source",
 ) -> RiskProposal:
     return RiskProposal(
@@ -262,7 +272,7 @@ def boundary(
     risk_policy: RiskPolicyBundle | None = None,
     risk_state: RiskStateSnapshot | None = None,
     risk_proposal: RiskProposal | None = None,
-    as_of_time: datetime = dt(10),
+    as_of_time: datetime = T10,
 ) -> RiskEvaluationBoundary:
     actual_policy = risk_policy or policy()
     actual_state = risk_state or state(actual_policy)
@@ -276,8 +286,8 @@ def boundary(
     )
 
 
-def preserve_issuer(auth: rc.RiskAuthorization) -> rc.RiskAuthorization:
-    object.__setattr__(auth, "_issuer_token", rc._ENGINE_AUTHORIZATION_TOKEN)
+def preserve_issuer(auth: RiskAuthorization) -> RiskAuthorization:
+    object.__setattr__(auth, "_issuer_token", _ENGINE_AUTHORIZATION_TOKEN)
     return auth
 
 
@@ -365,7 +375,7 @@ def test_projected_limits_cap_authorization_without_becoming_strategy_sizing() -
     assert "HARD_LIMIT_BREACH:01-capacity" in no_capacity.decision.reasons
 
     with pytest.raises(ValueError, match="not a projected"):
-        rc._projected_base(boundary(), RiskMetric.DAILY_LOSS)
+        _projected_base(boundary(), RiskMetric.DAILY_LOSS)
 
 
 @pytest.mark.parametrize(
@@ -621,7 +631,7 @@ def test_unverified_boundary_is_rejected() -> None:
 
 def test_metric_dispatch_invalid_enum_fails_explicitly() -> None:
     with pytest.raises(AssertionError, match="unsupported risk metric"):
-        rc._metric_value(boundary(), "NOT_A_METRIC")  # type: ignore[arg-type]
+        _metric_value(boundary(), "NOT_A_METRIC")  # type: ignore[arg-type]
 
 
 def test_authorization_validation_detects_all_invalidity_classes() -> None:
@@ -663,8 +673,6 @@ def test_authorization_validation_detects_all_invalidity_classes() -> None:
         metrics={},
         decided_at=result.decision.decided_at,
     )
-    mismatch_decision = dataclasses.replace(result.decision, reasons=("OTHER",))
-
     changed_proposal = dataclasses.replace(b.proposal, source_digest="other-proposal")
     changed_state = dataclasses.replace(b.state, source_lineage_digest="other-state")
     changed_policy = dataclasses.replace(b.policy, version="2")
