@@ -36,6 +36,7 @@ jobs:
         run: python scripts/check_foundation_contract.py
 
   entry-gate:
+    if: github.ref == 'refs/heads/s7/00-entry-gate' || github.head_ref == 's7/00-entry-gate'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
