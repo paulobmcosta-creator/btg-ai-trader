@@ -59,10 +59,10 @@
 | **S7-AC-32** | Adversarial authority-chain tests | ADR 0016 | IMPLEMENTED_CANDIDATE |
 | **S7-AC-33** | Adversarial stale/unknown-state tests | ADR 0022 | IMPLEMENTED_CANDIDATE |
 | **S7-AC-34** | Adversarial limits/circuit-breaker tests | DD-38/DD-121 | IMPLEMENTED_CANDIDATE |
-| **S7-AC-35** | S7 package 100% statement coverage | S7-D-27 | PENDING_FINAL_VALIDATION |
-| **S7-AC-36** | S7 package 100% branch coverage | S7-D-27 | PENDING_FINAL_VALIDATION |
-| **S7-AC-37** | Full S1–S6 regression | program governance | PENDING_FINAL_VALIDATION |
-| **S7-AC-38** | Exact-head CI and pinned upstream | program governance | PENDING_FINAL_VALIDATION |
+| **S7-AC-35** | S7 package 100% statement coverage | S7-D-27 | PASS_CANDIDATE |
+| **S7-AC-36** | S7 package 100% branch coverage | S7-D-27 | PASS_CANDIDATE |
+| **S7-AC-37** | Full S1–S6 regression | program governance | PASS_CANDIDATE |
+| **S7-AC-38** | Exact-head CI and pinned upstream | program governance | PASS_CANDIDATE |
 | **S7-AC-39** | Zero additional recurring cost | project constraint | IMPLEMENTED_CANDIDATE |
 | **S7-AC-40** | No new mandatory runtime dependency | S7-D-26 | IMPLEMENTED_CANDIDATE |
 | **S7-AC-41** | RiskAuthorization alone does not reserve capacity; downstream allocation revalidates current capacity | ADR 0016; S7-D-16 | IMPLEMENTED_CANDIDATE |
@@ -124,4 +124,22 @@ S7_FUNCTIONAL_WORK_BRANCH = s7/01-full-risk-engine
 S7_FUNCTIONAL_AUTHORIZATION_DATE = 2026-09-26
 S7_FUNCTIONAL_MERGE = NOT_AUTHORIZED
 PROMOTION_TO_S7_FUNCTIONAL_IMPLEMENTATION = YES
+```
+
+
+## 5. Functional candidate validation
+
+```text
+S7_FUNCTIONAL_VALIDATED_CODE_HEAD = c1e33bd3615e311f259d59055349596667978dec
+S7_FUNCTIONAL_PYTHON_CI_RUN = 36939849626
+S7_FUNCTIONAL_ENTRY_GATE_CI_RUN = 36939849827
+S7_FUNCTIONAL_PINNED_UPSTREAM_RUN = 36939849524
+S7_FUNCTIONAL_FULL_REGRESSION = 1127_PASS
+S7_FUNCTIONAL_PACKAGE_STATEMENT_COVERAGE = 100%
+S7_FUNCTIONAL_PACKAGE_BRANCH_COVERAGE = 100%
+S7_FUNCTIONAL_CANDIDATE = PASS_CANDIDATE
+OPEN_FUNCTIONAL_CANDIDATE_BLOCKERS = 0
+
+S7_FUNCTIONAL_MERGE = NOT_AUTHORIZED
+SPRINT_8 = NOT_AUTHORIZED
 ```
