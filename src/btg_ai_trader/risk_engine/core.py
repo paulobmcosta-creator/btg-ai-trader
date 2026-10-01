@@ -1125,8 +1125,8 @@ def _metric_value(
             return None, None, "DAILY_LOSS_MISSING"
         if state.daily_loss.quality is not EvidenceQuality.VALID:
             return None, state.daily_loss.currency, "DAILY_LOSS_QUALITY"
-        semantics = boundary.policy.daily_loss_semantics
-        if semantics is None:
+        daily_semantics_policy = boundary.policy.daily_loss_semantics
+        if daily_semantics_policy is None:
             return None, state.daily_loss.currency, "DAILY_LOSS_POLICY_MISSING"
         actual_daily_semantics = (
             state.daily_loss.currency,
@@ -1138,13 +1138,13 @@ def _metric_value(
             state.daily_loss.reset_semantics,
         )
         expected_daily_semantics = (
-            semantics.currency,
-            semantics.pnl_source_id,
-            semantics.include_unrealized,
-            semantics.loss_sign_convention,
-            semantics.session_calendar_id,
-            semantics.timezone_name,
-            semantics.reset_semantics,
+            daily_semantics_policy.currency,
+            daily_semantics_policy.pnl_source_id,
+            daily_semantics_policy.include_unrealized,
+            daily_semantics_policy.loss_sign_convention,
+            daily_semantics_policy.session_calendar_id,
+            daily_semantics_policy.timezone_name,
+            daily_semantics_policy.reset_semantics,
         )
         if actual_daily_semantics != expected_daily_semantics:
             return None, state.daily_loss.currency, "DAILY_LOSS_POLICY_MISMATCH"
@@ -1155,21 +1155,21 @@ def _metric_value(
             return None, None, "DRAWDOWN_MISSING"
         if state.drawdown.quality is not EvidenceQuality.VALID:
             return None, state.drawdown.unit, "DRAWDOWN_QUALITY"
-        semantics = boundary.policy.drawdown_semantics
-        if semantics is None:
+        drawdown_semantics_policy = boundary.policy.drawdown_semantics
+        if drawdown_semantics_policy is None:
             return None, state.drawdown.unit, "DRAWDOWN_POLICY_MISSING"
         if (
             state.drawdown.source_id,
             state.drawdown.series_kind,
         ) != (
-            semantics.source_id,
-            semantics.series_kind,
+            drawdown_semantics_policy.source_id,
+            drawdown_semantics_policy.series_kind,
         ):
             return None, state.drawdown.unit, "DRAWDOWN_POLICY_MISMATCH"
         if metric is RiskMetric.DRAWDOWN_AMOUNT:
             if (
                 state.drawdown.denominator_convention
-                is not semantics.denominator_convention
+                is not drawdown_semantics_policy.denominator_convention
             ):
                 return None, state.drawdown.unit, "DRAWDOWN_POLICY_MISMATCH"
             return state.drawdown.amount, state.drawdown.unit, None
@@ -1189,8 +1189,8 @@ def _metric_value(
         tail = state.tail_risk
         if tail.quality is not EvidenceQuality.VALID:
             return None, tail.unit, "TAIL_EVIDENCE_QUALITY"
-        semantics = boundary.policy.tail_semantics
-        if semantics is None:
+        tail_semantics_policy = boundary.policy.tail_semantics
+        if tail_semantics_policy is None:
             return None, tail.unit, "TAIL_POLICY_MISSING"
         actual_tail_semantics = (
             tail.tail_fraction,
@@ -1200,11 +1200,11 @@ def _metric_value(
             tail.source_policy_digest,
         )
         expected_tail_semantics = (
-            semantics.tail_fraction,
-            semantics.loss_direction,
-            semantics.quantile_convention,
-            semantics.missing_policy,
-            semantics.source_policy_digest,
+            tail_semantics_policy.tail_fraction,
+            tail_semantics_policy.loss_direction,
+            tail_semantics_policy.quantile_convention,
+            tail_semantics_policy.missing_policy,
+            tail_semantics_policy.source_policy_digest,
         )
         if actual_tail_semantics != expected_tail_semantics:
             return None, tail.unit, "TAIL_POLICY_MISMATCH"

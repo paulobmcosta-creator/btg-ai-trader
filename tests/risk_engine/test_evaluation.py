@@ -797,6 +797,22 @@ def test_internal_metric_dispatch_covers_remaining_guard_paths() -> None:
     )
     assert (value, unit, missing) == (None, "BRL", "EXPOSURE_UNIT_MISMATCH")
 
+    denominator_mismatch_policy = dataclasses.replace(
+        p,
+        drawdown_semantics=drawdown_semantics(None),
+    )
+    denominator_mismatch_boundary = boundary(risk_policy=denominator_mismatch_policy)
+    value, unit, missing = rc._metric_value(
+        denominator_mismatch_boundary,
+        RiskMetric.DRAWDOWN_AMOUNT,
+    )
+    assert (value, unit, missing) == (None, "BRL", "DRAWDOWN_POLICY_MISMATCH")
+    value, unit, missing = rc._metric_value(
+        denominator_mismatch_boundary,
+        RiskMetric.DRAWDOWN_RATIO,
+    )
+    assert (value, unit, missing) == (None, "ratio", "DRAWDOWN_POLICY_MISMATCH")
+
     reasons = ["ALREADY_PRESENT"]
     rc._append_unique(reasons, "ALREADY_PRESENT")
     assert reasons == ["ALREADY_PRESENT"]
