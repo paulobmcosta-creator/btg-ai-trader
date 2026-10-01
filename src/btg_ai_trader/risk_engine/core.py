@@ -1178,7 +1178,7 @@ def _metric_value(
             return None, "ratio", "DRAWDOWN_DENOMINATOR_MISSING"
         if (
             state.drawdown.denominator_convention
-            is not semantics.denominator_convention
+            is not drawdown_semantics_policy.denominator_convention
         ):
             return None, "ratio", "DRAWDOWN_POLICY_MISMATCH"
         return ratio, "ratio", None
