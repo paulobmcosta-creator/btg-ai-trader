@@ -132,8 +132,22 @@ SPRINT_7_DEDICATED_TESTS = 46_PASS
 SPRINT_7_FUNCTIONAL_PACKAGE_COVERAGE = 100_STATEMENT_100_BRANCH
 OPEN_SPRINT_7_FUNCTIONAL_BLOCKERS = 0
 OPEN_SPRINT_7_BLOCKERS = 0
-SPRINT_8 = NOT_AUTHORIZED
-STOP_FOR_INDEPENDENT_AUDIT = NO_FORMALLY_CLOSED
+
+SPRINT_8_STATUS = ENTRY_GATE_CANDIDATE_CHANGES_REQUIRED
+SPRINT_8_LIFECYCLE = ENTRY_GATE
+SPRINT_8_ENTRY_GATE_AUTHORIZATION_DATE = 2026-10-02
+SPRINT_8_ENTRY_GATE_ISSUE = #93
+SPRINT_8_CANONICAL_BRANCH = sprint/8-paper-trader
+SPRINT_8_ENTRY_GATE_WORK_BRANCH = s8/00-entry-gate
+S8_ENTRY_GATE_CANDIDATE = CHANGES_REQUIRED
+OPEN_S8_ENTRY_GATE_BLOCKERS = 2
+S8-B01 = OPEN
+S8-B02 = OPEN
+S8_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+PAPER_CONFIRMATORY_RUN = NOT_AUTHORIZED
+LIVE_TRADING = NO
+REAL_MONEY = NO
+STOP_FOR_INDEPENDENT_AUDIT = YES_S8_ENTRY_GATE
 ```
 
 O Sprint 2 tratou exclusivamente de **Data Platform & Causal Market Replay** dentro de `docs/program/S2_ENTRY_CONTRACT.md`, `S2_DECISION_REGISTER.md`, `S2_CAPABILITY_MATRIX.md` e dos gates correspondentes. Os incrementos funcionais S2-A (Causal Replay Core) e S2-B (Lossless Normalization & Data Quality) e o gate final S2-C foram formalmente aceitos e fechados.
@@ -163,7 +177,7 @@ O Sprint 4 — **Statistical Baselines** — permanece formalmente fechado. O Sp
 - Não implementar Strategy operacional, Paper, Live ou machine learning operacional fora do sprint formalmente autorizado. O Risk Engine S7 está concluído somente como núcleo determinístico side-effect-free, sem execução financeira.
 - Não inserir credenciais, tokens, chaves, senhas, números de conta ou outros segredos no repositório, logs, documentação ou chat.
 - Não fazer deploy de infraestrutura financeira produtiva.
-- Os Sprints 4, 5, 6 e 7 estão FORMALLY_CLOSED/PASS. O Sprint 7 contém apenas o Risk Engine determinístico side-effect-free. Strategy operacional, Paper, Live, broker-order, FinancialLedger mutation e real money permanecem não autorizados.
+- Os Sprints 4, 5, 6 e 7 estão FORMALLY_CLOSED/PASS. O Sprint 8 está autorizado somente em modo Entry Gate documental e permanece bloqueado por S8-B01/S8-B02. Strategy operacional não pode ser inventada dentro de Paper; Paper funcional, Live, broker-order, FinancialLedger mutation e real money permanecem não autorizados.
 
 Qualquer mudança futura dessas restrições exige decisão humana explícita, decisão arquitetural/documental adequada e satisfação dos gates correspondentes. Ausência de proibição não equivale a autorização.
 
@@ -219,7 +233,7 @@ Integração em branches canônicas de sprint/staging exige testes, typing, lint
 
 O Sprint 1 preservou `READ_ONLY_BY_CONSTRUCTION` e `STRUCTURAL_ESCALATION`; os Sprints 2 e 3 herdaram essas barreiras e todas as negative financial capabilities. Dinheiro real, credenciais de negociação, ordens de broker e ativação financeira permanecem proibidos.
 
-Os Sprints 3, 4, 5, 6 e 7 estão formalmente fechados. O Sprint 7 Risk Engine side-effect-free foi integrado pelo PR #90 no SHA canônico `e379e9b34a8b607e86165bd3336d23fcd9406259` e validado pós-merge. Sprint 8, Paper, Live, broker-order, FinancialLedger mutation e dinheiro real permanecem não autorizados.
+Os Sprints 3, 4, 5, 6 e 7 estão formalmente fechados. O Sprint 7 Risk Engine side-effect-free foi integrado pelo PR #90 no SHA funcional canônico `e379e9b34a8b607e86165bd3336d23fcd9406259` e validado pós-merge. Em 2026-10-02 foi autorizada apenas a materialização do Sprint 8 Entry Gate. O candidato de gate está `CHANGES_REQUIRED` porque faltam o caminho operacional StrategyDecision/TradeIntent e um candidato formalmente `PAPER_ELIGIBLE` e congelado. Implementação funcional de Paper, Live, broker-order, FinancialLedger mutation e dinheiro real permanecem não autorizados.
 
 Arquitetura e dry-run de sprints futuros podem avançar isoladamente como pesquisa, mas promoção ou ativação exige gate próprio. Decisões in-sprint são registradas antes da primeira dependência material; mudanças arquiteturais materiais seguem ADR. A Issue #6 preserva a errata histórica do 0F-F e `TRACEABILITY.md` continua autoridade canônica das QPIs.
 
