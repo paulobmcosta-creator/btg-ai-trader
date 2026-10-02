@@ -652,6 +652,10 @@ Após a remediação pré-autorização, o Sprint 6 funcional foi autorizado, im
 
 A implementação funcional side-effect-free do Risk Engine foi autorizada em 2026-09-26 sob Issue #88 e branch `s7/01-full-risk-engine`. O PR #90 passou por ciclos de reauditoria e remediação até o head final `fbffb811c1822568c27ee39b8320079782f24342`, recebeu autorização humana explícita de merge e foi integrado em 2026-10-02 no SHA funcional canônico `e379e9b34a8b607e86165bd3336d23fcd9406259`. A validação pós-merge registrou Sprint 7 Python CI `36965539682` PASS 15/15, Entry Gate `36965539684` PASS, pinned upstream `36965539670` PASS, 1.135 testes de repositório PASS e 46 testes dedicados S7 com 100% de statement e branch coverage. O Sprint 7 foi formalmente fechado/PASS. Sprint 8, Paper, Live e dinheiro real permaneceram não autorizados.
 
+### 2026-10-02 — autorização e materialização do Sprint 8 Entry Gate
+
+A coordenação humana autorizou exclusivamente o Entry Gate do Sprint 8 — Paper Trader, sob Issue #93, branch canônica `sprint/8-paper-trader` e work branch `s8/00-entry-gate`. A análise do predecessor identificou dois blockers conjuntivos: S8-B01, ausência de caminho operacional `Signal/Strategy → StrategyDecision → TradeIntent`; e S8-B02, ausência de candidato exato formalmente `PAPER_ELIGIBLE` e congelado segundo o Protocolo 0E-G. O gate candidato foi materializado como `CHANGES_REQUIRED`; implementação funcional, Paper confirmatório, Live, broker-order e dinheiro real permanecem não autorizados.
+
 ---
 
 ## 16. Próxima ação oficial
