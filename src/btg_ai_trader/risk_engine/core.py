@@ -752,6 +752,12 @@ class RiskPolicyBundle:
     policy_digest: str = field(init=False)
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "rules", tuple(self.rules))
+        object.__setattr__(
+            self,
+            "allowed_safety_postures",
+            tuple(self.allowed_safety_postures),
+        )
         for value, name in (
             (self.policy_id, "policy_id"),
             (self.version, "version"),
@@ -1173,14 +1179,15 @@ def _metric_value(
             ):
                 return None, state.drawdown.unit, "DRAWDOWN_POLICY_MISMATCH"
             return state.drawdown.amount, state.drawdown.unit, None
-        ratio = state.drawdown.ratio
-        if ratio is None:
+        if state.drawdown.capital_denominator is None:
             return None, "ratio", "DRAWDOWN_DENOMINATOR_MISSING"
         if (
             state.drawdown.denominator_convention
             is not drawdown_semantics_policy.denominator_convention
         ):
             return None, "ratio", "DRAWDOWN_POLICY_MISMATCH"
+        with localcontext(boundary.policy.numeric_policy.get_context()):
+            ratio = state.drawdown.amount / state.drawdown.capital_denominator
         return ratio, "ratio", None
 
     if metric in {RiskMetric.VALUE_AT_RISK, RiskMetric.EXPECTED_SHORTFALL}:
@@ -1265,7 +1272,8 @@ def _build_authorization(
     proposal = boundary.proposal
     with localcontext(boundary.policy.numeric_policy.get_context()):
         ratio = max_exposure / proposal.requested_exposure
-        max_quantity = proposal.requested_quantity * ratio
+        computed_max_quantity = proposal.requested_quantity * ratio
+        max_quantity = min(computed_max_quantity, proposal.requested_quantity)
     ttl_valid_until = boundary.as_of_time + timedelta(
         seconds=boundary.policy.authorization_ttl_seconds
     )

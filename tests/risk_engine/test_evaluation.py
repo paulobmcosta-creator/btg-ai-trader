@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import dataclasses
 from datetime import UTC, datetime, timedelta
-from decimal import Decimal
+from decimal import Decimal, localcontext
 
 import pytest
 
@@ -47,7 +47,7 @@ from btg_ai_trader.risk_engine import (
     validate_authorization,
     verify_deterministic_equivalence,
 )
-from btg_ai_trader.statistical_baselines.metrics import DEFAULT_NUMERIC_POLICY
+from btg_ai_trader.statistical_baselines.metrics import DEFAULT_NUMERIC_POLICY, NumericPolicy
 
 
 INSTRUMENT = TradableInstrumentId("11111111-1111-1111-1111-111111111111")
@@ -982,3 +982,111 @@ def test_authorization_validation_detects_all_invalidity_classes() -> None:
         policy=b.policy,
         as_of_time=dt(20),
     ).reasons
+
+
+def test_policy_canonicalizes_mutable_collections_before_hashing() -> None:
+    capacity_rule = rule(
+        "01-capacity",
+        RiskMetric.PROJECTED_CAPACITY_USAGE,
+        "1000",
+        "BRL",
+    )
+    mutable_rules = [capacity_rule]
+    mutable_postures = [SafetyPosture.NORMAL]
+    risk_policy = RiskPolicyBundle(
+        policy_id="mutable-input-policy",
+        version="1",
+        portfolio_id="portfolio-1",
+        instrument_id=INSTRUMENT,
+        effective_from=T0,
+        effective_until=None,
+        rules=mutable_rules,  # type: ignore[arg-type]
+        allowed_safety_postures=mutable_postures,  # type: ignore[arg-type]
+        authorization_ttl_seconds=30,
+    )
+    original_digest = risk_policy.policy_digest
+
+    mutable_rules.clear()
+    mutable_postures.clear()
+
+    assert risk_policy.rules == (capacity_rule,)
+    assert risk_policy.allowed_safety_postures == (SafetyPosture.NORMAL,)
+    assert risk_policy.policy_digest == original_digest
+    result = evaluate_risk(boundary(risk_policy=risk_policy))
+    assert result.decision.decision is RiskDecision.PERMIT
+
+
+def test_drawdown_ratio_uses_policy_numeric_context_not_ambient_context() -> None:
+    drawdown_rule = rule(
+        "02-drawdown-ratio",
+        RiskMetric.DRAWDOWN_RATIO,
+        "0.333",
+        "ratio",
+    )
+    risk_policy = policy(extra_rules=(drawdown_rule,))
+    governed_drawdown = DrawdownState(
+        peak_value=Decimal("1"),
+        current_value=Decimal("0"),
+        unit="BRL",
+        capital_denominator=Decimal("3"),
+        denominator_convention=(
+            DrawdownDenominatorConvention.EXPLICIT_POSITIVE_CAPITAL
+        ),
+        source_id="portfolio-equity",
+        series_kind=DrawdownSeriesKind.EQUITY,
+        peak_id="peak-third",
+        current_id="current-third",
+        source_digest="drawdown-third",
+    )
+    risk_state = dataclasses.replace(
+        state(risk_policy),
+        drawdown=governed_drawdown,
+    )
+    risk_boundary = boundary(
+        risk_policy=risk_policy,
+        risk_state=risk_state,
+    )
+
+    with localcontext() as ambient:
+        ambient.prec = 2
+        low_precision_ambient = evaluate_risk(risk_boundary)
+    with localcontext() as ambient:
+        ambient.prec = 50
+        high_precision_ambient = evaluate_risk(risk_boundary)
+
+    assert low_precision_ambient.decision.decision is RiskDecision.REJECT
+    assert high_precision_ambient.decision.decision is RiskDecision.REJECT
+    assert (
+        verify_deterministic_equivalence(
+            low_precision_ambient,
+            high_precision_ambient,
+        )
+        == low_precision_ambient.result_digest
+    )
+
+
+def test_authorization_quantity_never_exceeds_proposal_after_rounding() -> None:
+    low_precision_policy = dataclasses.replace(
+        policy(capacity_threshold="699.99"),
+        numeric_policy=NumericPolicy(precision=3),
+    )
+    risk_boundary = boundary(
+        risk_policy=low_precision_policy,
+        risk_proposal=proposal(exposure="200", quantity="9.999"),
+    )
+    result = evaluate_risk(risk_boundary)
+
+    assert result.decision.decision is RiskDecision.PERMIT
+    assert result.authorization is not None
+    assert result.authorization.max_exposure == Decimal("199.99")
+    assert result.authorization.max_quantity == Decimal("9.999")
+    validation = validate_authorization(
+        result.authorization,
+        decision=result.decision,
+        proposal=risk_boundary.proposal,
+        state=risk_boundary.state,
+        policy=risk_boundary.policy,
+        as_of_time=dt(11),
+    )
+    assert validation.valid
+    assert validation.reasons == ()
