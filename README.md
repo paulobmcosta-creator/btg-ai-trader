@@ -2,7 +2,7 @@
 
 Fundação de um futuro sistema quantitativo intradiário em Python, orientado a dados, avaliação de cenários, gestão independente de risco e operação auditável.
 
-> **Estado:** Fase de Fundação (Sprints 0A a 0F) formalmente concluída e aprovada. O lifecycle do Sprint 1 — Market Observer está `OPEN`, com reconciliação pré-código concluída e primeira implementação funcional autorizada (`S1_A_AUTHORIZED = YES`) pelo mandato humano de 2026-09-13. Este repositório continua sem estratégia operacional, modelo operacional, capacidade de enviar ordens ou execução financeira real.
+> **Estado:** Sprints 0A–0F e Sprints 1–7 estão formalmente concluídos. O Sprint 7 — Risk Engine foi fechado/PASS no head canônico `e379e9b34a8b607e86165bd3336d23fcd9406259`. O Risk Engine é determinístico e side-effect-free; Sprint 8/Paper Trading, Live Trading, envio de ordens, broker execution e dinheiro real permanecem não autorizados.
 
 ## Segurança nesta fase
 
@@ -52,7 +52,7 @@ por ADR quando arquiteturalmente materiais.
 
 ## Próximo marco
 
-A fase de [Fundação (Sprint 0)](docs/sprints/SPRINT_0.md) está formalmente concluída e aprovada (0A a 0F). O PR #5 foi integrado em `dabce69d92054b77cad72809669d4340c211c328` e a Issue #1 foi fechada como concluída. O mandato humano de execução autônoma de 2026-09-13 autoriza a primeira implementação funcional do Sprint 1 (`PRE_CODE_RECONCILIATION = COMPLETE`; `S1_A_AUTHORIZED = YES`; `FIRST_FUNCTIONAL_CODE = AUTHORIZED`), sob o contrato 0F-E integral e os gates de promoção. O desenvolvimento ocorre diretamente no GitHub; consulte o [checkpoint do programa](docs/program/PROGRAM_EXECUTION.md). Consulte também a [baseline de arquitetura e contratos](docs/architecture/README.md) e os [protocolos quantitativos](docs/protocols/quantitative/README.md).
+O checkpoint canônico atual é o fechamento do Sprint 7 — Risk Engine. O PR #90 foi integrado em `e379e9b34a8b607e86165bd3336d23fcd9406259` e validado pós-merge. O Sprint 8 — Paper Trader permanece `NOT_AUTHORIZED`; qualquer nova fase exige gate e autorização humana explícitos. O desenvolvimento ocorre diretamente no GitHub; consulte o [checkpoint do programa](docs/program/PROGRAM_EXECUTION.md), o [fechamento do Sprint 7](docs/program/S7_FINAL_ACCEPTANCE.md), a [baseline de arquitetura e contratos](docs/architecture/README.md) e os [protocolos quantitativos](docs/protocols/quantitative/README.md).
 
 ## Aviso
 

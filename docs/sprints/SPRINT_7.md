@@ -1,9 +1,11 @@
 # Sprint 7 — Risk Engine
 
 ```text
-SPRINT_7_STATUS = FUNCTIONAL_CANDIDATE_READY_FOR_PR_AUDIT
-SPRINT_7_LIFECYCLE = FUNCTIONAL_CANDIDATE
+SPRINT_7_STATUS = FORMALLY_CLOSED
+SPRINT_7_LIFECYCLE = FORMALLY_CLOSED
+SPRINT_7_FINAL_VERDICT = PASS
 SPRINT_7_CANONICAL_BRANCH = sprint/7-risk-engine
+SPRINT_7_CANONICAL_HEAD = e379e9b34a8b607e86165bd3336d23fcd9406259
 SPRINT_7_ENTRY_GATE_WORK_BRANCH = s7/00-entry-gate
 SPRINT_7_ENTRY_GATE_ISSUE = #86
 SPRINT_7_REQUIRED_BASE_SHA = 58e870925e9a1bf4ccbc0f796610d6297bcc57e2
@@ -21,18 +23,21 @@ OPEN_S7_ENTRY_GATE_BLOCKERS = 0
 SPRINT_7_FUNCTIONAL_ISSUE = #88
 SPRINT_7_FUNCTIONAL_WORK_BRANCH = s7/01-full-risk-engine
 SPRINT_7_FUNCTIONAL_AUTHORIZATION_DATE = 2026-09-26
-SPRINT_7_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED
-S7_FUNCTIONAL_MERGE = NOT_AUTHORIZED
-S7_FUNCTIONAL_VALIDATED_CODE_HEAD = c1e33bd3615e311f259d59055349596667978dec
-S7_FUNCTIONAL_PYTHON_CI_RUN = 36939849626
-S7_FUNCTIONAL_ENTRY_GATE_CI_RUN = 36939849827
-S7_FUNCTIONAL_PINNED_UPSTREAM_RUN = 36939849524
-S7_FUNCTIONAL_FULL_REGRESSION = 1127_PASS
+SPRINT_7_FUNCTIONAL_IMPLEMENTATION = COMPLETED
+S7_FUNCTIONAL_PR = #90
+S7_FUNCTIONAL_PR_HEAD = fbffb811c1822568c27ee39b8320079782f24342
+S7_FUNCTIONAL_PR_REAUDIT = PASS
+S7_FUNCTIONAL_MERGE = COMPLETED_BY_EXPLICIT_HUMAN_AUTHORIZATION
+S7_FUNCTIONAL_MERGE_SHA = e379e9b34a8b607e86165bd3336d23fcd9406259
+S7_POST_MERGE_PYTHON_CI_RUN = 36965539682
+S7_POST_MERGE_ENTRY_GATE_CI_RUN = 36965539684
+S7_POST_MERGE_PINNED_UPSTREAM_RUN = 36965539670
+S7_POST_MERGE_FULL_REGRESSION = 1135_PASS
+S7_DEDICATED_TESTS = 46_PASS
 S7_FUNCTIONAL_PACKAGE_COVERAGE = 100_STATEMENT_100_BRANCH
-S7_FUNCTIONAL_PR_REAUDIT = PENDING
-OPEN_FUNCTIONAL_CANDIDATE_BLOCKERS = 0
-S7_ENTRY_GATE_MERGE = COMPLETED_BY_EXPLICIT_HUMAN_AUTHORIZATION
+OPEN_S7_FUNCTIONAL_BLOCKERS = 0
 
+SPRINT_8 = NOT_AUTHORIZED
 PAPER_TRADING = NO
 LIVE_TRADING = NO
 REAL_MONEY = NO
@@ -40,7 +45,7 @@ REAL_MONEY = NO
 
 ## Purpose
 
-Sprint 7 is the independent Risk Engine stage. Its future authorized implementation will own deterministic risk veto and bounded authorization semantics before Paper Trading can exist.
+Sprint 7 is the independent Risk Engine stage. Its canonical implementation owns deterministic risk veto and bounded authorization semantics before any future Paper Trading capability can exist.
 
 Core conceptual chain:
 
@@ -77,7 +82,7 @@ This gate materializes:
 - exact-head/pinned-upstream evidence;
 - independent review.
 
-The Entry Gate is canonical PASS. A subsequent explicit human authorization on 2026-09-26 opened the functional side-effect-free Risk Engine implementation under Issue #88. This authorization does not include merge or downstream execution authority.
+The Entry Gate is canonical PASS. Human authorization on 2026-09-26 opened the functional side-effect-free implementation under Issue #88. After independent re-audit and remediation, explicit human merge authorization was granted on 2026-10-02; PR #90 was merged into `sprint/7-risk-engine` at `e379e9b34a8b607e86165bd3336d23fcd9406259` and exact post-merge validation passed. This closure grants no downstream execution authority and does not authorize Sprint 8.
 
 ## Current boundary
 
@@ -93,3 +98,10 @@ PAPER = FORBIDDEN
 LIVE = FORBIDDEN
 REAL_MONEY = FORBIDDEN
 ```
+
+
+## Formal closure
+
+Sprint 7 is formally closed with verdict PASS. The authoritative closure record is `docs/program/S7_FINAL_ACCEPTANCE.md`.
+
+The canonical functional implementation remains intentionally side-effect-free: it may reject or bound an immutable proposal and issue a bounded `RiskAuthorization`, but it does not create `AuthorizationAllocation`, `OrderIntent`, `ExecutionOrder`, broker effects, Paper/Live trading, FinancialLedger mutation, or real-money authority.
