@@ -25,47 +25,47 @@
 
 | ID | Required capability | Governing source | Entry status |
 |---|---|---|---|
-| **S7-AC-01** | Immutable RiskEvaluationBoundary | S7-D-04 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-02** | Immutable RiskStateSnapshot | ADR 0022; S7-D-05 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-03** | Immutable/versioned RiskPolicyBundle | S7-D-08 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-04** | RiskDecision.REJECT / PERMIT only | ADR 0016; S7-D-02 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-05** | Distinct immutable RiskAuthorization | ADR 0016; S7-D-03 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-06** | Authorization cannot exceed proposal | S7-D-06 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-07** | Authorization validity/expiry bound to state/policy/time | ADR 0007/0016; S7-D-07 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-08** | Explicit reasons/metrics/policy provenance | ADR 0016 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-09** | Current position exposure | ADR 0022 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-10** | Committed potential exposure | ADR 0022 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-11** | RiskCapacityReservation semantics | ADR 0022; DD-64 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-12** | Worst-case exposure evaluation | ADR 0022; DD-64 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-13** | Explicit unit/currency dimensional validation | S7-D-05/08 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-14** | UNKNOWN/STALE/INCOMPLETE fail-closed | ADR 0022; S7-D-10 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-15** | Predeclared exposure limit policies | DD-121 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-16** | Predeclared daily-loss policies | DD-121; S7-D-11 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-17** | Explicit daily-loss session/timezone/reset semantics | S7-D-11 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-18** | Predeclared drawdown policies | S7-D-12 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-19** | Drawdown denominator/peak validity | S7-D-12 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-20** | Governed empirical tail-risk policy | DD-107; S7-D-13 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-21** | Synthetic-vs-empirical tail separation | S7-D-14 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-22** | Hard-limit non-compensation | S7-D-09 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-23** | Risk-only maximum sizing envelope | S7-D-06 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-24** | Restrictive circuit-breaker latch | S7-D-17 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-25** | Human-confirmed unlatch | DD-38; S7-D-18 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-26** | SAFE_HALT blocks new commitment only | ADR 0020; S7-D-19 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-27** | Deterministic repeated-run equivalence | S7-D-23 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-28** | Content-addressed provenance | S7-D-24 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-29** | No runtime policy tuning | S7-D-22 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-30** | No Strategy merit attribution from Risk veto | 0E-F F-HQI-04; S7-D-20 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-31** | Dedicated S7 boundary/security verifier | S7-D-25 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-32** | Adversarial authority-chain tests | ADR 0016 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-33** | Adversarial stale/unknown-state tests | ADR 0022 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-34** | Adversarial limits/circuit-breaker tests | DD-38/DD-121 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-35** | S7 package 100% statement coverage | S7-D-27 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-36** | S7 package 100% branch coverage | S7-D-27 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-37** | Full S1–S6 regression | program governance | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-38** | Exact-head CI and pinned upstream | program governance | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-39** | Zero additional recurring cost | project constraint | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-40** | No new mandatory runtime dependency | S7-D-26 | REQUIRED_AFTER_AUTHORIZATION |
-| **S7-AC-41** | RiskAuthorization alone does not reserve capacity; downstream allocation revalidates current capacity | ADR 0016; S7-D-16 | REQUIRED_AFTER_AUTHORIZATION |
+| **S7-AC-01** | Immutable RiskEvaluationBoundary | S7-D-04 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-02** | Immutable RiskStateSnapshot | ADR 0022; S7-D-05 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-03** | Immutable/versioned RiskPolicyBundle | S7-D-08 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-04** | RiskDecision.REJECT / PERMIT only | ADR 0016; S7-D-02 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-05** | Distinct immutable RiskAuthorization | ADR 0016; S7-D-03 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-06** | Authorization cannot exceed proposal | S7-D-06 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-07** | Authorization validity/expiry bound to state/policy/time | ADR 0007/0016; S7-D-07 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-08** | Explicit reasons/metrics/policy provenance | ADR 0016 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-09** | Current position exposure | ADR 0022 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-10** | Committed potential exposure | ADR 0022 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-11** | RiskCapacityReservation semantics | ADR 0022; DD-64 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-12** | Worst-case exposure evaluation | ADR 0022; DD-64 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-13** | Explicit unit/currency dimensional validation | S7-D-05/08 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-14** | UNKNOWN/STALE/INCOMPLETE fail-closed | ADR 0022; S7-D-10 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-15** | Predeclared exposure limit policies | DD-121 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-16** | Predeclared daily-loss policies | DD-121; S7-D-11 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-17** | Explicit daily-loss session/timezone/reset semantics | S7-D-11 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-18** | Predeclared drawdown policies | S7-D-12 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-19** | Drawdown denominator/peak validity | S7-D-12 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-20** | Governed empirical tail-risk policy | DD-107; S7-D-13 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-21** | Synthetic-vs-empirical tail separation | S7-D-14 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-22** | Hard-limit non-compensation | S7-D-09 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-23** | Risk-only maximum sizing envelope | S7-D-06 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-24** | Restrictive circuit-breaker latch | S7-D-17 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-25** | Human-confirmed unlatch | DD-38; S7-D-18 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-26** | SAFE_HALT blocks new commitment only | ADR 0020; S7-D-19 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-27** | Deterministic repeated-run equivalence | S7-D-23 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-28** | Content-addressed provenance | S7-D-24 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-29** | No runtime policy tuning | S7-D-22 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-30** | No Strategy merit attribution from Risk veto | 0E-F F-HQI-04; S7-D-20 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-31** | Dedicated S7 boundary/security verifier | S7-D-25 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-32** | Adversarial authority-chain tests | ADR 0016 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-33** | Adversarial stale/unknown-state tests | ADR 0022 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-34** | Adversarial limits/circuit-breaker tests | DD-38/DD-121 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-35** | S7 package 100% statement coverage | S7-D-27 | PASS_CANDIDATE |
+| **S7-AC-36** | S7 package 100% branch coverage | S7-D-27 | PASS_CANDIDATE |
+| **S7-AC-37** | Full S1–S6 regression | program governance | PASS_CANDIDATE |
+| **S7-AC-38** | Exact-head CI and pinned upstream | program governance | PASS_CANDIDATE |
+| **S7-AC-39** | Zero additional recurring cost | project constraint | IMPLEMENTED_CANDIDATE |
+| **S7-AC-40** | No new mandatory runtime dependency | S7-D-26 | IMPLEMENTED_CANDIDATE |
+| **S7-AC-41** | RiskAuthorization alone does not reserve capacity; downstream allocation revalidates current capacity | ADR 0016; S7-D-16 | IMPLEMENTED_CANDIDATE |
 
 ## 3. Negative capabilities that must remain absent
 
@@ -118,6 +118,28 @@ S7_ENTRY_GATE_POST_MERGE_CI_RUN = 35909666368
 S7_ENTRY_GATE_POST_MERGE_UPSTREAM_RUN = 35909666371
 OPEN_S7_ENTRY_GATE_BLOCKERS = 0
 
-S7_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
-PROMOTION_TO_S7_FUNCTIONAL_IMPLEMENTATION = NO
+S7_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED
+S7_FUNCTIONAL_ISSUE = #88
+S7_FUNCTIONAL_WORK_BRANCH = s7/01-full-risk-engine
+S7_FUNCTIONAL_AUTHORIZATION_DATE = 2026-09-26
+S7_FUNCTIONAL_MERGE = NOT_AUTHORIZED
+PROMOTION_TO_S7_FUNCTIONAL_IMPLEMENTATION = YES
+```
+
+
+## 5. Functional candidate validation
+
+```text
+S7_FUNCTIONAL_VALIDATED_CODE_HEAD = c1e33bd3615e311f259d59055349596667978dec
+S7_FUNCTIONAL_PYTHON_CI_RUN = 36939849626
+S7_FUNCTIONAL_ENTRY_GATE_CI_RUN = 36939849827
+S7_FUNCTIONAL_PINNED_UPSTREAM_RUN = 36939849524
+S7_FUNCTIONAL_FULL_REGRESSION = 1127_PASS
+S7_FUNCTIONAL_PACKAGE_STATEMENT_COVERAGE = 100%
+S7_FUNCTIONAL_PACKAGE_BRANCH_COVERAGE = 100%
+S7_FUNCTIONAL_CANDIDATE = PASS_CANDIDATE
+OPEN_FUNCTIONAL_CANDIDATE_BLOCKERS = 0
+
+S7_FUNCTIONAL_MERGE = NOT_AUTHORIZED
+SPRINT_8 = NOT_AUTHORIZED
 ```

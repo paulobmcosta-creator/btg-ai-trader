@@ -410,8 +410,8 @@ S6_POST_MERGE_UPSTREAM_RUN = 35898585983
 S6_FINAL_VERDICT = PASS
 OPEN_S6_BLOCKERS = 0
 PROMOTION_TO_SPRINT_7_GATE = YES
-SPRINT_7_STATUS = ENTRY_GATE_CANONICAL
-SPRINT_7_LIFECYCLE = AWAITING_FUNCTIONAL_AUTHORIZATION
+SPRINT_7_STATUS = FUNCTIONAL_CANDIDATE_READY_FOR_PR_AUDIT
+SPRINT_7_LIFECYCLE = FUNCTIONAL_CANDIDATE
 SPRINT_7_ENTRY_GATE_ISSUE = #86
 SPRINT_7_CANONICAL_BRANCH = sprint/7-risk-engine
 SPRINT_7_ENTRY_GATE_WORK_BRANCH = s7/00-entry-gate
@@ -421,7 +421,7 @@ SPRINT_7_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 
 Monte Carlo, bootstrap inferencial, Strategy, Risk, Paper, Live, broker orders, FinancialLedger mutation e dinheiro real não são autorizados pelo Gate de Entrada.
 
-### Sprint 7 — Risk Engine — ENTRY_GATE_CANONICAL
+### Sprint 7 — Risk Engine — FUNCTIONAL_CANDIDATE_READY_FOR_PR_AUDIT
 
 Limites, sizing de teto de risco, circuit breakers, veto, drawdown, daily loss e fail-safe.
 
@@ -438,8 +438,20 @@ S7_ENTRY_GATE_MERGE_SHA = 8d475abd8751d0042d06840012604de140e18d21
 S7_ENTRY_GATE_POST_MERGE_CI_RUN = 35909666368
 S7_ENTRY_GATE_POST_MERGE_UPSTREAM_RUN = 35909666371
 OPEN_S7_ENTRY_GATE_BLOCKERS = 0
-PROMOTION_TO_S7_FUNCTIONAL_IMPLEMENTATION = NO
-S7_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+PROMOTION_TO_S7_FUNCTIONAL_IMPLEMENTATION = YES
+S7_FUNCTIONAL_ISSUE = #88
+S7_FUNCTIONAL_WORK_BRANCH = s7/01-full-risk-engine
+S7_FUNCTIONAL_AUTHORIZATION_DATE = 2026-09-26
+S7_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED
+S7_FUNCTIONAL_MERGE = NOT_AUTHORIZED
+S7_FUNCTIONAL_VALIDATED_CODE_HEAD = c1e33bd3615e311f259d59055349596667978dec
+S7_FUNCTIONAL_PYTHON_CI_RUN = 36939849626
+S7_FUNCTIONAL_ENTRY_GATE_CI_RUN = 36939849827
+S7_FUNCTIONAL_PINNED_UPSTREAM_RUN = 36939849524
+S7_FUNCTIONAL_FULL_REGRESSION = 1127_PASS
+S7_FUNCTIONAL_PACKAGE_COVERAGE = 100_STATEMENT_100_BRANCH
+S7_FUNCTIONAL_PR_REAUDIT = PENDING
+OPEN_S7_FUNCTIONAL_BLOCKERS = 0
 ```
 
 O Entry Gate separa explicitamente `RiskDecision`, `RiskAuthorization`, capacity reservation e exposure; preserva `SAFE_HALT != AUTO_FLATTEN`; e mantém ordens, Paper, Live, FinancialLedger mutation e dinheiro real fora do escopo.
@@ -620,7 +632,7 @@ Após a remediação pré-autorização, o Sprint 6 funcional foi autorizado, im
 
 ## 16. Próxima ação oficial
 
-O Sprint 6 — Scenario Engine está formalmente fechado/PASS. O Sprint 7 Entry Gate foi reaudita​do PASS, mergeado por autorização humana via PR #87 em `8d475abd8751d0042d06840012604de140e18d21` e validado pós-merge. A implementação funcional de Risk continua separadamente não autorizada.
+O Sprint 6 — Scenario Engine está formalmente fechado/PASS. O Sprint 7 Entry Gate está canônico PASS. Em 2026-09-26 foi concedida autorização humana explícita para a implementação funcional side-effect-free do Risk Engine sob Issue #88; merge funcional, Sprint 8, Paper, Live e dinheiro real continuam separadamente não autorizados.
 
 ```text
 PROMOTION_TO_SPRINT_6_GATE = YES
