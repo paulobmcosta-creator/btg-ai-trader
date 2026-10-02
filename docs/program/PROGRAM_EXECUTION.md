@@ -126,7 +126,7 @@ SPRINT_7_LIFECYCLE = FORMALLY_CLOSED
 SPRINT_7_FINAL_VERDICT = PASS
 SPRINT_7_ENTRY_GATE_ISSUE = #86
 SPRINT_7_CANONICAL_BRANCH = sprint/7-risk-engine
-SPRINT_7_CANONICAL_HEAD = e379e9b34a8b607e86165bd3336d23fcd9406259
+SPRINT_7_FUNCTIONAL_CANONICAL_HEAD = e379e9b34a8b607e86165bd3336d23fcd9406259
 SPRINT_7_ENTRY_GATE_WORK_BRANCH = s7/00-entry-gate
 S7_ENTRY_GATE = PASS
 S7_ENTRY_GATE_CANONICAL = PASS
@@ -327,14 +327,14 @@ SPRINT_6_FUNCTIONAL_IMPLEMENTATION = COMPLETED
 
 ## Canonical next action
 
-Sprint 7 is formally closed/PASS. The side-effect-free Risk Engine was integrated by PR #90 at canonical head `e379e9b34a8b607e86165bd3336d23fcd9406259` and validated post-merge by runs `36965539682`, `36965539684` and `36965539670`.
+Sprint 7 is formally closed/PASS. The side-effect-free Risk Engine was integrated by PR #90 at functional canonical head `e379e9b34a8b607e86165bd3336d23fcd9406259` and validated post-merge by runs `36965539682`, `36965539684` and `36965539670`.
 
 No downstream execution stage is opened by this closure. The next governance action is to await a new explicit human authorization before materializing or implementing Sprint 8 — Paper Trader.
 
 ```text
 SPRINT_7_STATUS = FORMALLY_CLOSED
 SPRINT_7_FINAL_VERDICT = PASS
-SPRINT_7_CANONICAL_HEAD = e379e9b34a8b607e86165bd3336d23fcd9406259
+SPRINT_7_FUNCTIONAL_CANONICAL_HEAD = e379e9b34a8b607e86165bd3336d23fcd9406259
 SPRINT_8 = NOT_AUTHORIZED
 PAPER_TRADING = NO
 LIVE_TRADING = NO

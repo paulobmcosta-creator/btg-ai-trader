@@ -5,7 +5,7 @@ SPRINT_7_STATUS = FORMALLY_CLOSED
 SPRINT_7_LIFECYCLE = FORMALLY_CLOSED
 SPRINT_7_FINAL_VERDICT = PASS
 SPRINT_7_CANONICAL_BRANCH = sprint/7-risk-engine
-SPRINT_7_CANONICAL_HEAD = e379e9b34a8b607e86165bd3336d23fcd9406259
+SPRINT_7_FUNCTIONAL_CANONICAL_HEAD = e379e9b34a8b607e86165bd3336d23fcd9406259
 SPRINT_7_ENTRY_GATE_WORK_BRANCH = s7/00-entry-gate
 SPRINT_7_ENTRY_GATE_ISSUE = #86
 SPRINT_7_REQUIRED_BASE_SHA = 58e870925e9a1bf4ccbc0f796610d6297bcc57e2
@@ -105,3 +105,5 @@ REAL_MONEY = FORBIDDEN
 Sprint 7 is formally closed with verdict PASS. The authoritative closure record is `docs/program/S7_FINAL_ACCEPTANCE.md`.
 
 The canonical functional implementation remains intentionally side-effect-free: it may reject or bound an immutable proposal and issue a bounded `RiskAuthorization`, but it does not create `AuthorizationAllocation`, `OrderIntent`, `ExecutionOrder`, broker effects, Paper/Live trading, FinancialLedger mutation, or real-money authority.
+
+Post-closure documentation reconciliation may advance the branch HEAD without changing the audited functional code baseline. For that reason, `SPRINT_7_FUNCTIONAL_CANONICAL_HEAD` denotes the merged Risk Engine code baseline, while later documentation-only commits are not treated as a new functional implementation.
