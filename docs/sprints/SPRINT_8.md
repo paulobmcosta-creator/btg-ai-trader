@@ -1,6 +1,6 @@
 # Sprint 8 — Paper Trader
 
-\`\`\`text
+```text
 SPRINT_8_STATUS = ENTRY_GATE_CANDIDATE_CHANGES_REQUIRED
 SPRINT_8_LIFECYCLE = ENTRY_GATE
 SPRINT_8_ENTRY_GATE_AUTHORIZATION_DATE = 2026-10-02
@@ -19,7 +19,7 @@ S8_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 PAPER_CONFIRMATORY_RUN = NOT_AUTHORIZED
 LIVE_TRADING = NO
 REAL_MONEY = NO
-\`\`\`
+```
 
 ## Purpose
 
@@ -31,14 +31,14 @@ A future authorized implementation must exercise real internal system decisions 
 
 The Entry Gate currently blocks functional implementation for two root reasons:
 
-- **S8-B01:** there is no operational Signal/Strategy → \`StrategyDecision\` → \`TradeIntent\` runtime path in the canonical predecessor;
-- **S8-B02:** there is no exact candidate canonically adjudicated \`PAPER_ELIGIBLE\` and frozen for confirmatory Paper.
+- **S8-B01:** there is no operational Signal/Strategy → `StrategyDecision` → `TradeIntent` runtime path in the canonical predecessor;
+- **S8-B02:** there is no exact candidate canonically adjudicated `PAPER_ELIGIBLE` and frozen for confirmatory Paper.
 
 Paper infrastructure must not hide either gap by inventing a strategy or selecting a favorable substitute.
 
 ## Hard boundary
 
-\`\`\`text
+```text
 REAL_BROKER_ORDER = FORBIDDEN
 REAL_ACCOUNT_MUTATION = FORBIDDEN
 REAL_MONEY = FORBIDDEN
@@ -48,6 +48,6 @@ CANONICAL_FINANCIAL_LEDGER_MUTATION = FORBIDDEN
 RISK_BYPASS = FORBIDDEN
 PAPER_LOCAL_STRATEGY_SUBSTITUTE = FORBIDDEN
 AUTO_PROMOTION_TO_LIVE = FORBIDDEN
-\`\`\`
+```
 
 The Entry Gate itself changes no functional source code.
