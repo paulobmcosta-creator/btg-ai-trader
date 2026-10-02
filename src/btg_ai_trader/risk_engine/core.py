@@ -8,7 +8,7 @@ import types
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from decimal import Decimal, localcontext
+from decimal import Context, Decimal, MAX_EMAX, MIN_EMIN, localcontext
 from enum import Enum
 
 from btg_ai_trader.observer.identity import TradableInstrumentId
@@ -82,8 +82,12 @@ def _exact_sum(first: Decimal, second: Decimal, *rest: Decimal) -> Decimal:
         for value in values
     )
     precision = max(1, aligned_digits + len(str(len(values))))
-    with localcontext() as context:
-        context.prec = precision
+    exact_context = Context(
+        prec=precision,
+        Emin=MIN_EMIN,
+        Emax=MAX_EMAX,
+    )
+    with localcontext(exact_context):
         return sum(values, Decimal(0))
 
 
@@ -449,7 +453,8 @@ class DrawdownState:
     def ratio(self) -> Decimal | None:
         if self.capital_denominator is None:
             return None
-        return self.amount / self.capital_denominator
+        with localcontext(DEFAULT_NUMERIC_POLICY.get_context()):
+            return self.amount / self.capital_denominator
 
 
 @dataclass(frozen=True, slots=True)
@@ -966,6 +971,7 @@ class RiskDecisionRecord:
     decision_digest: str = field(init=False)
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "reasons", tuple(self.reasons))
         for value, name in (
             (self.boundary_digest, "boundary_digest"),
             (self.proposal_digest, "proposal_digest"),

@@ -1090,3 +1090,51 @@ def test_authorization_quantity_never_exceeds_proposal_after_rounding() -> None:
     )
     assert validation.valid
     assert validation.reasons == ()
+
+
+
+def test_decision_reasons_are_frozen_before_digesting() -> None:
+    original = evaluate_risk(boundary()).decision
+    mutable_reasons = ["PERMITTED", "AUDIT_REASON"]
+    record = dataclasses.replace(
+        original,
+        reasons=mutable_reasons,  # type: ignore[arg-type]
+    )
+    original_digest = record.decision_digest
+
+    mutable_reasons.clear()
+
+    assert record.reasons == ("PERMITTED", "AUDIT_REASON")
+    assert record.decision_digest == original_digest
+
+
+def test_hard_cap_is_not_relaxed_by_ambient_decimal_exponent_range() -> None:
+    risk_policy = policy(capacity_threshold="0.015")
+    zero_exposure = ExposureState(
+        current_position_exposure=Decimal("0.00"),
+        committed_potential_exposure=Decimal("0.00"),
+        risk_capacity_reservation=Decimal("0.00"),
+        worst_case_exposure=Decimal("0.00"),
+        unit="BRL",
+        source_digest="zero-exposure",
+    )
+    risk_state = dataclasses.replace(
+        state(risk_policy),
+        exposure=zero_exposure,
+    )
+    risk_boundary = boundary(
+        risk_policy=risk_policy,
+        risk_state=risk_state,
+        risk_proposal=proposal(exposure="0.016", quantity="1"),
+    )
+
+    with localcontext() as ambient:
+        ambient.prec = 2
+        ambient.Emin = 0
+        ambient.Emax = 9
+        result = evaluate_risk(risk_boundary)
+
+    assert result.decision.decision is RiskDecision.PERMIT
+    assert result.authorization is not None
+    assert result.authorization.max_exposure == Decimal("0.015")
+    assert result.authorization.max_exposure < risk_boundary.proposal.requested_exposure

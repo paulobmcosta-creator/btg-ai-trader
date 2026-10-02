@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import dataclasses
 from datetime import UTC, datetime, timedelta
-from decimal import Decimal
+from decimal import Decimal, localcontext
 
 import pytest
 
@@ -310,6 +310,12 @@ def test_canonical_json_helpers_and_text_numeric_guards() -> None:
     with pytest.raises(ValueError, match="finite Decimal"):
         rc._freeze_metrics({"x": Decimal("NaN")})
 
+    with localcontext() as ambient:
+        ambient.prec = 2
+        ambient.Emin = 0
+        ambient.Emax = 9
+        assert rc._exact_subtract(Decimal("0.015"), Decimal("0.00")) == Decimal("0.015")
+
 
 def test_proposal_exposure_daily_drawdown_and_tail_validation() -> None:
     item = proposal()
@@ -339,6 +345,27 @@ def test_proposal_exposure_daily_drawdown_and_tail_validation() -> None:
     dd = drawdown()
     assert dd.amount == Decimal("100")
     assert dd.ratio == Decimal("0.1")
+    third = DrawdownState(
+        peak_value=Decimal("1"),
+        current_value=Decimal("0"),
+        unit="BRL",
+        capital_denominator=Decimal("3"),
+        denominator_convention=(
+            DrawdownDenominatorConvention.EXPLICIT_POSITIVE_CAPITAL
+        ),
+        source_id="portfolio-equity",
+        series_kind=DrawdownSeriesKind.EQUITY,
+        peak_id="peak-third",
+        current_id="current-third",
+        source_digest="drawdown-third",
+    )
+    with localcontext() as ambient:
+        ambient.prec = 2
+        low_precision_ratio = third.ratio
+    with localcontext() as ambient:
+        ambient.prec = 50
+        high_precision_ratio = third.ratio
+    assert low_precision_ratio == high_precision_ratio
     assert drawdown(denominator=None).ratio is None
     with pytest.raises(ValueError, match="governed peak"):
         dataclasses.replace(dd, current_value=Decimal("1001"))
