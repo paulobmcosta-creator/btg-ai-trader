@@ -1138,3 +1138,80 @@ def test_hard_cap_is_not_relaxed_by_ambient_decimal_exponent_range() -> None:
     assert result.authorization is not None
     assert result.authorization.max_exposure == Decimal("0.015")
     assert result.authorization.max_exposure < risk_boundary.proposal.requested_exposure
+
+
+
+def test_hard_daily_loss_rejects_evaluation_outside_bound_session() -> None:
+    daily_rule = rule("02-daily", RiskMetric.DAILY_LOSS, "100", "BRL")
+    risk_policy = policy(extra_rules=(daily_rule,))
+    risk_boundary = boundary(
+        risk_policy=risk_policy,
+        risk_state=state(risk_policy),
+        as_of_time=dt(101),
+    )
+
+    result = evaluate_risk(risk_boundary)
+
+    assert result.decision.decision is RiskDecision.REJECT
+    assert result.authorization is None
+    assert "DAILY_LOSS_SESSION_MISMATCH:02-daily" in result.decision.reasons
+
+
+def test_hard_daily_loss_caps_authorization_at_session_end() -> None:
+    daily_rule = rule("02-daily", RiskMetric.DAILY_LOSS, "100", "BRL")
+    risk_policy = policy(extra_rules=(daily_rule,), ttl=30)
+    short_session_daily = dataclasses.replace(
+        make_daily(),
+        session_end=dt(20),
+    )
+    risk_state = dataclasses.replace(
+        state(risk_policy),
+        daily_loss=short_session_daily,
+    )
+    risk_boundary = boundary(
+        risk_policy=risk_policy,
+        risk_state=risk_state,
+    )
+
+    result = evaluate_risk(risk_boundary)
+
+    assert result.decision.decision is RiskDecision.PERMIT
+    assert result.authorization is not None
+    assert result.authorization.valid_until == dt(20)
+
+
+def test_validation_rejects_overlong_authorization_after_daily_session() -> None:
+    daily_rule = rule("02-daily", RiskMetric.DAILY_LOSS, "100", "BRL")
+    risk_policy = policy(extra_rules=(daily_rule,), ttl=30)
+    short_session_daily = dataclasses.replace(
+        make_daily(),
+        session_end=dt(20),
+    )
+    risk_state = dataclasses.replace(
+        state(risk_policy),
+        daily_loss=short_session_daily,
+    )
+    risk_boundary = boundary(
+        risk_policy=risk_policy,
+        risk_state=risk_state,
+    )
+    result = evaluate_risk(risk_boundary)
+    assert result.authorization is not None
+
+    overlong = preserve_issuer(
+        dataclasses.replace(
+            result.authorization,
+            valid_until=dt(40),
+        )
+    )
+    validation = validate_authorization(
+        overlong,
+        decision=result.decision,
+        proposal=risk_boundary.proposal,
+        state=risk_boundary.state,
+        policy=risk_boundary.policy,
+        as_of_time=dt(21),
+    )
+
+    assert not validation.valid
+    assert AuthorizationInvalidity.EXPIRED in validation.reasons

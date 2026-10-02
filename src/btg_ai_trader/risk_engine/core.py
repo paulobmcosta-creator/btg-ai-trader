@@ -1158,6 +1158,12 @@ def _metric_value(
     if metric is RiskMetric.DAILY_LOSS:
         if state.daily_loss is None:
             return None, None, "DAILY_LOSS_MISSING"
+        if not (
+            state.daily_loss.session_start
+            <= boundary.as_of_time
+            < state.daily_loss.session_end
+        ):
+            return None, state.daily_loss.currency, "DAILY_LOSS_SESSION_MISMATCH"
         if state.daily_loss.quality is not EvidenceQuality.VALID:
             return None, state.daily_loss.currency, "DAILY_LOSS_QUALITY"
         daily_semantics_policy = boundary.policy.daily_loss_semantics
@@ -1312,6 +1318,12 @@ def _build_authorization(
     valid_until = ttl_valid_until
     if boundary.policy.effective_until is not None:
         valid_until = min(valid_until, boundary.policy.effective_until)
+    has_hard_daily_loss_limit = any(
+        rule.hard and rule.metric is RiskMetric.DAILY_LOSS
+        for rule in boundary.policy.rules
+    )
+    if has_hard_daily_loss_limit and boundary.state.daily_loss is not None:
+        valid_until = min(valid_until, boundary.state.daily_loss.session_end)
     authorization = RiskAuthorization(
         decision_digest=decision.decision_digest,
         proposal_digest=proposal.proposal_digest,
@@ -1464,7 +1476,14 @@ def validate_authorization(
         reasons.append(AuthorizationInvalidity.POLICY_MISMATCH)
     if as_of_time < authorization.valid_from:
         reasons.append(AuthorizationInvalidity.NOT_YET_VALID)
-    if as_of_time >= authorization.valid_until:
+    effective_valid_until = authorization.valid_until
+    has_hard_daily_loss_limit = any(
+        rule.hard and rule.metric is RiskMetric.DAILY_LOSS
+        for rule in policy.rules
+    )
+    if has_hard_daily_loss_limit and state.daily_loss is not None:
+        effective_valid_until = min(effective_valid_until, state.daily_loss.session_end)
+    if as_of_time >= effective_valid_until:
         reasons.append(AuthorizationInvalidity.EXPIRED)
     if (
         authorization.max_quantity > proposal.requested_quantity
