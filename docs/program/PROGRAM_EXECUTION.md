@@ -156,7 +156,19 @@ SPRINT_7_DEDICATED_TESTS = 46_PASS
 SPRINT_7_FUNCTIONAL_PACKAGE_COVERAGE = 100_STATEMENT_100_BRANCH
 OPEN_SPRINT_7_FUNCTIONAL_BLOCKERS = 0
 OPEN_SPRINT_7_BLOCKERS = 0
-SPRINT_8 = NOT_AUTHORIZED
+
+SPRINT_8_STATUS = ENTRY_GATE_CANDIDATE_CHANGES_REQUIRED
+SPRINT_8_LIFECYCLE = ENTRY_GATE
+SPRINT_8_ENTRY_GATE_AUTHORIZATION_DATE = 2026-10-02
+SPRINT_8_ENTRY_GATE_ISSUE = #93
+SPRINT_8_CANONICAL_BRANCH = sprint/8-paper-trader
+SPRINT_8_ENTRY_GATE_WORK_BRANCH = s8/00-entry-gate
+S8_ENTRY_GATE_CANDIDATE = CHANGES_REQUIRED
+OPEN_S8_ENTRY_GATE_BLOCKERS = 2
+S8-B01 = OPEN
+S8-B02 = OPEN
+S8_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+PAPER_CONFIRMATORY_RUN = NOT_AUTHORIZED
 
 OFFICIAL_CODEX_SECURITY_DIFF_SCAN = NOT_EXECUTED
 SPRINT1_GITHUB_NATIVE_SECURITY_GATE = PASS
@@ -327,16 +339,23 @@ SPRINT_6_FUNCTIONAL_IMPLEMENTATION = COMPLETED
 
 ## Canonical next action
 
-Sprint 7 is formally closed/PASS. The side-effect-free Risk Engine was integrated by PR #90 at functional canonical head `e379e9b34a8b607e86165bd3336d23fcd9406259` and validated post-merge by runs `36965539682`, `36965539684` and `36965539670`.
+Sprint 8 Entry Gate was explicitly authorized on 2026-10-02 under Issue #93. The gate is documentation/governance-only and currently adjudicates \`CHANGES_REQUIRED\`.
 
-No downstream execution stage is opened by this closure. The next governance action is to await a new explicit human authorization before materializing or implementing Sprint 8 — Paper Trader.
+Two root blockers prevent functional Paper authorization:
 
-```text
-SPRINT_7_STATUS = FORMALLY_CLOSED
-SPRINT_7_FINAL_VERDICT = PASS
-SPRINT_7_FUNCTIONAL_CANONICAL_HEAD = e379e9b34a8b607e86165bd3336d23fcd9406259
-SPRINT_8 = NOT_AUTHORIZED
-PAPER_TRADING = NO
+1. **S8-B01:** no operational Signal/Strategy → \`StrategyDecision\` → \`TradeIntent\` runtime path exists in the canonical predecessor;
+2. **S8-B02:** no exact candidate has canonical \`PAPER_ELIGIBLE\` adjudication plus candidate freeze under Protocol 0E-G.
+
+The immediate governance task is exact-head CI plus independent review of the blocked Entry Gate packet. Merge of the Entry Gate requires separate explicit human authorization. Functional Paper implementation remains forbidden.
+
+\`\`\`text
+SPRINT_8_STATUS = ENTRY_GATE_CANDIDATE_CHANGES_REQUIRED
+S8_ENTRY_GATE_CANDIDATE = CHANGES_REQUIRED
+OPEN_S8_ENTRY_GATE_BLOCKERS = 2
+PROMOTION_TO_S8_FUNCTIONAL_IMPLEMENTATION = NO
+
+S8_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+PAPER_CONFIRMATORY_RUN = NOT_AUTHORIZED
 LIVE_TRADING = NO
 REAL_MONEY = NO
-```
+\`\`\`
