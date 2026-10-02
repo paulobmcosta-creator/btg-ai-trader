@@ -8,7 +8,7 @@ import types
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from decimal import Context, Decimal, localcontext, MAX_EMAX, MIN_EMIN
+from decimal import MAX_EMAX, MIN_EMIN, Context, Decimal, localcontext
 from enum import Enum
 
 from btg_ai_trader.observer.identity import TradableInstrumentId
