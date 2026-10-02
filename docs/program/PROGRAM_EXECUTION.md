@@ -339,16 +339,16 @@ SPRINT_6_FUNCTIONAL_IMPLEMENTATION = COMPLETED
 
 ## Canonical next action
 
-Sprint 8 Entry Gate was explicitly authorized on 2026-10-02 under Issue #93. The gate is documentation/governance-only and currently adjudicates \`CHANGES_REQUIRED\`.
+Sprint 8 Entry Gate was explicitly authorized on 2026-10-02 under Issue #93. The gate is documentation/governance-only and currently adjudicates `CHANGES_REQUIRED`.
 
 Two root blockers prevent functional Paper authorization:
 
-1. **S8-B01:** no operational Signal/Strategy → \`StrategyDecision\` → \`TradeIntent\` runtime path exists in the canonical predecessor;
-2. **S8-B02:** no exact candidate has canonical \`PAPER_ELIGIBLE\` adjudication plus candidate freeze under Protocol 0E-G.
+1. **S8-B01:** no operational Signal/Strategy → `StrategyDecision` → `TradeIntent` runtime path exists in the canonical predecessor;
+2. **S8-B02:** no exact candidate has canonical `PAPER_ELIGIBLE` adjudication plus candidate freeze under Protocol 0E-G.
 
 The immediate governance task is exact-head CI plus independent review of the blocked Entry Gate packet. Merge of the Entry Gate requires separate explicit human authorization. Functional Paper implementation remains forbidden.
 
-\`\`\`text
+```text
 SPRINT_8_STATUS = ENTRY_GATE_CANDIDATE_CHANGES_REQUIRED
 S8_ENTRY_GATE_CANDIDATE = CHANGES_REQUIRED
 OPEN_S8_ENTRY_GATE_BLOCKERS = 2
@@ -358,4 +358,4 @@ S8_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 PAPER_CONFIRMATORY_RUN = NOT_AUTHORIZED
 LIVE_TRADING = NO
 REAL_MONEY = NO
-\`\`\`
+```
