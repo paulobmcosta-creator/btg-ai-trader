@@ -5,8 +5,8 @@
 | ID | Capability / prerequisite | Evidence | Status |
 |---|---|---|---|
 | **S8-EG-AC-01** | Sprint 7 formally closed/PASS | S7 final acceptance | PASS |
-| **S8-EG-AC-02** | Exact audited S7 Risk baseline retained | \`e379e9b34a8b607e86165bd3336d23fcd9406259\` | PASS |
-| **S8-EG-AC-03** | S8 isolated canonical/work branches and issue | Issue #93; \`sprint/8-paper-trader\`; \`s8/00-entry-gate\` | PASS |
+| **S8-EG-AC-02** | Exact audited S7 Risk baseline retained | `e379e9b34a8b607e86165bd3336d23fcd9406259` | PASS |
+| **S8-EG-AC-03** | S8 isolated canonical/work branches and issue | Issue #93; `sprint/8-paper-trader`; `s8/00-entry-gate` | PASS |
 | **S8-EG-AC-04** | Protocol 0E-G is binding | Entry Contract | PASS |
 | **S8-EG-AC-05** | Paper explicitly prospective/non-funded | 0E-G; S8-D-01 | PASS |
 | **S8-EG-AC-06** | Risk bypass structurally forbidden by contract | S8-D-04 | PASS |
@@ -16,8 +16,8 @@
 | **S8-EG-AC-10** | Paper discrepancies preserved as evidence | 0E-G; S8-D-10 | PASS |
 | **S8-EG-AC-11** | PaperGateAssessment required | PR-0E-G-04; S8-D-12 | PASS |
 | **S8-EG-AC-12** | Operational Signal/Strategy runtime path exists | canonical source tree | **FAIL — S8-B01** |
-| **S8-EG-AC-13** | Runtime \`StrategyDecision\` and \`TradeIntent\` contracts exist | canonical source tree | **FAIL — S8-B01** |
-| **S8-EG-AC-14** | Exact candidate has canonical \`PAPER_ELIGIBLE\` adjudication | canonical evidence | **FAIL — S8-B02** |
+| **S8-EG-AC-13** | Runtime `StrategyDecision` and `TradeIntent` contracts exist | canonical source tree | **FAIL — S8-B01** |
+| **S8-EG-AC-14** | Exact candidate has canonical `PAPER_ELIGIBLE` adjudication | canonical evidence | **FAIL — S8-B02** |
 | **S8-EG-AC-15** | Exact candidate is frozen before confirmatory Paper | canonical evidence | **FAIL — S8-B02** |
 | **S8-EG-AC-16** | Candidate-specific DD-115/116/117/119 policies predeclared | requires candidate freeze | BLOCKED_BY_S8-B02 |
 | **S8-EG-AC-17** | No functional S8 source/test delta in Entry Gate | exact diff | PASS |
@@ -31,18 +31,18 @@
 |---|---|---|
 | **S8-AC-01** | Consume contemporaneous admitted market evidence only | REQUIRED_NOT_AUTHORIZED |
 | **S8-AC-02** | Execute exact frozen Strategy candidate | REQUIRED_NOT_AUTHORIZED |
-| **S8-AC-03** | Emit/retain \`NO_TRADE\` and \`PROPOSE_TRADE\` decisions | REQUIRED_NOT_AUTHORIZED |
-| **S8-AC-04** | Materialized immutable \`TradeIntent\` lineage | REQUIRED_NOT_AUTHORIZED |
+| **S8-AC-03** | Emit/retain `NO_TRADE` and `PROPOSE_TRADE` decisions | REQUIRED_NOT_AUTHORIZED |
+| **S8-AC-04** | Materialized immutable `TradeIntent` lineage | REQUIRED_NOT_AUTHORIZED |
 | **S8-AC-05** | Invoke canonical S7 Risk for every proposed economic change | REQUIRED_NOT_AUTHORIZED |
-| **S8-AC-06** | Revalidate \`RiskAuthorization\` at allocation time | REQUIRED_NOT_AUTHORIZED |
-| **S8-AC-07** | Atomic bounded \`AuthorizationAllocation\` | REQUIRED_NOT_AUTHORIZED |
+| **S8-AC-06** | Revalidate `RiskAuthorization` at allocation time | REQUIRED_NOT_AUTHORIZED |
+| **S8-AC-07** | Atomic bounded `AuthorizationAllocation` | REQUIRED_NOT_AUTHORIZED |
 | **S8-AC-08** | Prevent aggregate risk-capacity double-spend | REQUIRED_NOT_AUTHORIZED |
-| **S8-AC-09** | Broker-neutral \`OrderIntent\` | REQUIRED_NOT_AUTHORIZED |
-| **S8-AC-10** | Predeclared \`OrderPlan\` compatible with exact candidate | REQUIRED_NOT_AUTHORIZED |
+| **S8-AC-09** | Broker-neutral `OrderIntent` | REQUIRED_NOT_AUTHORIZED |
+| **S8-AC-10** | Predeclared `OrderPlan` compatible with exact candidate | REQUIRED_NOT_AUTHORIZED |
 | **S8-AC-11** | Deterministic/non-funded Paper execution model using contemporaneous observable inputs | REQUIRED_NOT_AUTHORIZED |
 | **S8-AC-12** | Explicit fictional Paper position/cash/P&L projections | REQUIRED_NOT_AUTHORIZED |
 | **S8-AC-13** | Append-only Paper evidence and provenance | REQUIRED_NOT_AUTHORIZED |
-| **S8-AC-14** | All decisions including \`NO_TRADE\` captured | REQUIRED_NOT_AUTHORIZED |
+| **S8-AC-14** | All decisions including `NO_TRADE` captured | REQUIRED_NOT_AUTHORIZED |
 | **S8-AC-15** | Backtest↔Paper structural/distributional comparison | REQUIRED_NOT_AUTHORIZED |
 | **S8-AC-16** | Material discrepancy preservation | REQUIRED_NOT_AUTHORIZED |
 | **S8-AC-17** | Critical-error evidence and safe interruption | REQUIRED_NOT_AUTHORIZED |
@@ -50,7 +50,7 @@
 | **S8-AC-19** | Candidate-specific information-sufficiency policy | REQUIRED_NOT_AUTHORIZED |
 | **S8-AC-20** | Candidate-specific latency/slippage/discrepancy policies | REQUIRED_NOT_AUTHORIZED |
 | **S8-AC-21** | Material adaptation closes current evidence partition | REQUIRED_NOT_AUTHORIZED |
-| **S8-AC-22** | Final provenance-bound \`PaperGateAssessment\` | REQUIRED_NOT_AUTHORIZED |
+| **S8-AC-22** | Final provenance-bound `PaperGateAssessment` | REQUIRED_NOT_AUTHORIZED |
 | **S8-AC-23** | Full regression and S8-specific adversarial tests | REQUIRED_NOT_AUTHORIZED |
 | **S8-AC-24** | Dedicated S8 negative-capability/broker-side-effect boundary verifier | REQUIRED_NOT_AUTHORIZED |
 | **S8-AC-25** | Zero additional recurring cost | REQUIRED_NOT_AUTHORIZED |
@@ -60,7 +60,7 @@
 | ID | Prohibited capability | Required state |
 |---|---|---|
 | **S8-NC-01** | Real broker/account/order dispatch | ABSENT |
-| **S8-NC-02** | \`order_send()\` or equivalent execution call in authorized Paper path | ABSENT |
+| **S8-NC-02** | `order_send()` or equivalent execution call in authorized Paper path | ABSENT |
 | **S8-NC-03** | Real-money exposure | ABSENT |
 | **S8-NC-04** | Live Trading | ABSENT |
 | **S8-NC-05** | Paper bypassing Risk | ABSENT |
@@ -80,7 +80,7 @@
 
 ## 4. Entry-gate verdict
 
-\`\`\`text
+```text
 S8_ENTRY_GATE_CANDIDATE = CHANGES_REQUIRED
 OPEN_S8_ENTRY_GATE_BLOCKERS = 2
 S8-B01 = OPEN
@@ -91,4 +91,4 @@ S8_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 PAPER_CONFIRMATORY_RUN = NOT_AUTHORIZED
 LIVE_TRADING = NO
 REAL_MONEY = NO
-\`\`\`
+```
