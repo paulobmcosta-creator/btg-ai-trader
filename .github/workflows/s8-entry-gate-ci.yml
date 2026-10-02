@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: s8-entry-gate-ci-\${{ github.workflow }}-\${{ github.ref }}
+  group: s8-entry-gate-ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -25,7 +25,7 @@ jobs:
       - name: Check out exact reviewed commit
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: \${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - name: Set up Python 3.12
@@ -43,7 +43,7 @@ jobs:
       - name: Check out exact reviewed commit
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: \${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -61,11 +61,11 @@ jobs:
             docs/program/workstreams/S8-ENTRY-GATE.md
             docs/sprints/SPRINT_8.md
           )
-          for path in "\${required[@]}"; do
-            test -f "\${path}"
+          for path in "${required[@]}"; do
+            test -f "${path}"
           done
 
-          git merge-base --is-ancestor "\${S7_PREDECESSOR_HEAD}" HEAD
+          git merge-base --is-ancestor "${S7_PREDECESSOR_HEAD}" HEAD
 
           grep -F "S8_ENTRY_GATE_CANDIDATE = CHANGES_REQUIRED" docs/program/S8_ENTRY_GATE.md
           grep -F "S8-B01 = OPEN" docs/program/S8_ENTRY_GATE.md
@@ -79,22 +79,22 @@ jobs:
           test ! -d src/btg_ai_trader/signal_engine
           ! grep -R -E "class[[:space:]]+(StrategyDecision|TradeIntent)\\b" src/btg_ai_trader
 
-          git diff --quiet "\${S7_PREDECESSOR_HEAD}" HEAD -- src tests pyproject.toml
+          git diff --quiet "${S7_PREDECESSOR_HEAD}" HEAD -- src tests pyproject.toml
 
       - name: Check diff whitespace
         shell: bash
         env:
-          PR_BASE_SHA: \${{ github.event.pull_request.base.sha }}
-          PUSH_BEFORE_SHA: \${{ github.event.before }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
           INITIAL_BASE_SHA: 1226aea13bc8a99303b8c008883fd36068247829
         run: |
           set -euo pipefail
-          if [[ -n "\${PR_BASE_SHA}" ]]; then
-            comparison_base="\${PR_BASE_SHA}"
-          elif [[ -n "\${PUSH_BEFORE_SHA}" && ! "\${PUSH_BEFORE_SHA}" =~ ^0+$ ]]; then
-            comparison_base="\${PUSH_BEFORE_SHA}"
+          if [[ -n "${PR_BASE_SHA}" ]]; then
+            comparison_base="${PR_BASE_SHA}"
+          elif [[ -n "${PUSH_BEFORE_SHA}" && ! "${PUSH_BEFORE_SHA}" =~ ^0+$ ]]; then
+            comparison_base="${PUSH_BEFORE_SHA}"
           else
-            comparison_base="\${INITIAL_BASE_SHA}"
+            comparison_base="${INITIAL_BASE_SHA}"
           fi
-          git cat-file -e "\${comparison_base}^{commit}"
-          git diff --check "\${comparison_base}" HEAD
+          git cat-file -e "${comparison_base}^{commit}"
+          git diff --check "${comparison_base}" HEAD
