@@ -656,9 +656,9 @@ A implementação funcional side-effect-free do Risk Engine foi autorizada em 20
 
 ## 16. Próxima ação oficial
 
-Em 2026-10-02 foi autorizada a materialização do Sprint 8 Entry Gate, Issue #93. O gate candidato está \`CHANGES_REQUIRED\` e não autoriza implementação funcional.
+Em 2026-10-02 foi autorizada a materialização do Sprint 8 Entry Gate, Issue #93. O gate candidato está `CHANGES_REQUIRED` e não autoriza implementação funcional.
 
-\`\`\`text
+```text
 SPRINT_7_STATUS = FORMALLY_CLOSED
 SPRINT_7_FINAL_VERDICT = PASS
 SPRINT_7_FUNCTIONAL_CANONICAL_HEAD = e379e9b34a8b607e86165bd3336d23fcd9406259
@@ -673,6 +673,6 @@ S8_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 PAPER_CONFIRMATORY_RUN = NOT_AUTHORIZED
 LIVE_TRADING = NO
 REAL_MONEY = NO
-\`\`\`
+```
 
 A próxima ação é validar e revisar independentemente o pacote documental do Entry Gate. Mesmo que esse pacote seja integrado como registro canônico do estado bloqueado, a implementação funcional do Paper Trader continuará proibida até a remediação explícita dos blockers e nova autorização humana.
