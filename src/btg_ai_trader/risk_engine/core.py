@@ -72,6 +72,25 @@ def _digest(payload: Mapping[str, object]) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+def _exact_sum(first: Decimal, second: Decimal, *rest: Decimal) -> Decimal:
+    values = (first, second, *rest)
+    min_exponent = min(int(value.as_tuple().exponent) for value in values)
+    aligned_digits = max(
+        len(value.as_tuple().digits)
+        + int(value.as_tuple().exponent)
+        - min_exponent
+        for value in values
+    )
+    precision = max(1, aligned_digits + len(str(len(values))))
+    with localcontext() as context:
+        context.prec = precision
+        return sum(values, Decimal(0))
+
+
+def _exact_subtract(left: Decimal, right: Decimal) -> Decimal:
+    return _exact_sum(left, right.copy_negate())
+
+
 def _freeze_metrics(metrics: Mapping[str, Decimal]) -> Mapping[str, Decimal]:
     frozen: dict[str, Decimal] = {}
     for name, value in sorted(metrics.items()):
@@ -243,8 +262,9 @@ class ExposureState:
             (self.worst_case_exposure, "worst_case_exposure"),
         ):
             _require_decimal(value, name, nonnegative=True)
-        if self.worst_case_exposure < (
-            self.current_position_exposure + self.committed_potential_exposure
+        if self.worst_case_exposure < _exact_sum(
+            self.current_position_exposure,
+            self.committed_potential_exposure,
         ):
             raise ValueError(
                 "worst_case_exposure cannot be below current plus committed exposure"
@@ -322,7 +342,7 @@ class DailyLossState:
 
     @property
     def loss_amount(self) -> Decimal:
-        return max(-self.recognized_pnl, Decimal(0))
+        return max(self.recognized_pnl.copy_negate(), Decimal(0))
 
 
 @dataclass(frozen=True, slots=True)
@@ -423,7 +443,7 @@ class DrawdownState:
 
     @property
     def amount(self) -> Decimal:
-        return self.peak_value - self.current_value
+        return _exact_subtract(self.peak_value, self.current_value)
 
     @property
     def ratio(self) -> Decimal | None:
@@ -1114,18 +1134,19 @@ def _metric_value(
     if metric is RiskMetric.PROJECTED_WORST_CASE_EXPOSURE:
         if proposal.exposure_unit != exposure.unit:
             return None, exposure.unit, "EXPOSURE_UNIT_MISMATCH"
-        with localcontext(boundary.policy.numeric_policy.get_context()):
-            projected_exposure = exposure.worst_case_exposure + proposal.requested_exposure
+        projected_exposure = _exact_sum(
+            exposure.worst_case_exposure,
+            proposal.requested_exposure,
+        )
         return projected_exposure, exposure.unit, None
     if metric is RiskMetric.PROJECTED_CAPACITY_USAGE:
         if proposal.exposure_unit != exposure.unit:
             return None, exposure.unit, "EXPOSURE_UNIT_MISMATCH"
-        with localcontext(boundary.policy.numeric_policy.get_context()):
-            projected_capacity_usage = (
-                exposure.worst_case_exposure
-                + exposure.risk_capacity_reservation
-                + proposal.requested_exposure
-            )
+        projected_capacity_usage = _exact_sum(
+            exposure.worst_case_exposure,
+            exposure.risk_capacity_reservation,
+            proposal.requested_exposure,
+        )
         return projected_capacity_usage, exposure.unit, None
 
     if metric is RiskMetric.DAILY_LOSS:
@@ -1156,9 +1177,7 @@ def _metric_value(
         )
         if actual_daily_semantics != expected_daily_semantics:
             return None, state.daily_loss.currency, "DAILY_LOSS_POLICY_MISMATCH"
-        with localcontext(boundary.policy.numeric_policy.get_context()):
-            loss_amount = state.daily_loss.loss_amount
-        return loss_amount, state.daily_loss.currency, None
+        return state.daily_loss.loss_amount, state.daily_loss.currency, None
 
     if metric in {RiskMetric.DRAWDOWN_AMOUNT, RiskMetric.DRAWDOWN_RATIO}:
         if state.drawdown is None:
@@ -1244,8 +1263,10 @@ def _projected_base(boundary: RiskEvaluationBoundary, metric: RiskMetric) -> Dec
     if metric is RiskMetric.PROJECTED_WORST_CASE_EXPOSURE:
         return exposure.worst_case_exposure
     if metric is RiskMetric.PROJECTED_CAPACITY_USAGE:
-        with localcontext(boundary.policy.numeric_policy.get_context()):
-            return exposure.worst_case_exposure + exposure.risk_capacity_reservation
+        return _exact_sum(
+            exposure.worst_case_exposure,
+            exposure.risk_capacity_reservation,
+        )
     raise ValueError("metric is not a projected exposure/capacity metric")
 
 
@@ -1369,8 +1390,7 @@ def evaluate_risk(boundary: RiskEvaluationBoundary) -> RiskEvaluationResult:
         )
         if projected_cap_rule:
             base = _projected_base(boundary, rule.metric)
-            with localcontext(policy.numeric_policy.get_context()):
-                remaining = rule.threshold - base
+            remaining = _exact_subtract(rule.threshold, base)
             if remaining <= Decimal(0):
                 _append_unique(reject_reasons, f"HARD_LIMIT_BREACH:{rule.rule_id}")
             elif proposal.requested_exposure > remaining:
