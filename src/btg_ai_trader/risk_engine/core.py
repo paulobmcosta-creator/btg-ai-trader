@@ -1114,17 +1114,19 @@ def _metric_value(
     if metric is RiskMetric.PROJECTED_WORST_CASE_EXPOSURE:
         if proposal.exposure_unit != exposure.unit:
             return None, exposure.unit, "EXPOSURE_UNIT_MISMATCH"
-        return exposure.worst_case_exposure + proposal.requested_exposure, exposure.unit, None
+        with localcontext(boundary.policy.numeric_policy.get_context()):
+            projected_exposure = exposure.worst_case_exposure + proposal.requested_exposure
+        return projected_exposure, exposure.unit, None
     if metric is RiskMetric.PROJECTED_CAPACITY_USAGE:
         if proposal.exposure_unit != exposure.unit:
             return None, exposure.unit, "EXPOSURE_UNIT_MISMATCH"
-        return (
-            exposure.worst_case_exposure
-            + exposure.risk_capacity_reservation
-            + proposal.requested_exposure,
-            exposure.unit,
-            None,
-        )
+        with localcontext(boundary.policy.numeric_policy.get_context()):
+            projected_capacity_usage = (
+                exposure.worst_case_exposure
+                + exposure.risk_capacity_reservation
+                + proposal.requested_exposure
+            )
+        return projected_capacity_usage, exposure.unit, None
 
     if metric is RiskMetric.DAILY_LOSS:
         if state.daily_loss is None:
@@ -1154,7 +1156,9 @@ def _metric_value(
         )
         if actual_daily_semantics != expected_daily_semantics:
             return None, state.daily_loss.currency, "DAILY_LOSS_POLICY_MISMATCH"
-        return state.daily_loss.loss_amount, state.daily_loss.currency, None
+        with localcontext(boundary.policy.numeric_policy.get_context()):
+            loss_amount = state.daily_loss.loss_amount
+        return loss_amount, state.daily_loss.currency, None
 
     if metric in {RiskMetric.DRAWDOWN_AMOUNT, RiskMetric.DRAWDOWN_RATIO}:
         if state.drawdown is None:
@@ -1240,7 +1244,8 @@ def _projected_base(boundary: RiskEvaluationBoundary, metric: RiskMetric) -> Dec
     if metric is RiskMetric.PROJECTED_WORST_CASE_EXPOSURE:
         return exposure.worst_case_exposure
     if metric is RiskMetric.PROJECTED_CAPACITY_USAGE:
-        return exposure.worst_case_exposure + exposure.risk_capacity_reservation
+        with localcontext(boundary.policy.numeric_policy.get_context()):
+            return exposure.worst_case_exposure + exposure.risk_capacity_reservation
     raise ValueError("metric is not a projected exposure/capacity metric")
 
 
@@ -1364,7 +1369,8 @@ def evaluate_risk(boundary: RiskEvaluationBoundary) -> RiskEvaluationResult:
         )
         if projected_cap_rule:
             base = _projected_base(boundary, rule.metric)
-            remaining = rule.threshold - base
+            with localcontext(policy.numeric_policy.get_context()):
+                remaining = rule.threshold - base
             if remaining <= Decimal(0):
                 _append_unique(reject_reasons, f"HARD_LIMIT_BREACH:{rule.rule_id}")
             elif proposal.requested_exposure > remaining:
