@@ -2,7 +2,7 @@
 
 ## Candidate adjudication
 
-\`\`\`text
+```text
 SPRINT_7_STATUS = FORMALLY_CLOSED
 SPRINT_7_FINAL_VERDICT = PASS
 SPRINT_7_FUNCTIONAL_CANONICAL_HEAD = e379e9b34a8b607e86165bd3336d23fcd9406259
@@ -23,18 +23,18 @@ PAPER_CONFIRMATORY_RUN = NOT_AUTHORIZED
 LIVE_TRADING = NO
 REAL_MONEY = NO
 MERGE = NOT_AUTHORIZED
-\`\`\`
+```
 
 ## Governing documents
 
-- \`docs/program/S8_ENTRY_CONTRACT.md\`
-- \`docs/program/S8_DECISION_REGISTER.md\`
-- \`docs/program/S8_CAPABILITY_MATRIX.md\`
-- \`docs/sprints/SPRINT_8.md\`
-- \`docs/program/workstreams/S8-ENTRY-GATE.md\`
-- Protocol \`docs/protocols/quantitative/0E-G-promotion-paper-rejection.md\`
+- `docs/program/S8_ENTRY_CONTRACT.md`
+- `docs/program/S8_DECISION_REGISTER.md`
+- `docs/program/S8_CAPABILITY_MATRIX.md`
+- `docs/sprints/SPRINT_8.md`
+- `docs/program/workstreams/S8-ENTRY-GATE.md`
+- Protocol `docs/protocols/quantitative/0E-G-promotion-paper-rejection.md`
 - ADRs 0016, 0018, 0019, 0020 and 0022
-- frozen \`docs/foundation/0F-B_deferred_decision_register.md\`
+- frozen `docs/foundation/0F-B_deferred_decision_register.md`
 
 ## Gate evidence
 
@@ -67,7 +67,7 @@ Two root prerequisites are absent from the canonical predecessor:
 1. operational StrategyDecision/TradeIntent chain;
 2. one exact candidate with canonical PAPER_ELIGIBLE adjudication and candidate freeze.
 
-\`\`\`text
+```text
 S8_ENTRY_GATE_CANDIDATE = CHANGES_REQUIRED
 OPEN_GATE_DESIGN_BLOCKERS = 2
 PROMOTION_TO_S8_FUNCTIONAL_IMPLEMENTATION = NO
@@ -75,4 +75,4 @@ PROMOTION_TO_S8_FUNCTIONAL_IMPLEMENTATION = NO
 S8_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 PAPER_CONFIRMATORY_RUN = NOT_AUTHORIZED
 MERGE_RECOMMENDATION = ONLY_AFTER_CI_INDEPENDENT_REVIEW_AND_EXPLICIT_HUMAN_AUTHORIZATION
-\`\`\`
+```
