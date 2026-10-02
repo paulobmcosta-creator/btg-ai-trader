@@ -13,6 +13,8 @@ on:
       - "sprint/6-scenario-engine"
       - "s7/**"
       - "sprint/7-risk-engine"
+      - "s8/**"
+      - "sprint/8-paper-trader"
   pull_request:
     branches:
       - "s11/**"
@@ -27,6 +29,7 @@ on:
       - "sprint/5-ml-engine"
       - "sprint/6-scenario-engine"
       - "sprint/7-risk-engine"
+      - "sprint/8-paper-trader"
 
 permissions:
   contents: read
