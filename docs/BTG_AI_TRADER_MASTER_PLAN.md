@@ -410,18 +410,20 @@ S6_POST_MERGE_UPSTREAM_RUN = 35898585983
 S6_FINAL_VERDICT = PASS
 OPEN_S6_BLOCKERS = 0
 PROMOTION_TO_SPRINT_7_GATE = YES
-SPRINT_7_STATUS = FUNCTIONAL_CANDIDATE_READY_FOR_PR_AUDIT
-SPRINT_7_LIFECYCLE = FUNCTIONAL_CANDIDATE
+SPRINT_7_STATUS = FORMALLY_CLOSED
+SPRINT_7_LIFECYCLE = FORMALLY_CLOSED
+SPRINT_7_FINAL_VERDICT = PASS
 SPRINT_7_ENTRY_GATE_ISSUE = #86
 SPRINT_7_CANONICAL_BRANCH = sprint/7-risk-engine
+SPRINT_7_CANONICAL_HEAD = e379e9b34a8b607e86165bd3336d23fcd9406259
 SPRINT_7_ENTRY_GATE_WORK_BRANCH = s7/00-entry-gate
 S7_ENTRY_GATE = PASS_CANONICAL
-SPRINT_7_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+SPRINT_7_FUNCTIONAL_IMPLEMENTATION = COMPLETED
 ```
 
-Monte Carlo, bootstrap inferencial, Strategy, Risk, Paper, Live, broker orders, FinancialLedger mutation e dinheiro real não são autorizados pelo Gate de Entrada.
+Naquele Gate de Entrada, Monte Carlo, bootstrap inferencial, Strategy, Risk funcional, Paper, Live, broker orders, FinancialLedger mutation e dinheiro real ainda não estavam autorizados. A autorização funcional posterior do Risk Engine permaneceu limitada ao núcleo side-effect-free do Sprint 7.
 
-### Sprint 7 — Risk Engine — FUNCTIONAL_CANDIDATE_READY_FOR_PR_AUDIT
+### Sprint 7 — Risk Engine — FORMALLY_CLOSED / PASS
 
 Limites, sizing de teto de risco, circuit breakers, veto, drawdown, daily loss e fail-safe.
 
@@ -442,19 +444,24 @@ PROMOTION_TO_S7_FUNCTIONAL_IMPLEMENTATION = YES
 S7_FUNCTIONAL_ISSUE = #88
 S7_FUNCTIONAL_WORK_BRANCH = s7/01-full-risk-engine
 S7_FUNCTIONAL_AUTHORIZATION_DATE = 2026-09-26
-S7_FUNCTIONAL_IMPLEMENTATION = AUTHORIZED
-S7_FUNCTIONAL_MERGE = NOT_AUTHORIZED
-S7_FUNCTIONAL_VALIDATED_CODE_HEAD = c1e33bd3615e311f259d59055349596667978dec
-S7_FUNCTIONAL_PYTHON_CI_RUN = 36939849626
-S7_FUNCTIONAL_ENTRY_GATE_CI_RUN = 36939849827
-S7_FUNCTIONAL_PINNED_UPSTREAM_RUN = 36939849524
-S7_FUNCTIONAL_FULL_REGRESSION = 1127_PASS
+S7_FUNCTIONAL_IMPLEMENTATION = COMPLETED
+S7_FUNCTIONAL_PR = #90
+S7_FUNCTIONAL_PR_HEAD = fbffb811c1822568c27ee39b8320079782f24342
+S7_FUNCTIONAL_PR_REAUDIT = PASS
+S7_FUNCTIONAL_MERGE = COMPLETED_BY_EXPLICIT_HUMAN_AUTHORIZATION
+S7_FUNCTIONAL_MERGE_SHA = e379e9b34a8b607e86165bd3336d23fcd9406259
+S7_POST_MERGE_PYTHON_CI_RUN = 36965539682
+S7_POST_MERGE_ENTRY_GATE_CI_RUN = 36965539684
+S7_POST_MERGE_PINNED_UPSTREAM_RUN = 36965539670
+S7_POST_MERGE_FULL_REGRESSION = 1135_PASS
+S7_DEDICATED_TESTS = 46_PASS
 S7_FUNCTIONAL_PACKAGE_COVERAGE = 100_STATEMENT_100_BRANCH
-S7_FUNCTIONAL_PR_REAUDIT = PENDING
+S7_FINAL_VERDICT = PASS
 OPEN_S7_FUNCTIONAL_BLOCKERS = 0
+SPRINT_8 = NOT_AUTHORIZED
 ```
 
-O Entry Gate separa explicitamente `RiskDecision`, `RiskAuthorization`, capacity reservation e exposure; preserva `SAFE_HALT != AUTO_FLATTEN`; e mantém ordens, Paper, Live, FinancialLedger mutation e dinheiro real fora do escopo.
+O Sprint 7 foi fechado após reauditorias independentes, remediação dos findings, merge humano do PR #90 e validação pós-merge. O núcleo separa `RiskDecision`, `RiskAuthorization`, capacity reservation e exposure; preserva `SAFE_HALT != AUTO_FLATTEN`; e mantém ordens, Paper, Live, FinancialLedger mutation e dinheiro real fora do escopo.
 
 ### Sprint 8 — Paper Trader
 
@@ -532,12 +539,13 @@ Direção futura de produção continua separando Trading Node, Research/AI Node
 - repositório público;
 - licença proprietária source-visible;
 - `main` preserva deliberadamente a baseline histórica/public-readiness e não representa automaticamente o HEAD operacional de sprint;
-- branch canônica atual: `sprint/6-scenario-engine`;
-- Entry Gate do Sprint 6: canônico / PASS;
-- head canônico final do gate antes da remediação: `616849f8e77ecf3624b2b9362c1ef42c7fb9bcc1`;
-- remediação pré-autorização: canônica PASS; PR #82 mergeado em `7df047b25633527e505b3e4772c0a0c43e1ab10c`; Issue #81 em fechamento;
-- implementação funcional do Sprint 6: `AUTHORIZED_IN_WORK_BRANCH` (`s6/02-full-scenario-engine`); merge `NOT_AUTHORIZED`;
-- Sprints 4 e 5 permanecem formalmente fechados (`FORMALLY_CLOSED` / `PASS`).
+- branch canônica atual: `sprint/7-risk-engine`;
+- Sprint 7: `FORMALLY_CLOSED / PASS`;
+- head canônico do Sprint 7: `e379e9b34a8b607e86165bd3336d23fcd9406259`;
+- PR funcional #90: mergeado por autorização humana explícita;
+- validação pós-merge S7: Python CI `36965539682` PASS 15/15, Entry Gate `36965539684` PASS e pinned upstream `36965539670` PASS;
+- Sprints 4, 5, 6 e 7 permanecem formalmente fechados (`FORMALLY_CLOSED` / `PASS`);
+- Sprint 8 permanece `NOT_AUTHORIZED`.
 
 ### 12.2. Segurança do repositório
 
@@ -628,19 +636,24 @@ A remediação passou reauditoria independente no exact head `485b70af4333cf3aeb
 
 Após a remediação pré-autorização, o Sprint 6 funcional foi autorizado, implementado, reaudita​do PASS e integrado pelo PR #85 em `0e9438590338e2a322e96306a4dd8cb43d957535`. O fechamento do Sprint 6 não autoriza Strategy, Risk operacional, Paper, Live, broker-order, FinancialLedger mutation ou dinheiro real.
 
+### 2026-09-26 a 2026-10-02 — implementação e fechamento do Sprint 7
+
+A implementação funcional side-effect-free do Risk Engine foi autorizada em 2026-09-26 sob Issue #88 e branch `s7/01-full-risk-engine`. O PR #90 passou por ciclos de reauditoria e remediação até o head final `fbffb811c1822568c27ee39b8320079782f24342`, recebeu autorização humana explícita de merge e foi integrado em 2026-10-02 no SHA canônico `e379e9b34a8b607e86165bd3336d23fcd9406259`. A validação pós-merge registrou Sprint 7 Python CI `36965539682` PASS 15/15, Entry Gate `36965539684` PASS, pinned upstream `36965539670` PASS, 1.135 testes de repositório PASS e 46 testes dedicados S7 com 100% de statement e branch coverage. O Sprint 7 foi formalmente fechado/PASS. Sprint 8, Paper, Live e dinheiro real permaneceram não autorizados.
+
 ---
 
 ## 16. Próxima ação oficial
 
-O Sprint 6 — Scenario Engine está formalmente fechado/PASS. O Sprint 7 Entry Gate está canônico PASS. Em 2026-09-26 foi concedida autorização humana explícita para a implementação funcional side-effect-free do Risk Engine sob Issue #88; merge funcional, Sprint 8, Paper, Live e dinheiro real continuam separadamente não autorizados.
+O Sprint 7 — Risk Engine está formalmente fechado/PASS no head canônico `e379e9b34a8b607e86165bd3336d23fcd9406259`. O fechamento do Sprint 7 não autoriza automaticamente o Sprint 8.
 
 ```text
-PROMOTION_TO_SPRINT_6_GATE = YES
-SPRINT_6_ENTRY_GATE = PASS
-SPRINT_6_ENTRY_GATE_CANONICAL = PASS
-S6_PREAUTH_REVIEW = CHANGES_REQUIRED_REMEDIATED
-S6_PREAUTH_REMEDIATION = PASS
-SPRINT_6_FUNCTIONAL_IMPLEMENTATION = COMPLETED
+SPRINT_7_STATUS = FORMALLY_CLOSED
+SPRINT_7_FINAL_VERDICT = PASS
+SPRINT_7_CANONICAL_HEAD = e379e9b34a8b607e86165bd3336d23fcd9406259
+SPRINT_8 = NOT_AUTHORIZED
+PAPER_TRADING = NO
+LIVE_TRADING = NO
+REAL_MONEY = NO
 ```
 
-A implementação funcional research-only do Scenario Engine está `AUTHORIZED` exclusivamente no work branch `s6/02-full-scenario-engine`; merge e qualquer autoridade financeira permanecem não autorizados. Não há autorização para negociação automática, envio de ordens, Strategy, Risk, Paper, Live ou uso de dinheiro real.
+A próxima mudança de fase depende de nova autorização humana explícita para o Sprint 8 — Paper Trader. Até essa autorização, não há permissão para negociação automática, envio de ordens, Paper, Live, broker-order, FinancialLedger mutation ou uso de dinheiro real.
