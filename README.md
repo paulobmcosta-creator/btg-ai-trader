@@ -2,7 +2,7 @@
 
 Fundação de um futuro sistema quantitativo intradiário em Python, orientado a dados, avaliação de cenários, gestão independente de risco e operação auditável.
 
-> **Estado:** Sprints 0A–0F e Sprints 1–7 estão formalmente concluídos. O Sprint 7 — Risk Engine foi fechado/PASS no head canônico `e379e9b34a8b607e86165bd3336d23fcd9406259`. O Risk Engine é determinístico e side-effect-free; Sprint 8/Paper Trading, Live Trading, envio de ordens, broker execution e dinheiro real permanecem não autorizados.
+> **Estado:** Sprints 0A–0F e Sprints 1–7 estão formalmente concluídos. O Sprint 7 — Risk Engine foi fechado/PASS no head funcional canônico `e379e9b34a8b607e86165bd3336d23fcd9406259`. O Risk Engine é determinístico e side-effect-free; Sprint 8/Paper Trading, Live Trading, envio de ordens, broker execution e dinheiro real permanecem não autorizados.
 
 ## Segurança nesta fase
 

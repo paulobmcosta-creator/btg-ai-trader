@@ -415,7 +415,7 @@ SPRINT_7_LIFECYCLE = FORMALLY_CLOSED
 SPRINT_7_FINAL_VERDICT = PASS
 SPRINT_7_ENTRY_GATE_ISSUE = #86
 SPRINT_7_CANONICAL_BRANCH = sprint/7-risk-engine
-SPRINT_7_CANONICAL_HEAD = e379e9b34a8b607e86165bd3336d23fcd9406259
+SPRINT_7_FUNCTIONAL_CANONICAL_HEAD = e379e9b34a8b607e86165bd3336d23fcd9406259
 SPRINT_7_ENTRY_GATE_WORK_BRANCH = s7/00-entry-gate
 S7_ENTRY_GATE = PASS_CANONICAL
 SPRINT_7_FUNCTIONAL_IMPLEMENTATION = COMPLETED
@@ -541,7 +541,7 @@ Direção futura de produção continua separando Trading Node, Research/AI Node
 - `main` preserva deliberadamente a baseline histórica/public-readiness e não representa automaticamente o HEAD operacional de sprint;
 - branch canônica atual: `sprint/7-risk-engine`;
 - Sprint 7: `FORMALLY_CLOSED / PASS`;
-- head canônico do Sprint 7: `e379e9b34a8b607e86165bd3336d23fcd9406259`;
+- head funcional canônico do Sprint 7: `e379e9b34a8b607e86165bd3336d23fcd9406259`;
 - PR funcional #90: mergeado por autorização humana explícita;
 - validação pós-merge S7: Python CI `36965539682` PASS 15/15, Entry Gate `36965539684` PASS e pinned upstream `36965539670` PASS;
 - Sprints 4, 5, 6 e 7 permanecem formalmente fechados (`FORMALLY_CLOSED` / `PASS`);
@@ -638,18 +638,18 @@ Após a remediação pré-autorização, o Sprint 6 funcional foi autorizado, im
 
 ### 2026-09-26 a 2026-10-02 — implementação e fechamento do Sprint 7
 
-A implementação funcional side-effect-free do Risk Engine foi autorizada em 2026-09-26 sob Issue #88 e branch `s7/01-full-risk-engine`. O PR #90 passou por ciclos de reauditoria e remediação até o head final `fbffb811c1822568c27ee39b8320079782f24342`, recebeu autorização humana explícita de merge e foi integrado em 2026-10-02 no SHA canônico `e379e9b34a8b607e86165bd3336d23fcd9406259`. A validação pós-merge registrou Sprint 7 Python CI `36965539682` PASS 15/15, Entry Gate `36965539684` PASS, pinned upstream `36965539670` PASS, 1.135 testes de repositório PASS e 46 testes dedicados S7 com 100% de statement e branch coverage. O Sprint 7 foi formalmente fechado/PASS. Sprint 8, Paper, Live e dinheiro real permaneceram não autorizados.
+A implementação funcional side-effect-free do Risk Engine foi autorizada em 2026-09-26 sob Issue #88 e branch `s7/01-full-risk-engine`. O PR #90 passou por ciclos de reauditoria e remediação até o head final `fbffb811c1822568c27ee39b8320079782f24342`, recebeu autorização humana explícita de merge e foi integrado em 2026-10-02 no SHA funcional canônico `e379e9b34a8b607e86165bd3336d23fcd9406259`. A validação pós-merge registrou Sprint 7 Python CI `36965539682` PASS 15/15, Entry Gate `36965539684` PASS, pinned upstream `36965539670` PASS, 1.135 testes de repositório PASS e 46 testes dedicados S7 com 100% de statement e branch coverage. O Sprint 7 foi formalmente fechado/PASS. Sprint 8, Paper, Live e dinheiro real permaneceram não autorizados.
 
 ---
 
 ## 16. Próxima ação oficial
 
-O Sprint 7 — Risk Engine está formalmente fechado/PASS no head canônico `e379e9b34a8b607e86165bd3336d23fcd9406259`. O fechamento do Sprint 7 não autoriza automaticamente o Sprint 8.
+O Sprint 7 — Risk Engine está formalmente fechado/PASS no head funcional canônico `e379e9b34a8b607e86165bd3336d23fcd9406259`. O fechamento do Sprint 7 não autoriza automaticamente o Sprint 8.
 
 ```text
 SPRINT_7_STATUS = FORMALLY_CLOSED
 SPRINT_7_FINAL_VERDICT = PASS
-SPRINT_7_CANONICAL_HEAD = e379e9b34a8b607e86165bd3336d23fcd9406259
+SPRINT_7_FUNCTIONAL_CANONICAL_HEAD = e379e9b34a8b607e86165bd3336d23fcd9406259
 SPRINT_8 = NOT_AUTHORIZED
 PAPER_TRADING = NO
 LIVE_TRADING = NO

@@ -155,7 +155,7 @@ The post-merge run preserved Ruff, strict mypy, compile, dependency, Foundation,
 ```text
 SPRINT_7_STATUS = FORMALLY_CLOSED
 SPRINT_7_FINAL_VERDICT = PASS
-SPRINT_7_CANONICAL_HEAD = e379e9b34a8b607e86165bd3336d23fcd9406259
+SPRINT_7_FUNCTIONAL_CANONICAL_HEAD = e379e9b34a8b607e86165bd3336d23fcd9406259
 OPEN_SPRINT_7_BLOCKERS = 0
 
 SPRINT_8 = NOT_AUTHORIZED
@@ -165,3 +165,5 @@ REAL_MONEY = NO
 ```
 
 No promotion to Sprint 8 is implied by Sprint 7 closure. Paper Trader materialization or implementation requires a new explicit human authorization and its own gate.
+
+Post-closure documentation reconciliation is tracked separately from the audited functional baseline. Documentation-only commits may move the branch HEAD; `SPRINT_7_FUNCTIONAL_CANONICAL_HEAD` remains the exact merged code baseline of the Risk Engine.
