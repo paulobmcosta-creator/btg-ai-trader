@@ -2,7 +2,7 @@
 
 Fundação de um futuro sistema quantitativo intradiário em Python, orientado a dados, avaliação de cenários, gestão independente de risco e operação auditável.
 
-> **Estado:** Sprints 0A–0F e Sprints 1–7 estão formalmente concluídos. O Sprint 7 — Risk Engine foi fechado/PASS no head funcional canônico `e379e9b34a8b607e86165bd3336d23fcd9406259`. O Risk Engine é determinístico e side-effect-free; Sprint 8/Paper Trading, Live Trading, envio de ordens, broker execution e dinheiro real permanecem não autorizados.
+> **Estado:** Sprints 0A–0F e Sprints 1–7 estão formalmente concluídos. O Sprint 8 — Paper Trader teve apenas seu Entry Gate autorizado em 2026-10-02 e o gate candidato está `CHANGES_REQUIRED`: faltam um caminho operacional `StrategyDecision`/`TradeIntent` e um candidato formalmente `PAPER_ELIGIBLE` e congelado. Paper funcional, Live Trading, envio real de ordens e dinheiro real permanecem não autorizados.
 
 ## Segurança nesta fase
 
@@ -52,7 +52,7 @@ por ADR quando arquiteturalmente materiais.
 
 ## Próximo marco
 
-O checkpoint canônico atual é o fechamento do Sprint 7 — Risk Engine. O PR #90 foi integrado em `e379e9b34a8b607e86165bd3336d23fcd9406259` e validado pós-merge. O Sprint 8 — Paper Trader permanece `NOT_AUTHORIZED`; qualquer nova fase exige gate e autorização humana explícitos. O desenvolvimento ocorre diretamente no GitHub; consulte o [checkpoint do programa](docs/program/PROGRAM_EXECUTION.md), o [fechamento do Sprint 7](docs/program/S7_FINAL_ACCEPTANCE.md), a [baseline de arquitetura e contratos](docs/architecture/README.md) e os [protocolos quantitativos](docs/protocols/quantitative/README.md).
+O checkpoint atual é o Sprint 8 Entry Gate na Issue #93. O gate está sendo materializado sem código funcional e registra dois blockers de pré-implementação: S8-B01 (StrategyDecision/TradeIntent operacional ausente) e S8-B02 (candidato PAPER_ELIGIBLE/frozen ausente). O desenvolvimento ocorre diretamente no GitHub; consulte o [checkpoint do programa](docs/program/PROGRAM_EXECUTION.md), o [Entry Contract do Sprint 8](docs/program/S8_ENTRY_CONTRACT.md), o [fechamento do Sprint 7](docs/program/S7_FINAL_ACCEPTANCE.md) e os [protocolos quantitativos](docs/protocols/quantitative/README.md).
 
 ## Aviso
 
