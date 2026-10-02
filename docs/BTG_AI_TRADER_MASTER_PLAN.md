@@ -458,14 +458,26 @@ S7_DEDICATED_TESTS = 46_PASS
 S7_FUNCTIONAL_PACKAGE_COVERAGE = 100_STATEMENT_100_BRANCH
 S7_FINAL_VERDICT = PASS
 OPEN_S7_FUNCTIONAL_BLOCKERS = 0
-SPRINT_8 = NOT_AUTHORIZED
+
+SPRINT_8_STATUS = ENTRY_GATE_CANDIDATE_CHANGES_REQUIRED
+SPRINT_8_ENTRY_GATE_AUTHORIZATION_DATE = 2026-10-02
+SPRINT_8_ENTRY_GATE_ISSUE = #93
+SPRINT_8_CANONICAL_BRANCH = sprint/8-paper-trader
+SPRINT_8_ENTRY_GATE_WORK_BRANCH = s8/00-entry-gate
+S8_ENTRY_GATE_CANDIDATE = CHANGES_REQUIRED
+OPEN_S8_ENTRY_GATE_BLOCKERS = 2
+S8-B01 = OPEN
+S8-B02 = OPEN
+S8_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 ```
 
 O Sprint 7 foi fechado após reauditorias independentes, remediação dos findings, merge humano do PR #90 e validação pós-merge. O núcleo separa `RiskDecision`, `RiskAuthorization`, capacity reservation e exposure; preserva `SAFE_HALT != AUTO_FLATTEN`; e mantém ordens, Paper, Live, FinancialLedger mutation e dinheiro real fora do escopo.
 
-### Sprint 8 — Paper Trader
+### Sprint 8 — Paper Trader — ENTRY GATE / CHANGES_REQUIRED
 
-Mercado real, decisões reais e dinheiro fictício, com registro completo e zero dinheiro real.
+Mercado real observado contemporaneamente, decisões reais do sistema e capital estritamente fictício, com registro completo e zero dinheiro real.
+
+O Entry Gate foi autorizado em 2026-10-02, mas a implementação funcional está bloqueada por duas lacunas canônicas: não existe ainda um caminho operacional `Signal/Strategy → StrategyDecision → TradeIntent` (S8-B01) e não existe um candidato exato formalmente `PAPER_ELIGIBLE` e congelado segundo as dez classes cumulativas do Protocolo 0E-G (S8-B02). O Paper Trader não pode ocultar essas lacunas incorporando uma estratégia substituta.
 
 ### Sprint 9 — Recovery / Cloud preparation
 
@@ -539,13 +551,13 @@ Direção futura de produção continua separando Trading Node, Research/AI Node
 - repositório público;
 - licença proprietária source-visible;
 - `main` preserva deliberadamente a baseline histórica/public-readiness e não representa automaticamente o HEAD operacional de sprint;
-- branch canônica atual: `sprint/7-risk-engine`;
+- branch canônica de estágio atual: `sprint/8-paper-trader`;
 - Sprint 7: `FORMALLY_CLOSED / PASS`;
 - head funcional canônico do Sprint 7: `e379e9b34a8b607e86165bd3336d23fcd9406259`;
-- PR funcional #90: mergeado por autorização humana explícita;
-- validação pós-merge S7: Python CI `36965539682` PASS 15/15, Entry Gate `36965539684` PASS e pinned upstream `36965539670` PASS;
-- Sprints 4, 5, 6 e 7 permanecem formalmente fechados (`FORMALLY_CLOSED` / `PASS`);
-- Sprint 8 permanece `NOT_AUTHORIZED`.
+- Sprint 8 Entry Gate: autorizado em 2026-10-02, Issue #93;
+- candidato do Entry Gate S8: `CHANGES_REQUIRED`, com S8-B01 e S8-B02 abertos;
+- implementação funcional S8/Paper confirmatório: `NOT_AUTHORIZED`;
+- Live, broker-order e dinheiro real: proibidos.
 
 ### 12.2. Segurança do repositório
 
@@ -644,16 +656,23 @@ A implementação funcional side-effect-free do Risk Engine foi autorizada em 20
 
 ## 16. Próxima ação oficial
 
-O Sprint 7 — Risk Engine está formalmente fechado/PASS no head funcional canônico `e379e9b34a8b607e86165bd3336d23fcd9406259`. O fechamento do Sprint 7 não autoriza automaticamente o Sprint 8.
+Em 2026-10-02 foi autorizada a materialização do Sprint 8 Entry Gate, Issue #93. O gate candidato está \`CHANGES_REQUIRED\` e não autoriza implementação funcional.
 
-```text
+\`\`\`text
 SPRINT_7_STATUS = FORMALLY_CLOSED
 SPRINT_7_FINAL_VERDICT = PASS
 SPRINT_7_FUNCTIONAL_CANONICAL_HEAD = e379e9b34a8b607e86165bd3336d23fcd9406259
-SPRINT_8 = NOT_AUTHORIZED
-PAPER_TRADING = NO
+
+SPRINT_8_STATUS = ENTRY_GATE_CANDIDATE_CHANGES_REQUIRED
+S8_ENTRY_GATE_CANDIDATE = CHANGES_REQUIRED
+OPEN_S8_ENTRY_GATE_BLOCKERS = 2
+S8-B01 = OPEN
+S8-B02 = OPEN
+
+S8_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+PAPER_CONFIRMATORY_RUN = NOT_AUTHORIZED
 LIVE_TRADING = NO
 REAL_MONEY = NO
-```
+\`\`\`
 
-A próxima mudança de fase depende de nova autorização humana explícita para o Sprint 8 — Paper Trader. Até essa autorização, não há permissão para negociação automática, envio de ordens, Paper, Live, broker-order, FinancialLedger mutation ou uso de dinheiro real.
+A próxima ação é validar e revisar independentemente o pacote documental do Entry Gate. Mesmo que esse pacote seja integrado como registro canônico do estado bloqueado, a implementação funcional do Paper Trader continuará proibida até a remediação explícita dos blockers e nova autorização humana.
