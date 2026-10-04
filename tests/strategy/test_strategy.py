@@ -1,7 +1,7 @@
-from __future__ import annotations
-
 # Runtime-validation tests intentionally pass malformed values through typed constructors.
 # mypy: disable-error-code="arg-type,assignment,unused-ignore"
+
+from __future__ import annotations
 
 import dataclasses
 from datetime import UTC, datetime, timedelta
