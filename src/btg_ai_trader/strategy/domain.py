@@ -307,7 +307,7 @@ class StrategyDecision:
     matched_rule_id: str | None
     decided_at: datetime
     decision_digest: str
-    _engine_token: object = field(default=None, repr=False, compare=False)
+    _engine_token: object = field(default=None, repr=False, compare=False, init=False)
 
     def __post_init__(self) -> None:
         for value, name in (
@@ -331,9 +331,29 @@ class StrategyDecision:
             _require_text(self.matched_rule_id or "", "matched_rule_id")
         _require_aware(self.decided_at, "decided_at")
 
+    def _expected_digest(self) -> str:
+        return _digest(
+            {
+                "candidate_id": self.candidate_id,
+                "candidate_digest": self.candidate_digest,
+                "opportunity_id": self.opportunity_id,
+                "opportunity_digest": self.opportunity_digest,
+                "disposition": self.disposition,
+                "reason_codes": self.reason_codes,
+                "matched_rule_id": self.matched_rule_id,
+                "decided_at": self.decided_at,
+            }
+        )
+
     @property
     def is_engine_issued(self) -> bool:
-        return self._engine_token is _ENGINE_DECISION_TOKEN
+        if self._engine_token is not _ENGINE_DECISION_TOKEN:
+            return False
+        expected_digest = self._expected_digest()
+        return (self.decision_id, self.decision_digest) == (
+            f"strategy-decision:{expected_digest[:24]}",
+            expected_digest,
+        )
 
     @classmethod
     def _build(
@@ -345,6 +365,18 @@ class StrategyDecision:
         reason_codes: tuple[DecisionReason, ...],
         matched_rule_id: str | None,
     ) -> StrategyDecision:
+        if disposition is StrategyDisposition.PROPOSE_TRADE:
+            rule_ids = {rule.rule_id for rule in candidate.rules}
+            if matched_rule_id not in rule_ids:
+                raise ValueError("PROPOSE_TRADE matched_rule_id must belong to CandidateStrategy")
+            if reason_codes != (DecisionReason.RULE_MATCHED,):
+                raise ValueError("PROPOSE_TRADE requires RULE_MATCHED reason")
+        else:
+            if matched_rule_id is not None:
+                raise ValueError("NO_TRADE cannot carry matched_rule_id")
+            if DecisionReason.RULE_MATCHED in reason_codes:
+                raise ValueError("NO_TRADE cannot carry RULE_MATCHED reason")
+
         payload: dict[str, object] = {
             "candidate_id": candidate.candidate_id,
             "candidate_digest": candidate.candidate_digest,
@@ -356,7 +388,7 @@ class StrategyDecision:
             "decided_at": opportunity.decision_time,
         }
         digest = _digest(payload)
-        return cls(
+        decision = cls(
             decision_id=f"strategy-decision:{digest[:24]}",
             candidate_id=candidate.candidate_id,
             candidate_digest=candidate.candidate_digest,
@@ -367,8 +399,9 @@ class StrategyDecision:
             matched_rule_id=matched_rule_id,
             decided_at=opportunity.decision_time,
             decision_digest=digest,
-            _engine_token=_ENGINE_DECISION_TOKEN,
         )
+        object.__setattr__(decision, "_engine_token", _ENGINE_DECISION_TOKEN)
+        return decision
 
 
 @dataclass(frozen=True, slots=True)
@@ -384,7 +417,7 @@ class TradeIntent:
     created_at: datetime
     source_digest: str
     intent_digest: str
-    _engine_token: object = field(default=None, repr=False, compare=False)
+    _engine_token: object = field(default=None, repr=False, compare=False, init=False)
 
     def __post_init__(self) -> None:
         for value, name in (
@@ -404,9 +437,30 @@ class TradeIntent:
             raise ValueError("objective must be EconomicObjective")
         _require_aware(self.created_at, "created_at")
 
+    def _expected_digest(self) -> str:
+        return _digest(
+            {
+                "decision_digest": self.decision_digest,
+                "candidate_id": self.candidate_id,
+                "candidate_digest": self.candidate_digest,
+                "opportunity_digest": self.opportunity_digest,
+                "instrument_id": self.instrument_id,
+                "portfolio_id": self.portfolio_id,
+                "objective_digest": self.objective.objective_digest,
+                "created_at": self.created_at,
+                "source_digest": self.source_digest,
+            }
+        )
+
     @property
     def is_engine_issued(self) -> bool:
-        return self._engine_token is _ENGINE_INTENT_TOKEN
+        if self._engine_token is not _ENGINE_INTENT_TOKEN:
+            return False
+        expected_digest = self._expected_digest()
+        return (self.intent_id, self.intent_digest) == (
+            f"trade-intent:{expected_digest[:24]}",
+            expected_digest,
+        )
 
     @classmethod
     def _build(
@@ -415,12 +469,29 @@ class TradeIntent:
         decision: StrategyDecision,
         candidate: CandidateStrategy,
         opportunity: DecisionOpportunity,
-        objective: EconomicObjective,
     ) -> TradeIntent:
         if not decision.is_engine_issued:
             raise ValueError("TradeIntent requires an engine-issued StrategyDecision")
         if decision.disposition is not StrategyDisposition.PROPOSE_TRADE:
             raise ValueError("TradeIntent requires PROPOSE_TRADE")
+        if (decision.candidate_id, decision.candidate_digest) != (
+            candidate.candidate_id,
+            candidate.candidate_digest,
+        ):
+            raise ValueError("StrategyDecision candidate identity mismatch")
+        if (
+            decision.opportunity_id,
+            decision.opportunity_digest,
+            decision.decided_at,
+        ) != (
+            opportunity.opportunity_id,
+            opportunity.opportunity_digest,
+            opportunity.decision_time,
+        ):
+            raise ValueError("StrategyDecision opportunity identity mismatch")
+
+        rules_by_id = {rule.rule_id: rule for rule in candidate.rules}
+        objective = rules_by_id[decision.matched_rule_id or ""].objective
         payload: dict[str, object] = {
             "decision_digest": decision.decision_digest,
             "candidate_id": candidate.candidate_id,
@@ -433,7 +504,7 @@ class TradeIntent:
             "source_digest": decision.decision_digest,
         }
         digest = _digest(payload)
-        return cls(
+        intent = cls(
             intent_id=f"trade-intent:{digest[:24]}",
             decision_digest=decision.decision_digest,
             candidate_id=candidate.candidate_id,
@@ -445,8 +516,9 @@ class TradeIntent:
             created_at=opportunity.decision_time,
             source_digest=decision.decision_digest,
             intent_digest=digest,
-            _engine_token=_ENGINE_INTENT_TOKEN,
         )
+        object.__setattr__(intent, "_engine_token", _ENGINE_INTENT_TOKEN)
+        return intent
 
 
 @dataclass(frozen=True, slots=True)
@@ -466,10 +538,6 @@ class StrategyEvaluationResult:
                 raise ValueError("PROPOSE_TRADE result requires engine-issued TradeIntent")
             if self.trade_intent.decision_digest != self.decision.decision_digest:
                 raise ValueError("TradeIntent decision_digest mismatch")
-            if self.trade_intent.candidate_digest != self.decision.candidate_digest:
-                raise ValueError("TradeIntent candidate_digest mismatch")
-            if self.trade_intent.opportunity_digest != self.decision.opportunity_digest:
-                raise ValueError("TradeIntent opportunity_digest mismatch")
         object.__setattr__(
             self,
             "result_digest",

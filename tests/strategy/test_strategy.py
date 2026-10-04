@@ -376,6 +376,37 @@ def test_risk_adapter_rejects_forged_intent() -> None:
         to_risk_proposal(object())  # type: ignore[arg-type]
 
 
+def test_dataclass_replace_cannot_preserve_trade_intent_engine_trust() -> None:
+    result = evaluate_strategy(candidate(), opportunity())
+    assert result.trade_intent is not None
+    intent = result.trade_intent
+
+    clones = (
+        dataclasses.replace(intent, objective=objective(EconomicDirection.INCREASE_SHORT)),
+        dataclasses.replace(intent, instrument_id=OTHER_INSTRUMENT),
+        dataclasses.replace(intent, portfolio_id="other"),
+    )
+    for clone in clones:
+        assert not clone.is_engine_issued
+        with pytest.raises(ValueError, match="engine-issued"):
+            to_risk_proposal(clone)
+
+
+def test_digest_validation_rejects_in_place_tampering_even_with_engine_token() -> None:
+    result = evaluate_strategy(candidate(), opportunity())
+    assert result.trade_intent is not None
+    assert result.decision.is_engine_issued
+    assert result.trade_intent.is_engine_issued
+
+    object.__setattr__(result.decision, "candidate_digest", "tampered")
+    object.__setattr__(result.trade_intent, "portfolio_id", "tampered")
+
+    assert not result.decision.is_engine_issued
+    assert not result.trade_intent.is_engine_issued
+    with pytest.raises(ValueError, match="engine-issued"):
+        to_risk_proposal(result.trade_intent)
+
+
 def test_strategy_decision_direct_construction_is_untrusted_and_validated() -> None:
     valid = dict(
         decision_id="d",
@@ -415,6 +446,44 @@ def test_strategy_decision_direct_construction_is_untrusted_and_validated() -> N
         StrategyDecision(**dict(valid, decided_at=datetime(2026, 10, 4)))
 
 
+def test_strategy_decision_builder_enforces_rule_semantics() -> None:
+    c = candidate()
+    opp = opportunity()
+
+    with pytest.raises(ValueError, match="must belong"):
+        StrategyDecision._build(
+            candidate=c,
+            opportunity=opp,
+            disposition=StrategyDisposition.PROPOSE_TRADE,
+            reason_codes=(DecisionReason.RULE_MATCHED,),
+            matched_rule_id="missing",
+        )
+    with pytest.raises(ValueError, match="requires RULE_MATCHED"):
+        StrategyDecision._build(
+            candidate=c,
+            opportunity=opp,
+            disposition=StrategyDisposition.PROPOSE_TRADE,
+            reason_codes=(DecisionReason.NO_RULE_MATCHED,),
+            matched_rule_id="long",
+        )
+    with pytest.raises(ValueError, match="cannot carry matched_rule_id"):
+        StrategyDecision._build(
+            candidate=c,
+            opportunity=opp,
+            disposition=StrategyDisposition.NO_TRADE,
+            reason_codes=(DecisionReason.NO_RULE_MATCHED,),
+            matched_rule_id="long",
+        )
+    with pytest.raises(ValueError, match="cannot carry RULE_MATCHED"):
+        StrategyDecision._build(
+            candidate=c,
+            opportunity=opp,
+            disposition=StrategyDisposition.NO_TRADE,
+            reason_codes=(DecisionReason.RULE_MATCHED,),
+            matched_rule_id=None,
+        )
+
+
 def test_trade_intent_direct_construction_is_untrusted_and_validated() -> None:
     valid = dict(
         intent_id="i",
@@ -451,15 +520,26 @@ def test_trade_intent_direct_construction_is_untrusted_and_validated() -> None:
         TradeIntent(**dict(valid, created_at=datetime(2026, 10, 4)))
 
 
-def test_trade_intent_builder_rejects_untrusted_and_no_trade_decisions() -> None:
+def test_trade_intent_builder_binds_decision_candidate_and_opportunity() -> None:
     c = candidate()
-    opp = opportunity(signals={"score": Decimal("0.1")})
-    no_trade = evaluate_strategy(c, opp).decision
-    forged = dataclasses.replace(no_trade, _engine_token=None)
+    no_trade_opp = opportunity(signals={"score": Decimal("0.1")})
+    no_trade = evaluate_strategy(c, no_trade_opp).decision
+    forged = dataclasses.replace(no_trade)
+
     with pytest.raises(ValueError, match="engine-issued"):
-        TradeIntent._build(decision=forged, candidate=c, opportunity=opp, objective=objective())
+        TradeIntent._build(decision=forged, candidate=c, opportunity=no_trade_opp)
     with pytest.raises(ValueError, match="PROPOSE_TRADE"):
-        TradeIntent._build(decision=no_trade, candidate=c, opportunity=opp, objective=objective())
+        TradeIntent._build(decision=no_trade, candidate=c, opportunity=no_trade_opp)
+
+    opp = opportunity()
+    proposed = evaluate_strategy(c, opp).decision
+    other_candidate = dataclasses.replace(c, portfolio_id="other")
+    with pytest.raises(ValueError, match="candidate identity mismatch"):
+        TradeIntent._build(decision=proposed, candidate=other_candidate, opportunity=opp)
+
+    other_opp = dataclasses.replace(opp, source_digest="other-market-evidence")
+    with pytest.raises(ValueError, match="opportunity identity mismatch"):
+        TradeIntent._build(decision=proposed, candidate=c, opportunity=other_opp)
 
 
 def test_evaluation_result_rejects_inconsistent_artifacts() -> None:
@@ -467,7 +547,8 @@ def test_evaluation_result_rejects_inconsistent_artifacts() -> None:
     opp = opportunity()
     valid = evaluate_strategy(c, opp)
     assert valid.trade_intent is not None
-    forged_decision = dataclasses.replace(valid.decision, _engine_token=None)
+
+    forged_decision = dataclasses.replace(valid.decision)
     with pytest.raises(ValueError, match="decision must"):
         StrategyEvaluationResult(forged_decision, None)
 
@@ -476,22 +557,14 @@ def test_evaluation_result_rejects_inconsistent_artifacts() -> None:
         StrategyEvaluationResult(no_trade, valid.trade_intent)
     with pytest.raises(ValueError, match="requires engine-issued"):
         StrategyEvaluationResult(valid.decision, None)
-    forged_intent = dataclasses.replace(valid.trade_intent, _engine_token=None)
+
+    forged_intent = dataclasses.replace(valid.trade_intent)
     with pytest.raises(ValueError, match="requires engine-issued"):
         StrategyEvaluationResult(valid.decision, forged_intent)
 
+    other_opp = dataclasses.replace(opp, source_digest="other-market-evidence")
+    other_result = evaluate_strategy(c, other_opp)
+    assert other_result.trade_intent is not None
     with pytest.raises(ValueError, match="decision_digest"):
-        StrategyEvaluationResult(
-            valid.decision,
-            dataclasses.replace(valid.trade_intent, decision_digest="other"),
-        )
-    with pytest.raises(ValueError, match="candidate_digest"):
-        StrategyEvaluationResult(
-            valid.decision,
-            dataclasses.replace(valid.trade_intent, candidate_digest="other"),
-        )
-    with pytest.raises(ValueError, match="opportunity_digest"):
-        StrategyEvaluationResult(
-            valid.decision,
-            dataclasses.replace(valid.trade_intent, opportunity_digest="other"),
-        )
+        StrategyEvaluationResult(valid.decision, other_result.trade_intent)
+

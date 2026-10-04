@@ -83,7 +83,6 @@ def evaluate_strategy(
         decision=decision,
         candidate=candidate,
         opportunity=opportunity,
-        objective=matched_rule.objective,
     )
     return StrategyEvaluationResult(decision=decision, trade_intent=intent)
 
