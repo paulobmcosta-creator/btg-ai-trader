@@ -466,7 +466,10 @@ SPRINT_8_CANONICAL_BRANCH = sprint/8-paper-trader
 SPRINT_8_ENTRY_GATE_WORK_BRANCH = s8/00-entry-gate
 S8_ENTRY_GATE_CANDIDATE = CHANGES_REQUIRED
 OPEN_S8_ENTRY_GATE_BLOCKERS = 2
-S8-B01 = OPEN
+S8-B01 = OPEN_CANONICALLY__REMEDIATION_AUTHORIZED
+S8-B01_REMEDIATION_ISSUE = #95
+S8-B01_REMEDIATION_WORK_BRANCH = s8/01-strategy-remediation
+S8-B01_REMEDIATION_CANDIDATE = IMPLEMENTED_PENDING_EXACT_HEAD_CI_AND_INDEPENDENT_REVIEW
 S8-B02 = OPEN
 S8_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 ```
@@ -477,7 +480,7 @@ O Sprint 7 foi fechado após reauditorias independentes, remediação dos findin
 
 Mercado real observado contemporaneamente, decisões reais do sistema e capital estritamente fictício, com registro completo e zero dinheiro real.
 
-O Entry Gate foi autorizado em 2026-10-02, mas a implementação funcional está bloqueada por duas lacunas canônicas: não existe ainda um caminho operacional `Signal/Strategy → StrategyDecision → TradeIntent` (S8-B01) e não existe um candidato exato formalmente `PAPER_ELIGIBLE` e congelado segundo as dez classes cumulativas do Protocolo 0E-G (S8-B02). O Paper Trader não pode ocultar essas lacunas incorporando uma estratégia substituta.
+O Entry Gate foi autorizado em 2026-10-02 e identificou duas lacunas canônicas: S8-B01 (caminho operacional `Signal/Strategy → StrategyDecision → TradeIntent`) e S8-B02 (candidato exato formalmente `PAPER_ELIGIBLE` e congelado segundo as dez classes cumulativas do Protocolo 0E-G). Em 2026-10-04 a coordenação autorizou exclusivamente a remediação pré-Paper de S8-B01, Issue #95, em branch empilhada sobre o head exato do PR #94. Essa remediação não autoriza Paper e não resolve S8-B02.
 
 ### Sprint 9 — Recovery / Cloud preparation
 
@@ -555,7 +558,8 @@ Direção futura de produção continua separando Trading Node, Research/AI Node
 - Sprint 7: `FORMALLY_CLOSED / PASS`;
 - head funcional canônico do Sprint 7: `e379e9b34a8b607e86165bd3336d23fcd9406259`;
 - Sprint 8 Entry Gate: autorizado em 2026-10-02, Issue #93;
-- candidato do Entry Gate S8: `CHANGES_REQUIRED`, com S8-B01 e S8-B02 abertos;
+- candidato do Entry Gate S8: `CHANGES_REQUIRED`; S8-B01 possui remediação autorizada/pendente de CI e auditoria, e S8-B02 permanece aberto;
+- remediação S8-B01: Issue #95, branch `s8/01-strategy-remediation`, base `7fce78b...`;
 - implementação funcional S8/Paper confirmatório: `NOT_AUTHORIZED`;
 - Live, broker-order e dinheiro real: proibidos.
 
@@ -680,3 +684,8 @@ REAL_MONEY = NO
 ```
 
 A próxima ação é validar e revisar independentemente o pacote documental do Entry Gate. Mesmo que esse pacote seja integrado como registro canônico do estado bloqueado, a implementação funcional do Paper Trader continuará proibida até a remediação explícita dos blockers e nova autorização humana.
+
+
+### 2026-10-04 — autorização da remediação pré-Paper S8-B01
+
+A coordenação autorizou diretamente no GitHub a remediação da lacuna operacional de Strategy identificada como S8-B01, sem autorizar o Paper Trader. A Issue #95 e a branch `s8/01-strategy-remediation` foram abertas a partir do head exato `7fce78b02d03cc8140bc021217a0230776cc53ff` do PR #94, que permanece sem merge. O candidato materializa `CandidateStrategy`, `DecisionOpportunity`, `StrategyDecision`, `EconomicObjective`, `TradeIntent` e o adaptador unidirecional para o `RiskProposal` canônico do S7. A promoção canônica de B01 depende de CI em head exato, revisão independente e integração humana separadamente autorizada. S8-B02, Paper confirmatório, Live e dinheiro real permanecem fora da autoridade.

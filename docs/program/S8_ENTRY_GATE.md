@@ -76,3 +76,23 @@ S8_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 PAPER_CONFIRMATORY_RUN = NOT_AUTHORIZED
 MERGE_RECOMMENDATION = ONLY_AFTER_CI_INDEPENDENT_REVIEW_AND_EXPLICIT_HUMAN_AUTHORIZATION
 ```
+
+
+## Post-gate remediation checkpoint — 2026-10-04
+
+The Entry Gate adjudication above remains immutable evidence of the predecessor state. After its exact-head CI and independent review succeeded in PR #94, human merge authorization for PR #94 remained absent.
+
+Human coordination then separately authorized remediation of S8-B01 under Issue #95 from exact PR #94 head `7fce78b02d03cc8140bc021217a0230776cc53ff`.
+
+```text
+S8-B01_REMEDIATION = AUTHORIZED
+S8-B01_REMEDIATION_WORK_BRANCH = s8/01-strategy-remediation
+S8-B01_REMEDIATION_CANDIDATE = IMPLEMENTED_PENDING_EXACT_HEAD_CI_AND_INDEPENDENT_REVIEW
+S8-B01_CANONICAL_CLOSURE = NO
+S8-B02 = OPEN
+S8_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+PAPER_CONFIRMATORY_RUN = NOT_AUTHORIZED
+MERGE = NOT_AUTHORIZED
+```
+
+This checkpoint does not retroactively convert S8-EG-08 to PASS. That row records the predecessor. A later canonical reconciliation may close S8-B01 only after the remediation itself has passed exact-head CI, independent review and explicitly authorized integration.

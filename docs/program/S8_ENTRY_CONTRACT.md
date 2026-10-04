@@ -192,3 +192,35 @@ PAPER_CONFIRMATORY_RUN = NOT_AUTHORIZED
 LIVE_TRADING = NO
 REAL_MONEY = NO
 ```
+
+
+## 10. Authorized pre-Paper remediation of S8-B01 — 2026-10-04
+
+Human coordination authorized only the upstream operational Strategy remediation under Issue #95, branch `s8/01-strategy-remediation`, stacked from exact PR #94 head `7fce78b02d03cc8140bc021217a0230776cc53ff`.
+
+Authorized remediation surface:
+
+```text
+DecisionOpportunity
+→ CandidateStrategy
+→ StrategyDecision { NO_TRADE | PROPOSE_TRADE }
+→ TradeIntent
+→ RiskProposal
+→ existing S7 Risk Engine
+```
+
+The remediation may materialize immutable Strategy identity, deterministic rule evaluation, explicit NO_TRADE behavior, concrete EconomicObjective/TradeIntent lineage and a one-way adapter into the existing S7 RiskProposal contract.
+
+It may not materialize `AuthorizationAllocation`, `OrderIntent`, `OrderPlan`, execution, Paper fills/accounting, broker/account APIs, canonical FinancialLedger mutation, Live Trading or real-money behavior.
+
+```text
+S8-B01_REMEDIATION = AUTHORIZED
+S8-B01_REMEDIATION_ISSUE = #95
+S8-B01_REMEDIATION_CANDIDATE = IMPLEMENTED_PENDING_EXACT_HEAD_CI_AND_INDEPENDENT_REVIEW
+S8-B01_CANONICAL_CLOSURE = NO
+S8-B02 = OPEN
+S8_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+PAPER_CONFIRMATORY_RUN = NOT_AUTHORIZED
+```
+
+The original Entry Gate finding remains historically correct for its predecessor. Canonical B01 closure requires exact-head evidence, independent review and separately authorized integration. No B01 remediation result can compensate for S8-B02.

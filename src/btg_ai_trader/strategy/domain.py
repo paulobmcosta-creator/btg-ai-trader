@@ -1,0 +1,480 @@
+"""Deterministic, side-effect-free operational Strategy domain."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import types
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
+from datetime import datetime
+from decimal import Decimal
+from enum import Enum
+
+from btg_ai_trader.observer.identity import TradableInstrumentId
+
+_ENGINE_DECISION_TOKEN = object()
+_ENGINE_INTENT_TOKEN = object()
+
+
+def _require_text(value: str, field_name: str) -> None:
+    if not isinstance(value, str) or not value or value != value.strip():
+        raise ValueError(f"{field_name} must be nonempty text without surrounding whitespace")
+
+
+def _require_aware(value: datetime, field_name: str) -> None:
+    if value.tzinfo is None or value.tzinfo.utcoffset(value) is None:
+        raise ValueError(f"{field_name} must be timezone-aware")
+
+
+def _require_decimal(
+    value: Decimal,
+    field_name: str,
+    *,
+    positive: bool = False,
+) -> None:
+    if not isinstance(value, Decimal) or not value.is_finite():
+        raise ValueError(f"{field_name} must be a finite Decimal")
+    if positive and value <= Decimal(0):
+        raise ValueError(f"{field_name} must be positive")
+
+
+def _jsonable(value: object) -> object:
+    if isinstance(value, Decimal):
+        return str(value)
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, Enum):
+        return value.value
+    if isinstance(value, TradableInstrumentId):
+        return value.value
+    if isinstance(value, Mapping):
+        return {
+            str(key): _jsonable(item)
+            for key, item in sorted(value.items(), key=lambda pair: str(pair[0]))
+        }
+    if isinstance(value, Sequence) and not isinstance(value, str | bytes):
+        return [_jsonable(item) for item in value]
+    return value
+
+
+def _digest(payload: Mapping[str, object]) -> str:
+    encoded = json.dumps(
+        _jsonable(payload),
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _freeze_signals(signals: Mapping[str, Decimal]) -> Mapping[str, Decimal]:
+    frozen: dict[str, Decimal] = {}
+    for name, value in sorted(signals.items()):
+        _require_text(name, "signal_name")
+        _require_decimal(value, f"signal[{name}]")
+        frozen[name] = value
+    return types.MappingProxyType(frozen)
+
+
+class StrategyDisposition(str, Enum):
+    NO_TRADE = "NO_TRADE"
+    PROPOSE_TRADE = "PROPOSE_TRADE"
+
+
+class StrategyEvidenceQuality(str, Enum):
+    VALID = "VALID"
+    UNKNOWN = "UNKNOWN"
+    STALE = "STALE"
+    INCOMPLETE = "INCOMPLETE"
+
+
+class ComparisonOperator(str, Enum):
+    LT = "LT"
+    LE = "LE"
+    GE = "GE"
+    GT = "GT"
+
+
+class EconomicDirection(str, Enum):
+    INCREASE_LONG = "INCREASE_LONG"
+    INCREASE_SHORT = "INCREASE_SHORT"
+    DECREASE_LONG = "DECREASE_LONG"
+    DECREASE_SHORT = "DECREASE_SHORT"
+
+
+class DecisionReason(str, Enum):
+    RULE_MATCHED = "RULE_MATCHED"
+    NO_RULE_MATCHED = "NO_RULE_MATCHED"
+    EVIDENCE_NOT_VALID = "EVIDENCE_NOT_VALID"
+    EVIDENCE_TOO_OLD = "EVIDENCE_TOO_OLD"
+    CANDIDATE_INSTRUMENT_MISMATCH = "CANDIDATE_INSTRUMENT_MISMATCH"
+    CANDIDATE_PORTFOLIO_MISMATCH = "CANDIDATE_PORTFOLIO_MISMATCH"
+    INPUT_SPEC_MISMATCH = "INPUT_SPEC_MISMATCH"
+    MISSING_REQUIRED_SIGNAL = "MISSING_REQUIRED_SIGNAL"
+
+
+@dataclass(frozen=True, slots=True)
+class EconomicObjective:
+    direction: EconomicDirection
+    requested_quantity: Decimal
+    quantity_unit: str
+    requested_exposure: Decimal
+    exposure_unit: str
+    objective_digest: str = field(init=False)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.direction, EconomicDirection):
+            raise ValueError("direction must be EconomicDirection")
+        _require_decimal(self.requested_quantity, "requested_quantity", positive=True)
+        _require_text(self.quantity_unit, "quantity_unit")
+        _require_decimal(self.requested_exposure, "requested_exposure", positive=True)
+        _require_text(self.exposure_unit, "exposure_unit")
+        object.__setattr__(
+            self,
+            "objective_digest",
+            _digest(
+                {
+                    "direction": self.direction,
+                    "requested_quantity": self.requested_quantity,
+                    "quantity_unit": self.quantity_unit,
+                    "requested_exposure": self.requested_exposure,
+                    "exposure_unit": self.exposure_unit,
+                }
+            ),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class StrategyRule:
+    rule_id: str
+    priority: int
+    signal_name: str
+    operator: ComparisonOperator
+    threshold: Decimal
+    objective: EconomicObjective
+    rule_digest: str = field(init=False)
+
+    def __post_init__(self) -> None:
+        _require_text(self.rule_id, "rule_id")
+        if isinstance(self.priority, bool) or not isinstance(self.priority, int) or self.priority < 0:
+            raise ValueError("priority must be a non-negative integer")
+        _require_text(self.signal_name, "signal_name")
+        if not isinstance(self.operator, ComparisonOperator):
+            raise ValueError("operator must be ComparisonOperator")
+        _require_decimal(self.threshold, "threshold")
+        if not isinstance(self.objective, EconomicObjective):
+            raise ValueError("objective must be EconomicObjective")
+        object.__setattr__(
+            self,
+            "rule_digest",
+            _digest(
+                {
+                    "rule_id": self.rule_id,
+                    "priority": self.priority,
+                    "signal_name": self.signal_name,
+                    "operator": self.operator,
+                    "threshold": self.threshold,
+                    "objective_digest": self.objective.objective_digest,
+                }
+            ),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class CandidateStrategy:
+    name: str
+    version: str
+    code_revision: str
+    instrument_id: TradableInstrumentId
+    portfolio_id: str
+    input_spec_digest: str
+    max_evidence_age_seconds: int
+    rules: tuple[StrategyRule, ...]
+    required_signals: tuple[str, ...] = field(init=False)
+    candidate_id: str = field(init=False)
+    candidate_digest: str = field(init=False)
+
+    def __post_init__(self) -> None:
+        _require_text(self.name, "name")
+        _require_text(self.version, "version")
+        _require_text(self.code_revision, "code_revision")
+        if not isinstance(self.instrument_id, TradableInstrumentId):
+            raise ValueError("instrument_id must be TradableInstrumentId")
+        _require_text(self.portfolio_id, "portfolio_id")
+        _require_text(self.input_spec_digest, "input_spec_digest")
+        if (
+            isinstance(self.max_evidence_age_seconds, bool)
+            or not isinstance(self.max_evidence_age_seconds, int)
+            or self.max_evidence_age_seconds < 0
+        ):
+            raise ValueError("max_evidence_age_seconds must be a non-negative integer")
+        if not self.rules:
+            raise ValueError("rules must contain at least one StrategyRule")
+        if not all(isinstance(rule, StrategyRule) for rule in self.rules):
+            raise ValueError("rules must contain only StrategyRule values")
+        rule_ids = [rule.rule_id for rule in self.rules]
+        priorities = [rule.priority for rule in self.rules]
+        if len(rule_ids) != len(set(rule_ids)):
+            raise ValueError("rule_id values must be unique")
+        if len(priorities) != len(set(priorities)):
+            raise ValueError("rule priorities must be unique")
+        canonical_rules = tuple(sorted(self.rules, key=lambda rule: (rule.priority, rule.rule_id)))
+        object.__setattr__(self, "rules", canonical_rules)
+        required_signals = tuple(sorted({rule.signal_name for rule in canonical_rules}))
+        object.__setattr__(self, "required_signals", required_signals)
+        digest = _digest(
+            {
+                "name": self.name,
+                "version": self.version,
+                "code_revision": self.code_revision,
+                "instrument_id": self.instrument_id,
+                "portfolio_id": self.portfolio_id,
+                "input_spec_digest": self.input_spec_digest,
+                "max_evidence_age_seconds": self.max_evidence_age_seconds,
+                "rule_digests": [rule.rule_digest for rule in canonical_rules],
+            }
+        )
+        object.__setattr__(self, "candidate_digest", digest)
+        object.__setattr__(self, "candidate_id", f"strategy:{self.name}:{digest[:12]}")
+
+
+@dataclass(frozen=True, slots=True)
+class DecisionOpportunity:
+    opportunity_id: str
+    instrument_id: TradableInstrumentId
+    portfolio_id: str
+    event_time: datetime
+    knowledge_time: datetime
+    decision_time: datetime
+    input_spec_digest: str
+    signals: Mapping[str, Decimal]
+    evidence_quality: StrategyEvidenceQuality
+    source_digest: str
+    opportunity_digest: str = field(init=False)
+
+    def __post_init__(self) -> None:
+        _require_text(self.opportunity_id, "opportunity_id")
+        if not isinstance(self.instrument_id, TradableInstrumentId):
+            raise ValueError("instrument_id must be TradableInstrumentId")
+        _require_text(self.portfolio_id, "portfolio_id")
+        _require_aware(self.event_time, "event_time")
+        _require_aware(self.knowledge_time, "knowledge_time")
+        _require_aware(self.decision_time, "decision_time")
+        if self.event_time > self.knowledge_time:
+            raise ValueError("event_time cannot be after knowledge_time")
+        if self.knowledge_time > self.decision_time:
+            raise ValueError("knowledge_time cannot be after decision_time")
+        _require_text(self.input_spec_digest, "input_spec_digest")
+        frozen_signals = _freeze_signals(self.signals)
+        object.__setattr__(self, "signals", frozen_signals)
+        if not isinstance(self.evidence_quality, StrategyEvidenceQuality):
+            raise ValueError("evidence_quality must be StrategyEvidenceQuality")
+        _require_text(self.source_digest, "source_digest")
+        object.__setattr__(
+            self,
+            "opportunity_digest",
+            _digest(
+                {
+                    "opportunity_id": self.opportunity_id,
+                    "instrument_id": self.instrument_id,
+                    "portfolio_id": self.portfolio_id,
+                    "event_time": self.event_time,
+                    "knowledge_time": self.knowledge_time,
+                    "decision_time": self.decision_time,
+                    "input_spec_digest": self.input_spec_digest,
+                    "signals": self.signals,
+                    "evidence_quality": self.evidence_quality,
+                    "source_digest": self.source_digest,
+                }
+            ),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class StrategyDecision:
+    decision_id: str
+    candidate_id: str
+    candidate_digest: str
+    opportunity_id: str
+    opportunity_digest: str
+    disposition: StrategyDisposition
+    reason_codes: tuple[DecisionReason, ...]
+    matched_rule_id: str | None
+    decided_at: datetime
+    decision_digest: str
+    _engine_token: object = field(default=None, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        for value, name in (
+            (self.decision_id, "decision_id"),
+            (self.candidate_id, "candidate_id"),
+            (self.candidate_digest, "candidate_digest"),
+            (self.opportunity_id, "opportunity_id"),
+            (self.opportunity_digest, "opportunity_digest"),
+            (self.decision_digest, "decision_digest"),
+        ):
+            _require_text(value, name)
+        if not isinstance(self.disposition, StrategyDisposition):
+            raise ValueError("disposition must be StrategyDisposition")
+        if not self.reason_codes or not all(
+            isinstance(reason, DecisionReason) for reason in self.reason_codes
+        ):
+            raise ValueError("reason_codes must contain DecisionReason values")
+        if self.disposition is StrategyDisposition.NO_TRADE and self.matched_rule_id is not None:
+            raise ValueError("NO_TRADE cannot carry matched_rule_id")
+        if self.disposition is StrategyDisposition.PROPOSE_TRADE:
+            _require_text(self.matched_rule_id or "", "matched_rule_id")
+        _require_aware(self.decided_at, "decided_at")
+
+    @property
+    def is_engine_issued(self) -> bool:
+        return self._engine_token is _ENGINE_DECISION_TOKEN
+
+    @classmethod
+    def _build(
+        cls,
+        *,
+        candidate: CandidateStrategy,
+        opportunity: DecisionOpportunity,
+        disposition: StrategyDisposition,
+        reason_codes: tuple[DecisionReason, ...],
+        matched_rule_id: str | None,
+    ) -> StrategyDecision:
+        payload: dict[str, object] = {
+            "candidate_id": candidate.candidate_id,
+            "candidate_digest": candidate.candidate_digest,
+            "opportunity_id": opportunity.opportunity_id,
+            "opportunity_digest": opportunity.opportunity_digest,
+            "disposition": disposition,
+            "reason_codes": reason_codes,
+            "matched_rule_id": matched_rule_id,
+            "decided_at": opportunity.decision_time,
+        }
+        digest = _digest(payload)
+        return cls(
+            decision_id=f"strategy-decision:{digest[:24]}",
+            candidate_id=candidate.candidate_id,
+            candidate_digest=candidate.candidate_digest,
+            opportunity_id=opportunity.opportunity_id,
+            opportunity_digest=opportunity.opportunity_digest,
+            disposition=disposition,
+            reason_codes=reason_codes,
+            matched_rule_id=matched_rule_id,
+            decided_at=opportunity.decision_time,
+            decision_digest=digest,
+            _engine_token=_ENGINE_DECISION_TOKEN,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class TradeIntent:
+    intent_id: str
+    decision_digest: str
+    candidate_id: str
+    candidate_digest: str
+    opportunity_digest: str
+    instrument_id: TradableInstrumentId
+    portfolio_id: str
+    objective: EconomicObjective
+    created_at: datetime
+    source_digest: str
+    intent_digest: str
+    _engine_token: object = field(default=None, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        for value, name in (
+            (self.intent_id, "intent_id"),
+            (self.decision_digest, "decision_digest"),
+            (self.candidate_id, "candidate_id"),
+            (self.candidate_digest, "candidate_digest"),
+            (self.opportunity_digest, "opportunity_digest"),
+            (self.portfolio_id, "portfolio_id"),
+            (self.source_digest, "source_digest"),
+            (self.intent_digest, "intent_digest"),
+        ):
+            _require_text(value, name)
+        if not isinstance(self.instrument_id, TradableInstrumentId):
+            raise ValueError("instrument_id must be TradableInstrumentId")
+        if not isinstance(self.objective, EconomicObjective):
+            raise ValueError("objective must be EconomicObjective")
+        _require_aware(self.created_at, "created_at")
+
+    @property
+    def is_engine_issued(self) -> bool:
+        return self._engine_token is _ENGINE_INTENT_TOKEN
+
+    @classmethod
+    def _build(
+        cls,
+        *,
+        decision: StrategyDecision,
+        candidate: CandidateStrategy,
+        opportunity: DecisionOpportunity,
+        objective: EconomicObjective,
+    ) -> TradeIntent:
+        if not decision.is_engine_issued:
+            raise ValueError("TradeIntent requires an engine-issued StrategyDecision")
+        if decision.disposition is not StrategyDisposition.PROPOSE_TRADE:
+            raise ValueError("TradeIntent requires PROPOSE_TRADE")
+        payload: dict[str, object] = {
+            "decision_digest": decision.decision_digest,
+            "candidate_id": candidate.candidate_id,
+            "candidate_digest": candidate.candidate_digest,
+            "opportunity_digest": opportunity.opportunity_digest,
+            "instrument_id": opportunity.instrument_id,
+            "portfolio_id": opportunity.portfolio_id,
+            "objective_digest": objective.objective_digest,
+            "created_at": opportunity.decision_time,
+            "source_digest": decision.decision_digest,
+        }
+        digest = _digest(payload)
+        return cls(
+            intent_id=f"trade-intent:{digest[:24]}",
+            decision_digest=decision.decision_digest,
+            candidate_id=candidate.candidate_id,
+            candidate_digest=candidate.candidate_digest,
+            opportunity_digest=opportunity.opportunity_digest,
+            instrument_id=opportunity.instrument_id,
+            portfolio_id=opportunity.portfolio_id,
+            objective=objective,
+            created_at=opportunity.decision_time,
+            source_digest=decision.decision_digest,
+            intent_digest=digest,
+            _engine_token=_ENGINE_INTENT_TOKEN,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class StrategyEvaluationResult:
+    decision: StrategyDecision
+    trade_intent: TradeIntent | None
+    result_digest: str = field(init=False)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.decision, StrategyDecision) or not self.decision.is_engine_issued:
+            raise ValueError("decision must be engine-issued StrategyDecision")
+        if self.decision.disposition is StrategyDisposition.NO_TRADE:
+            if self.trade_intent is not None:
+                raise ValueError("NO_TRADE result cannot carry TradeIntent")
+        else:
+            if self.trade_intent is None or not self.trade_intent.is_engine_issued:
+                raise ValueError("PROPOSE_TRADE result requires engine-issued TradeIntent")
+            if self.trade_intent.decision_digest != self.decision.decision_digest:
+                raise ValueError("TradeIntent decision_digest mismatch")
+            if self.trade_intent.candidate_digest != self.decision.candidate_digest:
+                raise ValueError("TradeIntent candidate_digest mismatch")
+            if self.trade_intent.opportunity_digest != self.decision.opportunity_digest:
+                raise ValueError("TradeIntent opportunity_digest mismatch")
+        object.__setattr__(
+            self,
+            "result_digest",
+            _digest(
+                {
+                    "decision_digest": self.decision.decision_digest,
+                    "intent_digest": (
+                        self.trade_intent.intent_digest if self.trade_intent is not None else None
+                    ),
+                }
+            ),
+        )
