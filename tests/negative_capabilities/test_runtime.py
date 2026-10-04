@@ -2,6 +2,7 @@
 
 import json
 import os
+import subprocess
 import sys
 import tomllib
 from datetime import UTC, datetime, timedelta
@@ -369,26 +370,54 @@ def test_neg_cap_09_technical_store_rejects_ledger_shaped_values_before_io(
     assert list(journal.iterdir()) == []
 
 
-# NEG-CAP-10: executing S1 does not load future financial/replay modules.
+# NEG-CAP-10: importing/executing S1 does not load future financial/replay modules.
 def test_neg_cap_10_runtime_graph_excludes_future_execution_modules(tmp_path: Path) -> None:
-    loaded_before_s1_execution = set(sys.modules)
-    instance, _, _ = observer(tmp_path, [frame()])
-    instance.start()
-    advance(instance)
-    forbidden_prefixes = (
-        "btg_ai_trader.execution",
-        "btg_ai_trader.paper",
-        "btg_ai_trader.risk",
-        "btg_ai_trader.strategy",
-        "btg_ai_trader.research.replay",
+    probe = """
+import sys
+from pathlib import Path
+
+from tests.negative_capabilities.test_runtime import (
+    FORBIDDEN_SURFACE,
+    advance,
+    frame,
+    observer,
+)
+
+forbidden_prefixes = (
+    "btg_ai_trader.execution",
+    "btg_ai_trader.paper",
+    "btg_ai_trader.risk",
+    "btg_ai_trader.strategy",
+    "btg_ai_trader.research.replay",
+)
+
+
+def is_forbidden_module(name: str) -> bool:
+    return any(
+        name == prefix or name.startswith(prefix + ".")
+        for prefix in forbidden_prefixes
     )
-    newly_loaded = set(sys.modules) - loaded_before_s1_execution
 
-    def is_forbidden_module(name: str) -> bool:
-        return any(
-            name == prefix or name.startswith(prefix + ".")
-            for prefix in forbidden_prefixes
-        )
 
-    assert not any(is_forbidden_module(name) for name in newly_loaded)
-    assert FORBIDDEN_SURFACE.isdisjoint(dir(instance))
+loaded_after_s1_import = set(sys.modules)
+if any(is_forbidden_module(name) for name in loaded_after_s1_import):
+    raise SystemExit("forbidden future module loaded while importing S1")
+
+instance, _, _ = observer(Path(sys.argv[1]), [frame()])
+instance.start()
+advance(instance)
+
+loaded_after_s1_execution = set(sys.modules)
+if any(is_forbidden_module(name) for name in loaded_after_s1_execution):
+    raise SystemExit("forbidden future module loaded while executing S1")
+if not FORBIDDEN_SURFACE.isdisjoint(dir(instance)):
+    raise SystemExit("forbidden execution surface exposed by S1")
+"""
+    completed = subprocess.run(
+        [sys.executable, "-c", probe, str(tmp_path)],
+        cwd=Path(__file__).resolve().parents[2],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
