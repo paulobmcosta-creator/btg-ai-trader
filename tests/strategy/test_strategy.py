@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+# Runtime-validation tests intentionally pass malformed values through typed constructors.
+# mypy: disable-error-code="arg-type,assignment,unused-ignore"
+
 import dataclasses
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -51,7 +54,11 @@ def rule(
     return StrategyRule(rule_id, priority, signal_name, operator, threshold, objective(direction))
 
 
-def candidate(*, rules: tuple[StrategyRule, ...] | None = None, max_age: int = 5) -> CandidateStrategy:
+def candidate(
+    *,
+    rules: tuple[StrategyRule, ...] | None = None,
+    max_age: int = 5,
+) -> CandidateStrategy:
     return CandidateStrategy(
         name="threshold-alpha",
         version="1",
@@ -96,18 +103,44 @@ def test_objective_is_immutable_deterministic_and_validated() -> None:
         first.quantity_unit = "contracts"  # type: ignore[misc]
 
     with pytest.raises(ValueError, match="direction"):
-        EconomicObjective("LONG", Decimal("1"), "shares", Decimal("1"), "BRL")  # type: ignore[arg-type]
+        EconomicObjective(
+            "LONG", Decimal("1"), "shares", Decimal("1"), "BRL"  # type: ignore[arg-type]
+        )
     for bad in (1, Decimal("NaN"), Decimal("0"), Decimal("-1")):
         with pytest.raises(ValueError, match="requested_quantity"):
-            EconomicObjective(EconomicDirection.INCREASE_LONG, bad, "shares", Decimal("1"), "BRL")  # type: ignore[arg-type]
+            EconomicObjective(
+                EconomicDirection.INCREASE_LONG,
+                bad,  # type: ignore[arg-type]
+                "shares",
+                Decimal("1"),
+                "BRL",
+            )
     for bad in ("", " shares "):
         with pytest.raises(ValueError, match="quantity_unit"):
-            EconomicObjective(EconomicDirection.INCREASE_LONG, Decimal("1"), bad, Decimal("1"), "BRL")
+            EconomicObjective(
+                EconomicDirection.INCREASE_LONG,
+                Decimal("1"),
+                bad,
+                Decimal("1"),
+                "BRL",
+            )
     for bad in (1, Decimal("NaN"), Decimal("0"), Decimal("-1")):
         with pytest.raises(ValueError, match="requested_exposure"):
-            EconomicObjective(EconomicDirection.INCREASE_LONG, Decimal("1"), "shares", bad, "BRL")  # type: ignore[arg-type]
+            EconomicObjective(
+                EconomicDirection.INCREASE_LONG,
+                Decimal("1"),
+                "shares",
+                bad,  # type: ignore[arg-type]
+                "BRL",
+            )
     with pytest.raises(ValueError, match="exposure_unit"):
-        EconomicObjective(EconomicDirection.INCREASE_LONG, Decimal("1"), "shares", Decimal("1"), " BRL")
+        EconomicObjective(
+            EconomicDirection.INCREASE_LONG,
+            Decimal("1"),
+            "shares",
+            Decimal("1"),
+            " BRL",
+        )
 
 
 def test_rule_validation_and_digest() -> None:
@@ -116,16 +149,37 @@ def test_rule_validation_and_digest() -> None:
         rule(" bad ")
     for bad in (True, "1", -1):
         with pytest.raises(ValueError, match="priority"):
-            StrategyRule("r", bad, "score", ComparisonOperator.GE, Decimal("1"), objective())  # type: ignore[arg-type]
+            StrategyRule(
+                "r",
+                bad,  # type: ignore[arg-type]
+                "score",
+                ComparisonOperator.GE,
+                Decimal("1"),
+                objective(),
+            )
     with pytest.raises(ValueError, match="signal_name"):
         StrategyRule("r", 1, "", ComparisonOperator.GE, Decimal("1"), objective())
     with pytest.raises(ValueError, match="operator"):
         StrategyRule("r", 1, "score", "GE", Decimal("1"), objective())  # type: ignore[arg-type]
     for bad in (1, Decimal("NaN")):
         with pytest.raises(ValueError, match="threshold"):
-            StrategyRule("r", 1, "score", ComparisonOperator.GE, bad, objective())  # type: ignore[arg-type]
+            StrategyRule(
+                "r",
+                1,
+                "score",
+                ComparisonOperator.GE,
+                bad,  # type: ignore[arg-type]
+                objective(),
+            )
     with pytest.raises(ValueError, match="objective"):
-        StrategyRule("r", 1, "score", ComparisonOperator.GE, Decimal("1"), object())  # type: ignore[arg-type]
+        StrategyRule(
+            "r",
+            1,
+            "score",
+            ComparisonOperator.GE,
+            Decimal("1"),
+            object(),  # type: ignore[arg-type]
+        )
 
 
 def test_candidate_canonicalizes_rules_and_validates_identity() -> None:
@@ -255,7 +309,12 @@ def test_engine_fail_closed_reasons() -> None:
         (ComparisonOperator.GT, "0.5", "0.5", False),
     ],
 )
-def test_all_comparison_operators(operator: ComparisonOperator, value: str, threshold: str, matches: bool) -> None:
+def test_all_comparison_operators(
+    operator: ComparisonOperator,
+    value: str,
+    threshold: str,
+    matches: bool,
+) -> None:
     c = candidate(rules=(rule(operator=operator, threshold=Decimal(threshold)),))
     result = evaluate_strategy(c, opportunity(signals={"score": Decimal(value)}))
     assert (result.decision.disposition is StrategyDisposition.PROPOSE_TRADE) is matches
@@ -332,7 +391,14 @@ def test_strategy_decision_direct_construction_is_untrusted_and_validated() -> N
     )
     forged = StrategyDecision(**valid)
     assert not forged.is_engine_issued
-    for key in ("decision_id", "candidate_id", "candidate_digest", "opportunity_id", "opportunity_digest", "decision_digest"):
+    for key in (
+        "decision_id",
+        "candidate_id",
+        "candidate_digest",
+        "opportunity_id",
+        "opportunity_digest",
+        "decision_digest",
+    ):
         with pytest.raises(ValueError, match=key):
             StrategyDecision(**dict(valid, **{key: " bad "}))
     with pytest.raises(ValueError, match="disposition"):
@@ -365,7 +431,16 @@ def test_trade_intent_direct_construction_is_untrusted_and_validated() -> None:
     )
     forged = TradeIntent(**valid)
     assert not forged.is_engine_issued
-    for key in ("intent_id", "decision_digest", "candidate_id", "candidate_digest", "opportunity_digest", "portfolio_id", "source_digest", "intent_digest"):
+    for key in (
+        "intent_id",
+        "decision_digest",
+        "candidate_id",
+        "candidate_digest",
+        "opportunity_digest",
+        "portfolio_id",
+        "source_digest",
+        "intent_digest",
+    ):
         with pytest.raises(ValueError, match=key):
             TradeIntent(**dict(valid, **{key: " bad "}))
     with pytest.raises(ValueError, match="instrument_id"):
@@ -406,8 +481,17 @@ def test_evaluation_result_rejects_inconsistent_artifacts() -> None:
         StrategyEvaluationResult(valid.decision, forged_intent)
 
     with pytest.raises(ValueError, match="decision_digest"):
-        StrategyEvaluationResult(valid.decision, dataclasses.replace(valid.trade_intent, decision_digest="other"))
+        StrategyEvaluationResult(
+            valid.decision,
+            dataclasses.replace(valid.trade_intent, decision_digest="other"),
+        )
     with pytest.raises(ValueError, match="candidate_digest"):
-        StrategyEvaluationResult(valid.decision, dataclasses.replace(valid.trade_intent, candidate_digest="other"))
+        StrategyEvaluationResult(
+            valid.decision,
+            dataclasses.replace(valid.trade_intent, candidate_digest="other"),
+        )
     with pytest.raises(ValueError, match="opportunity_digest"):
-        StrategyEvaluationResult(valid.decision, dataclasses.replace(valid.trade_intent, opportunity_digest="other"))
+        StrategyEvaluationResult(
+            valid.decision,
+            dataclasses.replace(valid.trade_intent, opportunity_digest="other"),
+        )

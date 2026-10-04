@@ -119,7 +119,10 @@ class Finding:
 
 
 def _is_forbidden_import(name: str) -> bool:
-    return any(name == prefix or name.startswith(prefix + ".") for prefix in FORBIDDEN_IMPORT_PREFIXES)
+    return any(
+        name == prefix or name.startswith(prefix + ".")
+        for prefix in FORBIDDEN_IMPORT_PREFIXES
+    )
 
 
 def _resolve_expr(node: ast.AST, aliases: dict[str, str]) -> str:
@@ -148,10 +151,16 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
             for alias in node.names:
                 aliases[alias.asname or alias.name] = alias.name
                 if _is_forbidden_import(alias.name):
-                    findings.append(Finding(normalized, node.lineno, f"forbidden import: {alias.name}"))
+                    findings.append(
+                        Finding(normalized, node.lineno, f"forbidden import: {alias.name}")
+                    )
                 if alias.name.startswith("btg_ai_trader.risk_engine") and not risk_adapter:
                     findings.append(
-                        Finding(normalized, node.lineno, "Risk Engine import allowed only in risk_adapter")
+                        Finding(
+                            normalized,
+                            node.lineno,
+                            "Risk Engine import allowed only in risk_adapter",
+                        )
                     )
         elif isinstance(node, ast.ImportFrom):
             module = node.module or ""
@@ -159,10 +168,16 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                 findings.append(Finding(normalized, node.lineno, f"forbidden import: {module}"))
             if module.startswith("btg_ai_trader.risk_engine") and not risk_adapter:
                 findings.append(
-                    Finding(normalized, node.lineno, "Risk Engine import allowed only in risk_adapter")
+                    Finding(
+                        normalized,
+                        node.lineno,
+                        "Risk Engine import allowed only in risk_adapter",
+                    )
                 )
             for alias in node.names:
-                aliases[alias.asname or alias.name] = f"{module}.{alias.name}" if module else alias.name
+                aliases[alias.asname or alias.name] = (
+                    f"{module}.{alias.name}" if module else alias.name
+                )
         elif isinstance(node, ast.Call):
             call_name = _resolve_expr(node.func, aliases)
             if call_name in FORBIDDEN_CALLS:
@@ -172,7 +187,9 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                     Finding(normalized, node.lineno, f"forbidden I/O method: {node.func.attr}")
                 )
         elif isinstance(node, ast.Name) and node.id in FORBIDDEN_OPERATIONAL_NAMES:
-            findings.append(Finding(normalized, node.lineno, f"forbidden operational name: {node.id}"))
+            findings.append(
+                Finding(normalized, node.lineno, f"forbidden operational name: {node.id}")
+            )
         elif isinstance(node, ast.Attribute) and node.attr in FORBIDDEN_OPERATIONAL_NAMES:
             findings.append(
                 Finding(normalized, node.lineno, f"forbidden operational attribute: {node.attr}")
@@ -186,7 +203,9 @@ def _scan_text(path: Path, text: str) -> list[Finding]:
     for line_no, line in enumerate(text.splitlines(), start=1):
         for kind, pattern in SECRET_PATTERNS.items():
             if pattern.search(line):
-                findings.append(Finding(normalized, line_no, f"suspected credential pattern: {kind}"))
+                findings.append(
+                    Finding(normalized, line_no, f"suspected credential pattern: {kind}")
+                )
     return findings
 
 
@@ -227,7 +246,13 @@ def main() -> int:
             continue
         if path.is_dir():
             if path.is_symlink():
-                findings.append(Finding(str(path).replace("\\", "/"), 1, "directory symlink forbidden"))
+                findings.append(
+                    Finding(
+                        str(path).replace("\\", "/"),
+                        1,
+                        "directory symlink forbidden",
+                    )
+                )
             continue
         findings.extend(scan_file(path))
 

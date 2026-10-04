@@ -157,7 +157,11 @@ class StrategyRule:
 
     def __post_init__(self) -> None:
         _require_text(self.rule_id, "rule_id")
-        if isinstance(self.priority, bool) or not isinstance(self.priority, int) or self.priority < 0:
+        if (
+            isinstance(self.priority, bool)
+            or not isinstance(self.priority, int)
+            or self.priority < 0
+        ):
             raise ValueError("priority must be a non-negative integer")
         _require_text(self.signal_name, "signal_name")
         if not isinstance(self.operator, ComparisonOperator):

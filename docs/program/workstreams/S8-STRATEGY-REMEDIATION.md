@@ -155,6 +155,8 @@ Only the following may change relative to `7fce78b02d03cc8140bc021217a0230776cc5
 - `src/btg_ai_trader/strategy/**`;
 - `tests/strategy/**`;
 - `scripts/check_s8_strategy_boundary.py`;
+- the minimal S1 verifier compatibility update that adds `strategy` to the already-existing post-S1 root exclusions;
+- the NEG-CAP-10 test correction so it verifies modules loaded *by S1 execution*, rather than modules imported earlier by unrelated future-sprint tests;
 - `.github/workflows/s8-strategy-remediation-ci.yml`;
 - S8 governance/workstream documentation and living checkpoint documents.
 
@@ -171,3 +173,10 @@ S8_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 PAPER_CONFIRMATORY_RUN = NOT_AUTHORIZED
 MERGE = FORBIDDEN_WITHOUT_HUMAN_AUTHORIZATION
 ```
+
+
+## 8. Historical S1 compatibility clarification
+
+The original S1 boundary verifier already excludes post-S1 package roots (Replay through Risk) before comparing the frozen S1 source inventory. Adding the explicitly authorized `src/btg_ai_trader/strategy` root to that same exclusion list preserves, rather than relaxes, the S1 inventory pins.
+
+Likewise, NEG-CAP-10 is clarified to compare `sys.modules` immediately before and after S1 execution. Its invariant is that executing S1 must not load future financial modules; unrelated test-collection/import order must not cause a false positive merely because a later-sprint module legitimately exists.

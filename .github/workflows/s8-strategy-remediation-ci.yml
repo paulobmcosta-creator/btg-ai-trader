@@ -128,7 +128,7 @@ jobs:
 
           while IFS= read -r path; do
             case "${path}" in
-              src/btg_ai_trader/strategy/*|tests/strategy/*|scripts/check_s8_strategy_boundary.py|.github/workflows/s8-strategy-remediation-ci.yml|AGENTS.md|README.md|docs/BTG_AI_TRADER_MASTER_PLAN.md|docs/program/PROGRAM_EXECUTION.md|docs/program/S8_ENTRY_CONTRACT.md|docs/program/S8_DECISION_REGISTER.md|docs/program/S8_CAPABILITY_MATRIX.md|docs/program/S8_ENTRY_GATE.md|docs/sprints/SPRINT_8.md|docs/program/workstreams/S8-STRATEGY-REMEDIATION.md)
+              src/btg_ai_trader/strategy/*|tests/strategy/*|scripts/check_s8_strategy_boundary.py|scripts/check_s1_boundary.py|tests/negative_capabilities/test_runtime.py|.github/workflows/s8-strategy-remediation-ci.yml|AGENTS.md|README.md|docs/BTG_AI_TRADER_MASTER_PLAN.md|docs/program/PROGRAM_EXECUTION.md|docs/program/S8_ENTRY_CONTRACT.md|docs/program/S8_DECISION_REGISTER.md|docs/program/S8_CAPABILITY_MATRIX.md|docs/program/S8_ENTRY_GATE.md|docs/sprints/SPRINT_8.md|docs/program/workstreams/S8-STRATEGY-REMEDIATION.md)
                 ;;
               *)
                 echo "Unauthorized S8-B01 remediation path: ${path}" >&2

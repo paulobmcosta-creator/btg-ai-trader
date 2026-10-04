@@ -371,6 +371,7 @@ def test_neg_cap_09_technical_store_rejects_ledger_shaped_values_before_io(
 
 # NEG-CAP-10: executing S1 does not load future financial/replay modules.
 def test_neg_cap_10_runtime_graph_excludes_future_execution_modules(tmp_path: Path) -> None:
+    loaded_before_s1_execution = set(sys.modules)
     instance, _, _ = observer(tmp_path, [frame()])
     instance.start()
     advance(instance)
@@ -381,7 +382,7 @@ def test_neg_cap_10_runtime_graph_excludes_future_execution_modules(tmp_path: Pa
         "btg_ai_trader.strategy",
         "btg_ai_trader.research.replay",
     )
-    loaded = set(sys.modules)
+    newly_loaded = set(sys.modules) - loaded_before_s1_execution
 
     def is_forbidden_module(name: str) -> bool:
         return any(
@@ -389,5 +390,5 @@ def test_neg_cap_10_runtime_graph_excludes_future_execution_modules(tmp_path: Pa
             for prefix in forbidden_prefixes
         )
 
-    assert not any(is_forbidden_module(name) for name in loaded)
+    assert not any(is_forbidden_module(name) for name in newly_loaded)
     assert FORBIDDEN_SURFACE.isdisjoint(dir(instance))
