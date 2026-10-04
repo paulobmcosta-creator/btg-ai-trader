@@ -567,4 +567,3 @@ def test_evaluation_result_rejects_inconsistent_artifacts() -> None:
     assert other_result.trade_intent is not None
     with pytest.raises(ValueError, match="decision_digest"):
         StrategyEvaluationResult(valid.decision, other_result.trade_intent)
-
