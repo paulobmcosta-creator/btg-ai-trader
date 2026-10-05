@@ -407,6 +407,23 @@ def test_digest_validation_rejects_in_place_tampering_even_with_engine_token() -
         to_risk_proposal(result.trade_intent)
 
 
+def test_objective_content_tampering_invalidates_intent_and_risk_adapter() -> None:
+    c = candidate()
+    result = evaluate_strategy(c, opportunity())
+    assert result.trade_intent is not None
+    intent = result.trade_intent
+    original_candidate_digest = c.candidate_digest
+    original_objective_digest = intent.objective.objective_digest
+
+    object.__setattr__(intent.objective, "requested_exposure", Decimal("999"))
+
+    assert c.candidate_digest != original_candidate_digest
+    assert intent.objective.objective_digest != original_objective_digest
+    assert not intent.is_engine_issued
+    with pytest.raises(ValueError, match="engine-issued"):
+        to_risk_proposal(intent)
+
+
 def test_strategy_decision_direct_construction_is_untrusted_and_validated() -> None:
     valid = dict(
         decision_id="d",
@@ -446,42 +463,23 @@ def test_strategy_decision_direct_construction_is_untrusted_and_validated() -> N
         StrategyDecision(**dict(valid, decided_at=datetime(2026, 10, 4)))
 
 
-def test_strategy_decision_builder_enforces_rule_semantics() -> None:
+def test_strategy_decision_issuer_recomputes_complete_outcome() -> None:
     c = candidate()
-    opp = opportunity()
+    low_score = opportunity(signals={"score": Decimal("0.1")})
 
-    with pytest.raises(ValueError, match="must belong"):
-        StrategyDecision._build(
-            candidate=c,
-            opportunity=opp,
-            disposition=StrategyDisposition.PROPOSE_TRADE,
-            reason_codes=(DecisionReason.RULE_MATCHED,),
-            matched_rule_id="missing",
-        )
-    with pytest.raises(ValueError, match="requires RULE_MATCHED"):
-        StrategyDecision._build(
-            candidate=c,
-            opportunity=opp,
-            disposition=StrategyDisposition.PROPOSE_TRADE,
-            reason_codes=(DecisionReason.NO_RULE_MATCHED,),
-            matched_rule_id="long",
-        )
-    with pytest.raises(ValueError, match="cannot carry matched_rule_id"):
-        StrategyDecision._build(
-            candidate=c,
-            opportunity=opp,
-            disposition=StrategyDisposition.NO_TRADE,
-            reason_codes=(DecisionReason.NO_RULE_MATCHED,),
-            matched_rule_id="long",
-        )
-    with pytest.raises(ValueError, match="cannot carry RULE_MATCHED"):
-        StrategyDecision._build(
-            candidate=c,
-            opportunity=opp,
-            disposition=StrategyDisposition.NO_TRADE,
-            reason_codes=(DecisionReason.RULE_MATCHED,),
-            matched_rule_id=None,
-        )
+    decision = StrategyDecision._issue(candidate=c, opportunity=low_score)
+
+    assert decision.is_engine_issued
+    assert decision.disposition is StrategyDisposition.NO_TRADE
+    assert decision.reason_codes == (DecisionReason.NO_RULE_MATCHED,)
+    assert decision.matched_rule_id is None
+    with pytest.raises(ValueError, match="PROPOSE_TRADE"):
+        TradeIntent._build(decision=decision, candidate=c, opportunity=low_score)
+
+    mismatch = opportunity(instrument_id=OTHER_INSTRUMENT)
+    mismatch_decision = StrategyDecision._issue(candidate=c, opportunity=mismatch)
+    assert mismatch_decision.disposition is StrategyDisposition.NO_TRADE
+    assert mismatch_decision.reason_codes == (DecisionReason.CANDIDATE_INSTRUMENT_MISMATCH,)
 
 
 def test_trade_intent_direct_construction_is_untrusted_and_validated() -> None:

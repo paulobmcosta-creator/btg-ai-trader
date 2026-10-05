@@ -178,6 +178,15 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                 aliases[alias.asname or alias.name] = (
                     f"{module}.{alias.name}" if module else alias.name
                 )
+        elif isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
+            if node.name in FORBIDDEN_OPERATIONAL_NAMES:
+                findings.append(
+                    Finding(
+                        normalized,
+                        node.lineno,
+                        f"forbidden operational declaration: {node.name}",
+                    )
+                )
         elif isinstance(node, ast.Call):
             call_name = _resolve_expr(node.func, aliases)
             if call_name in FORBIDDEN_CALLS:

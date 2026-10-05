@@ -7,7 +7,7 @@ import json
 import types
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from enum import Enum
 
@@ -121,8 +121,6 @@ class EconomicObjective:
     quantity_unit: str
     requested_exposure: Decimal
     exposure_unit: str
-    objective_digest: str = field(init=False)
-
     def __post_init__(self) -> None:
         if not isinstance(self.direction, EconomicDirection):
             raise ValueError("direction must be EconomicDirection")
@@ -130,18 +128,16 @@ class EconomicObjective:
         _require_text(self.quantity_unit, "quantity_unit")
         _require_decimal(self.requested_exposure, "requested_exposure", positive=True)
         _require_text(self.exposure_unit, "exposure_unit")
-        object.__setattr__(
-            self,
-            "objective_digest",
-            _digest(
-                {
-                    "direction": self.direction,
-                    "requested_quantity": self.requested_quantity,
-                    "quantity_unit": self.quantity_unit,
-                    "requested_exposure": self.requested_exposure,
-                    "exposure_unit": self.exposure_unit,
-                }
-            ),
+    @property
+    def objective_digest(self) -> str:
+        return _digest(
+            {
+                "direction": self.direction,
+                "requested_quantity": self.requested_quantity,
+                "quantity_unit": self.quantity_unit,
+                "requested_exposure": self.requested_exposure,
+                "exposure_unit": self.exposure_unit,
+            }
         )
 
 
@@ -153,8 +149,6 @@ class StrategyRule:
     operator: ComparisonOperator
     threshold: Decimal
     objective: EconomicObjective
-    rule_digest: str = field(init=False)
-
     def __post_init__(self) -> None:
         _require_text(self.rule_id, "rule_id")
         if (
@@ -169,19 +163,17 @@ class StrategyRule:
         _require_decimal(self.threshold, "threshold")
         if not isinstance(self.objective, EconomicObjective):
             raise ValueError("objective must be EconomicObjective")
-        object.__setattr__(
-            self,
-            "rule_digest",
-            _digest(
-                {
-                    "rule_id": self.rule_id,
-                    "priority": self.priority,
-                    "signal_name": self.signal_name,
-                    "operator": self.operator,
-                    "threshold": self.threshold,
-                    "objective_digest": self.objective.objective_digest,
-                }
-            ),
+    @property
+    def rule_digest(self) -> str:
+        return _digest(
+            {
+                "rule_id": self.rule_id,
+                "priority": self.priority,
+                "signal_name": self.signal_name,
+                "operator": self.operator,
+                "threshold": self.threshold,
+                "objective_digest": self.objective.objective_digest,
+            }
         )
 
 
@@ -195,9 +187,6 @@ class CandidateStrategy:
     input_spec_digest: str
     max_evidence_age_seconds: int
     rules: tuple[StrategyRule, ...]
-    required_signals: tuple[str, ...] = field(init=False)
-    candidate_id: str = field(init=False)
-    candidate_digest: str = field(init=False)
 
     def __post_init__(self) -> None:
         _require_text(self.name, "name")
@@ -225,9 +214,14 @@ class CandidateStrategy:
             raise ValueError("rule priorities must be unique")
         canonical_rules = tuple(sorted(self.rules, key=lambda rule: (rule.priority, rule.rule_id)))
         object.__setattr__(self, "rules", canonical_rules)
-        required_signals = tuple(sorted({rule.signal_name for rule in canonical_rules}))
-        object.__setattr__(self, "required_signals", required_signals)
-        digest = _digest(
+
+    @property
+    def required_signals(self) -> tuple[str, ...]:
+        return tuple(sorted({rule.signal_name for rule in self.rules}))
+
+    @property
+    def candidate_digest(self) -> str:
+        return _digest(
             {
                 "name": self.name,
                 "version": self.version,
@@ -236,11 +230,13 @@ class CandidateStrategy:
                 "portfolio_id": self.portfolio_id,
                 "input_spec_digest": self.input_spec_digest,
                 "max_evidence_age_seconds": self.max_evidence_age_seconds,
-                "rule_digests": [rule.rule_digest for rule in canonical_rules],
+                "rule_digests": [rule.rule_digest for rule in self.rules],
             }
         )
-        object.__setattr__(self, "candidate_digest", digest)
-        object.__setattr__(self, "candidate_id", f"strategy:{self.name}:{digest[:12]}")
+
+    @property
+    def candidate_id(self) -> str:
+        return f"strategy:{self.name}:{self.candidate_digest[:12]}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -255,7 +251,6 @@ class DecisionOpportunity:
     signals: Mapping[str, Decimal]
     evidence_quality: StrategyEvidenceQuality
     source_digest: str
-    opportunity_digest: str = field(init=False)
 
     def __post_init__(self) -> None:
         _require_text(self.opportunity_id, "opportunity_id")
@@ -275,24 +270,69 @@ class DecisionOpportunity:
         if not isinstance(self.evidence_quality, StrategyEvidenceQuality):
             raise ValueError("evidence_quality must be StrategyEvidenceQuality")
         _require_text(self.source_digest, "source_digest")
-        object.__setattr__(
-            self,
-            "opportunity_digest",
-            _digest(
-                {
-                    "opportunity_id": self.opportunity_id,
-                    "instrument_id": self.instrument_id,
-                    "portfolio_id": self.portfolio_id,
-                    "event_time": self.event_time,
-                    "knowledge_time": self.knowledge_time,
-                    "decision_time": self.decision_time,
-                    "input_spec_digest": self.input_spec_digest,
-                    "signals": self.signals,
-                    "evidence_quality": self.evidence_quality,
-                    "source_digest": self.source_digest,
-                }
-            ),
+
+    @property
+    def opportunity_digest(self) -> str:
+        return _digest(
+            {
+                "opportunity_id": self.opportunity_id,
+                "instrument_id": self.instrument_id,
+                "portfolio_id": self.portfolio_id,
+                "event_time": self.event_time,
+                "knowledge_time": self.knowledge_time,
+                "decision_time": self.decision_time,
+                "input_spec_digest": self.input_spec_digest,
+                "signals": self.signals,
+                "evidence_quality": self.evidence_quality,
+                "source_digest": self.source_digest,
+            }
         )
+
+
+def _matches(value: Decimal, operator: ComparisonOperator, threshold: Decimal) -> bool:
+    if operator is ComparisonOperator.LT:
+        return value < threshold
+    if operator is ComparisonOperator.LE:
+        return value <= threshold
+    if operator is ComparisonOperator.GE:
+        return value >= threshold
+    return value > threshold
+
+
+def _evaluate_outcome(
+    candidate: CandidateStrategy,
+    opportunity: DecisionOpportunity,
+) -> tuple[StrategyDisposition, tuple[DecisionReason, ...], str | None]:
+    if opportunity.instrument_id != candidate.instrument_id:
+        return (
+            StrategyDisposition.NO_TRADE,
+            (DecisionReason.CANDIDATE_INSTRUMENT_MISMATCH,),
+            None,
+        )
+    if opportunity.portfolio_id != candidate.portfolio_id:
+        return (
+            StrategyDisposition.NO_TRADE,
+            (DecisionReason.CANDIDATE_PORTFOLIO_MISMATCH,),
+            None,
+        )
+    if opportunity.input_spec_digest != candidate.input_spec_digest:
+        return (
+            StrategyDisposition.NO_TRADE,
+            (DecisionReason.INPUT_SPEC_MISMATCH,),
+            None,
+        )
+    if opportunity.evidence_quality is not StrategyEvidenceQuality.VALID:
+        return StrategyDisposition.NO_TRADE, (DecisionReason.EVIDENCE_NOT_VALID,), None
+    max_age = timedelta(seconds=candidate.max_evidence_age_seconds)
+    if opportunity.decision_time - opportunity.knowledge_time > max_age:
+        return StrategyDisposition.NO_TRADE, (DecisionReason.EVIDENCE_TOO_OLD,), None
+    if any(name not in opportunity.signals for name in candidate.required_signals):
+        return StrategyDisposition.NO_TRADE, (DecisionReason.MISSING_REQUIRED_SIGNAL,), None
+
+    for rule in candidate.rules:
+        if _matches(opportunity.signals[rule.signal_name], rule.operator, rule.threshold):
+            return StrategyDisposition.PROPOSE_TRADE, (DecisionReason.RULE_MATCHED,), rule.rule_id
+    return StrategyDisposition.NO_TRADE, (DecisionReason.NO_RULE_MATCHED,), None
 
 
 @dataclass(frozen=True, slots=True)
@@ -356,27 +396,13 @@ class StrategyDecision:
         )
 
     @classmethod
-    def _build(
+    def _issue(
         cls,
         *,
         candidate: CandidateStrategy,
         opportunity: DecisionOpportunity,
-        disposition: StrategyDisposition,
-        reason_codes: tuple[DecisionReason, ...],
-        matched_rule_id: str | None,
     ) -> StrategyDecision:
-        if disposition is StrategyDisposition.PROPOSE_TRADE:
-            rule_ids = {rule.rule_id for rule in candidate.rules}
-            if matched_rule_id not in rule_ids:
-                raise ValueError("PROPOSE_TRADE matched_rule_id must belong to CandidateStrategy")
-            if reason_codes != (DecisionReason.RULE_MATCHED,):
-                raise ValueError("PROPOSE_TRADE requires RULE_MATCHED reason")
-        else:
-            if matched_rule_id is not None:
-                raise ValueError("NO_TRADE cannot carry matched_rule_id")
-            if DecisionReason.RULE_MATCHED in reason_codes:
-                raise ValueError("NO_TRADE cannot carry RULE_MATCHED reason")
-
+        disposition, reason_codes, matched_rule_id = _evaluate_outcome(candidate, opportunity)
         payload: dict[str, object] = {
             "candidate_id": candidate.candidate_id,
             "candidate_digest": candidate.candidate_digest,
