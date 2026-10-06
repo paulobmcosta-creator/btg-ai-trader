@@ -10,10 +10,10 @@ from pathlib import Path
 STRATEGY_ROOT = Path("src/btg_ai_trader/strategy")
 RISK_ENGINE_MODULE = "btg_ai_trader.risk_engine"
 ALLOWED_RISK_ADAPTER_IMPORTS = {"EconomicDirection", "RiskProposal"}
-ALLOWED_MODULE_IMPORTS = {"hashlib", "json", "types"}
+ALLOWED_MODULE_IMPORTS = {"hashlib", "json", "types", "weakref"}
 ALLOWED_FROM_IMPORTS = {
     "__future__": {"annotations"},
-    "collections.abc": {"Mapping", "Sequence"},
+    "collections.abc": {"Callable", "Mapping", "Sequence"},
     "dataclasses": {"dataclass", "field"},
     "datetime": {"UTC", "datetime", "timedelta"},
     "decimal": {"Decimal"},
@@ -65,10 +65,12 @@ FORBIDDEN_REFLECTION_NAMES = {
     "__func__",
     "__getattribute__",
     "__globals__",
+    "__loader__",
     "__mro__",
     "__base__",
     "__bases__",
     "__self__",
+    "__spec__",
     "__subclasses__",
 }
 
@@ -145,6 +147,8 @@ FORBIDDEN_IO_METHODS = {
     "write_bytes",
     "read_text",
     "read_bytes",
+    "get_data",
+    "set_data",
     "open",
     "unlink",
     "rename",

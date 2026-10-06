@@ -5,7 +5,8 @@ from __future__ import annotations
 import hashlib
 import json
 import types
-from collections.abc import Mapping, Sequence
+import weakref
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -13,9 +14,39 @@ from enum import Enum
 
 from btg_ai_trader.observer.identity import TradableInstrumentId
 
-_ENGINE_DECISION_TOKEN = object()
-_ENGINE_INTENT_TOKEN = object()
 _MAX_TIMEDELTA_SECONDS = timedelta.max.days * 86_400 + timedelta.max.seconds
+
+_IssuanceRegister = Callable[[object, str], None]
+_IssuanceVerify = Callable[[object, str], bool]
+
+
+def _make_issuance_registry() -> tuple[_IssuanceRegister, _IssuanceVerify]:
+    records: dict[int, tuple[weakref.ReferenceType[object], str]] = {}
+
+    def register(value: object, digest: str) -> None:
+        key = id(value)
+
+        def cleanup(reference: weakref.ReferenceType[object]) -> None:
+            current = records.get(key)
+            if current is not None and current[0] is reference:
+                records.pop(key, None)
+
+        reference = weakref.ref(value, cleanup)
+        records[key] = (reference, digest)
+
+    def verify(value: object, digest: str) -> bool:
+        current = records.get(id(value))
+        return (
+            current is not None
+            and current[0]() is value
+            and current[1] == digest
+        )
+
+    return register, verify
+
+
+_register_decision_issuance, _verify_decision_issuance = _make_issuance_registry()
+_register_intent_issuance, _verify_intent_issuance = _make_issuance_registry()
 
 
 def _require_text(value: str, field_name: str) -> None:
@@ -348,7 +379,7 @@ def _evaluate_outcome(
     return StrategyDisposition.NO_TRADE, (DecisionReason.NO_RULE_MATCHED,), None
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, weakref_slot=True)
 class StrategyDecision:
     decision_id: str
     candidate_id: str
@@ -360,7 +391,6 @@ class StrategyDecision:
     matched_rule_id: str | None
     decided_at: datetime
     decision_digest: str
-    _engine_token: object = field(default=None, repr=False, compare=False, init=False)
 
     def __post_init__(self) -> None:
         for value, name in (
@@ -400,13 +430,12 @@ class StrategyDecision:
 
     @property
     def is_engine_issued(self) -> bool:
-        if self._engine_token is not _ENGINE_DECISION_TOKEN:
-            return False
         expected_digest = self._expected_digest()
-        return (self.decision_id, self.decision_digest) == (
+        identity_matches = (self.decision_id, self.decision_digest) == (
             f"strategy-decision:{expected_digest[:24]}",
             expected_digest,
         )
+        return identity_matches and _verify_decision_issuance(self, expected_digest)
 
     @classmethod
     def _issue(
@@ -439,11 +468,11 @@ class StrategyDecision:
             decided_at=opportunity.decision_time,
             decision_digest=digest,
         )
-        object.__setattr__(decision, "_engine_token", _ENGINE_DECISION_TOKEN)
+        _register_decision_issuance(decision, digest)
         return decision
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, weakref_slot=True)
 class TradeIntent:
     intent_id: str
     decision_digest: str
@@ -456,7 +485,6 @@ class TradeIntent:
     created_at: datetime
     source_digest: str
     intent_digest: str
-    _engine_token: object = field(default=None, repr=False, compare=False, init=False)
 
     def __post_init__(self) -> None:
         for value, name in (
@@ -493,13 +521,12 @@ class TradeIntent:
 
     @property
     def is_engine_issued(self) -> bool:
-        if self._engine_token is not _ENGINE_INTENT_TOKEN:
-            return False
         expected_digest = self._expected_digest()
-        return (self.intent_id, self.intent_digest) == (
+        identity_matches = (self.intent_id, self.intent_digest) == (
             f"trade-intent:{expected_digest[:24]}",
             expected_digest,
         )
+        return identity_matches and _verify_intent_issuance(self, expected_digest)
 
     @classmethod
     def _build(
@@ -556,7 +583,7 @@ class TradeIntent:
             source_digest=decision.decision_digest,
             intent_digest=digest,
         )
-        object.__setattr__(intent, "_engine_token", _ENGINE_INTENT_TOKEN)
+        _register_intent_issuance(intent, digest)
         return intent
 
 

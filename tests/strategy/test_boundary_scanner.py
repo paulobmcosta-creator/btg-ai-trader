@@ -122,7 +122,8 @@ def test_scanner_allows_only_current_strategy_dependency_surface(tmp_path: Path)
         "import hashlib\n"
         "import json\n"
         "import types\n"
-        "from collections.abc import Mapping\n"
+        "import weakref\n"
+        "from collections.abc import Callable, Mapping\n"
         "from dataclasses import dataclass, field\n"
         "from datetime import UTC, datetime, timedelta\n"
         "from decimal import Decimal\n"
@@ -280,5 +281,38 @@ def test_scanner_rejects_datetime_today_wall_clock(
             "forbidden call" in str(finding)
             or "forbidden callable reference" in str(finding)
         )
+        for finding in findings
+    )
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        (
+            "import json\n"
+            "json.__loader__.set_data('/tmp/state', b'changed')\n"
+        ),
+        (
+            "import json\n"
+            "json.__spec__.loader.set_data('/tmp/state', b'changed')\n"
+        ),
+        (
+            "import json\n"
+            "json.__loader__.get_data('/tmp/state')\n"
+        ),
+    ],
+)
+def test_scanner_rejects_loader_and_spec_reflection(
+    tmp_path: Path,
+    source: str,
+) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(source, encoding="utf-8")
+
+    findings = _scan_file(target)
+
+    assert any(
+        "forbidden reflection namespace" in str(finding)
+        or "forbidden I/O method" in str(finding)
         for finding in findings
     )

@@ -465,6 +465,48 @@ def test_objective_content_tampering_invalidates_intent_and_risk_adapter() -> No
         to_risk_proposal(intent)
 
 
+def test_recomputed_intent_digest_cannot_refresh_issuance_trust() -> None:
+    result = evaluate_strategy(candidate(), opportunity())
+    assert result.trade_intent is not None
+    intent = result.trade_intent
+
+    object.__setattr__(
+        intent,
+        "objective",
+        objective(EconomicDirection.INCREASE_SHORT),
+    )
+    forged_digest = intent._expected_digest()
+    object.__setattr__(intent, "intent_digest", forged_digest)
+    object.__setattr__(intent, "intent_id", f"trade-intent:{forged_digest[:24]}")
+
+    assert not intent.is_engine_issued
+    with pytest.raises(ValueError, match="engine-issued"):
+        to_risk_proposal(intent)
+
+
+def test_recomputed_decision_digest_cannot_refresh_issuance_trust() -> None:
+    c = candidate()
+    opp = opportunity(signals={"score": Decimal("0.1")})
+    result = evaluate_strategy(c, opp)
+    decision = result.decision
+    assert decision.disposition is StrategyDisposition.NO_TRADE
+
+    object.__setattr__(decision, "disposition", StrategyDisposition.PROPOSE_TRADE)
+    object.__setattr__(decision, "reason_codes", (DecisionReason.RULE_MATCHED,))
+    object.__setattr__(decision, "matched_rule_id", "long")
+    forged_digest = decision._expected_digest()
+    object.__setattr__(decision, "decision_digest", forged_digest)
+    object.__setattr__(
+        decision,
+        "decision_id",
+        f"strategy-decision:{forged_digest[:24]}",
+    )
+
+    assert not decision.is_engine_issued
+    with pytest.raises(ValueError, match="engine-issued"):
+        TradeIntent._build(decision=decision, candidate=c, opportunity=opp)
+
+
 def test_strategy_decision_direct_construction_is_untrusted_and_validated() -> None:
     valid = dict(
         decision_id="d",
