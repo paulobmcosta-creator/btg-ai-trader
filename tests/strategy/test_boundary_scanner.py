@@ -123,8 +123,8 @@ def test_scanner_allows_only_current_strategy_dependency_surface(tmp_path: Path)
         "import json\n"
         "import types\n"
         "from collections.abc import Mapping\n"
-        "from dataclasses import dataclass\n"
-        "from datetime import datetime\n"
+        "from dataclasses import dataclass, field\n"
+        "from datetime import UTC, datetime, timedelta\n"
         "from decimal import Decimal\n"
         "from enum import Enum\n"
         "from btg_ai_trader.observer.identity import TradableInstrumentId\n"
@@ -166,3 +166,42 @@ def test_scanner_allows_reference_to_safe_callable(tmp_path: Path) -> None:
     )
 
     assert _scan_file(target) == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        (
+            "from btg_ai_trader.strategy.domain import datetime as clock\n"
+            "clock.now()\n"
+        ),
+        "from btg_ai_trader.strategy.domain import json\n",
+        "from btg_ai_trader.strategy.engine import StrategyDecision\n",
+        "from datetime import timezone\n",
+    ],
+)
+def test_scanner_rejects_reexports_and_unapproved_symbols(
+    tmp_path: Path,
+    source: str,
+) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(source, encoding="utf-8")
+
+    findings = _scan_file(target)
+
+    assert any("symbol outside Strategy import allowlist" in str(finding) for finding in findings)
+
+
+def test_scanner_rejects_namespace_import_of_allowlisted_internal_module(
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(
+        "import btg_ai_trader.strategy.domain as domain\n"
+        "clock = domain.datetime\n",
+        encoding="utf-8",
+    )
+
+    findings = _scan_file(target)
+
+    assert any("outside Strategy allowlist" in str(finding) for finding in findings)

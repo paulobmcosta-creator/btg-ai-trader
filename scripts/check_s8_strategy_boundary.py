@@ -10,20 +10,34 @@ from pathlib import Path
 STRATEGY_ROOT = Path("src/btg_ai_trader/strategy")
 RISK_ENGINE_MODULE = "btg_ai_trader.risk_engine"
 ALLOWED_RISK_ADAPTER_IMPORTS = {"EconomicDirection", "RiskProposal"}
-ALLOWED_IMPORT_MODULES = {
-    "__future__",
-    "hashlib",
-    "json",
-    "types",
-    "collections.abc",
-    "dataclasses",
-    "datetime",
-    "decimal",
-    "enum",
-    "btg_ai_trader.observer.identity",
-    "btg_ai_trader.strategy.domain",
-    "btg_ai_trader.strategy.engine",
-    "btg_ai_trader.strategy.risk_adapter",
+ALLOWED_MODULE_IMPORTS = {"hashlib", "json", "types"}
+ALLOWED_FROM_IMPORTS = {
+    "__future__": {"annotations"},
+    "collections.abc": {"Mapping", "Sequence"},
+    "dataclasses": {"dataclass", "field"},
+    "datetime": {"UTC", "datetime", "timedelta"},
+    "decimal": {"Decimal"},
+    "enum": {"Enum"},
+    "btg_ai_trader.observer.identity": {"TradableInstrumentId"},
+    "btg_ai_trader.strategy.domain": {
+        "CandidateStrategy",
+        "ComparisonOperator",
+        "DecisionOpportunity",
+        "DecisionReason",
+        "EconomicDirection",
+        "EconomicObjective",
+        "StrategyDecision",
+        "StrategyDisposition",
+        "StrategyEvaluationResult",
+        "StrategyEvidenceQuality",
+        "StrategyRule",
+        "TradeIntent",
+    },
+    "btg_ai_trader.strategy.engine": {
+        "evaluate_strategy",
+        "verify_deterministic_equivalence",
+    },
+    "btg_ai_trader.strategy.risk_adapter": {"to_risk_proposal"},
 }
 
 FORBIDDEN_IMPORT_PREFIXES = {
@@ -175,7 +189,7 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                     )
                     findings.append(Finding(normalized, node.lineno, rule))
                     continue
-                if alias.name not in ALLOWED_IMPORT_MODULES:
+                if alias.name not in ALLOWED_MODULE_IMPORTS:
                     rule = (
                         f"forbidden import: {alias.name}"
                         if _is_forbidden_import(alias.name)
@@ -214,7 +228,8 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                         )
                     continue
 
-                if module not in ALLOWED_IMPORT_MODULES:
+                allowed_symbols = ALLOWED_FROM_IMPORTS.get(module)
+                if allowed_symbols is None:
                     if _is_forbidden_import(module):
                         rule = f"forbidden import: {module}"
                     elif _is_forbidden_import(qualified):
@@ -222,6 +237,15 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                     else:
                         rule = f"import outside Strategy allowlist: {module or qualified}"
                     findings.append(Finding(normalized, node.lineno, rule))
+                    continue
+                if alias.name not in allowed_symbols:
+                    findings.append(
+                        Finding(
+                            normalized,
+                            node.lineno,
+                            f"symbol outside Strategy import allowlist: {qualified}",
+                        )
+                    )
         elif isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
             if node.name in FORBIDDEN_OPERATIONAL_NAMES:
                 findings.append(

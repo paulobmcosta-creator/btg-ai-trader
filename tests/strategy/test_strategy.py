@@ -7,6 +7,7 @@ import dataclasses
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from types import MappingProxyType
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -78,6 +79,7 @@ def opportunity(
     input_spec_digest: str = "input-spec-1",
     quality: StrategyEvidenceQuality = StrategyEvidenceQuality.VALID,
     signals: dict[str, Decimal] | None = None,
+    event_time: datetime | None = None,
     knowledge_time: datetime | None = None,
     decision_time: datetime | None = None,
 ) -> DecisionOpportunity:
@@ -85,7 +87,7 @@ def opportunity(
         opportunity_id="opp-1",
         instrument_id=instrument_id,
         portfolio_id=portfolio_id,
-        event_time=dt(0),
+        event_time=event_time or dt(0),
         knowledge_time=knowledge_time or dt(1),
         decision_time=decision_time or dt(2),
         input_spec_digest=input_spec_digest,
@@ -349,6 +351,40 @@ def test_boundary_age_equal_to_limit_is_admissible() -> None:
     c = candidate(max_age=5)
     result = evaluate_strategy(c, opportunity(knowledge_time=dt(1), decision_time=dt(6)))
     assert result.decision.disposition is StrategyDisposition.PROPOSE_TRADE
+
+
+def test_causal_order_uses_utc_instants_across_dst_fold() -> None:
+    eastern = ZoneInfo("America/New_York")
+    event_time = datetime(2026, 11, 1, 1, 30, tzinfo=eastern, fold=1)
+    knowledge_time = datetime(2026, 11, 1, 1, 45, tzinfo=eastern, fold=0)
+    decision_time = datetime(2026, 11, 1, 2, 0, tzinfo=eastern)
+
+    with pytest.raises(ValueError, match="event_time"):
+        opportunity(
+            event_time=event_time,
+            knowledge_time=knowledge_time,
+            decision_time=decision_time,
+        )
+
+
+def test_evidence_age_uses_utc_instants_across_dst_fold() -> None:
+    eastern = ZoneInfo("America/New_York")
+    event_time = datetime(2026, 11, 1, 1, 40, tzinfo=eastern, fold=0)
+    knowledge_time = datetime(2026, 11, 1, 1, 50, tzinfo=eastern, fold=0)
+    decision_time = datetime(2026, 11, 1, 1, 55, tzinfo=eastern, fold=1)
+
+    result = evaluate_strategy(
+        candidate(max_age=300),
+        opportunity(
+            event_time=event_time,
+            knowledge_time=knowledge_time,
+            decision_time=decision_time,
+        ),
+    )
+
+    assert result.decision.disposition is StrategyDisposition.NO_TRADE
+    assert result.decision.reason_codes == (DecisionReason.EVIDENCE_TOO_OLD,)
+    assert result.trade_intent is None
 
 
 @pytest.mark.parametrize("direction", list(EconomicDirection))

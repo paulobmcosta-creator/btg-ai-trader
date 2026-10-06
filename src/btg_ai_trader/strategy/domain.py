@@ -7,7 +7,7 @@ import json
 import types
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
 
@@ -25,6 +25,10 @@ def _require_text(value: str, field_name: str) -> None:
 def _require_aware(value: datetime, field_name: str) -> None:
     if value.tzinfo is None or value.tzinfo.utcoffset(value) is None:
         raise ValueError(f"{field_name} must be timezone-aware")
+
+
+def _utc_instant(value: datetime) -> datetime:
+    return value.astimezone(UTC)
 
 
 def _require_decimal(
@@ -260,9 +264,12 @@ class DecisionOpportunity:
         _require_aware(self.event_time, "event_time")
         _require_aware(self.knowledge_time, "knowledge_time")
         _require_aware(self.decision_time, "decision_time")
-        if self.event_time > self.knowledge_time:
+        event_utc = _utc_instant(self.event_time)
+        knowledge_utc = _utc_instant(self.knowledge_time)
+        decision_utc = _utc_instant(self.decision_time)
+        if event_utc > knowledge_utc:
             raise ValueError("event_time cannot be after knowledge_time")
-        if self.knowledge_time > self.decision_time:
+        if knowledge_utc > decision_utc:
             raise ValueError("knowledge_time cannot be after decision_time")
         _require_text(self.input_spec_digest, "input_spec_digest")
         frozen_signals = _freeze_signals(self.signals)
@@ -324,7 +331,10 @@ def _evaluate_outcome(
     if opportunity.evidence_quality is not StrategyEvidenceQuality.VALID:
         return StrategyDisposition.NO_TRADE, (DecisionReason.EVIDENCE_NOT_VALID,), None
     max_age = timedelta(seconds=candidate.max_evidence_age_seconds)
-    if opportunity.decision_time - opportunity.knowledge_time > max_age:
+    evidence_age = _utc_instant(opportunity.decision_time) - _utc_instant(
+        opportunity.knowledge_time
+    )
+    if evidence_age > max_age:
         return StrategyDisposition.NO_TRADE, (DecisionReason.EVIDENCE_TOO_OLD,), None
     if any(name not in opportunity.signals for name in candidate.required_signals):
         return StrategyDisposition.NO_TRADE, (DecisionReason.MISSING_REQUIRED_SIGNAL,), None
