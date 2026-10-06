@@ -255,3 +255,30 @@ def test_scanner_keeps_required_object_setattr_internal_pattern_allowed(
     )
 
     assert _scan_file(target) == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "from datetime import datetime\ndatetime.today()\n",
+        "from datetime import datetime as dt\ndt.today()\n",
+        "from datetime import datetime\nclock = datetime.today\nclock()\n",
+    ],
+)
+def test_scanner_rejects_datetime_today_wall_clock(
+    tmp_path: Path,
+    source: str,
+) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(source, encoding="utf-8")
+
+    findings = _scan_file(target)
+
+    assert any(
+        "datetime.today" in str(finding)
+        and (
+            "forbidden call" in str(finding)
+            or "forbidden callable reference" in str(finding)
+        )
+        for finding in findings
+    )

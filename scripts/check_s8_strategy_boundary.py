@@ -136,6 +136,8 @@ FORBIDDEN_CALLS = {
     "datetime.datetime.now",
     "datetime.utcnow",
     "datetime.datetime.utcnow",
+    "datetime.today",
+    "datetime.datetime.today",
 }
 
 FORBIDDEN_IO_METHODS = {

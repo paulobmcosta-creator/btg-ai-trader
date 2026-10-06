@@ -15,6 +15,7 @@ from btg_ai_trader.observer.identity import TradableInstrumentId
 
 _ENGINE_DECISION_TOKEN = object()
 _ENGINE_INTENT_TOKEN = object()
+_MAX_TIMEDELTA_SECONDS = timedelta.max.days * 86_400 + timedelta.max.seconds
 
 
 def _require_text(value: str, field_name: str) -> None:
@@ -206,6 +207,8 @@ class CandidateStrategy:
             or self.max_evidence_age_seconds < 0
         ):
             raise ValueError("max_evidence_age_seconds must be a non-negative integer")
+        if self.max_evidence_age_seconds > _MAX_TIMEDELTA_SECONDS:
+            raise ValueError("max_evidence_age_seconds exceeds timedelta range")
         if not self.rules:
             raise ValueError("rules must contain at least one StrategyRule")
         if not all(isinstance(rule, StrategyRule) for rule in self.rules):

@@ -275,6 +275,11 @@ def test_opportunity_causal_boundary_freezes_signals_and_validates() -> None:
         DecisionOpportunity(**dict(args, evidence_quality="VALID"))  # type: ignore[arg-type]
 
 
+def test_candidate_rejects_evidence_age_beyond_timedelta_range() -> None:
+    with pytest.raises(ValueError, match="timedelta range"):
+        candidate(max_age=10**20)
+
+
 def test_engine_fail_closed_reasons() -> None:
     c = candidate()
     cases = (
