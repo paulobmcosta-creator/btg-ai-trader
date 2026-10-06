@@ -27,9 +27,8 @@ def _make_issuance_registry() -> tuple[_IssuanceRegister, _IssuanceVerify]:
         key = id(value)
 
         def cleanup(reference: weakref.ReferenceType[object]) -> None:
-            current = records.get(key)
-            if current is not None and current[0] is reference:
-                records.pop(key, None)
+            del reference
+            records.pop(key, None)
 
         reference = weakref.ref(value, cleanup)
         records[key] = (reference, digest)
