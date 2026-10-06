@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 STRATEGY_ROOT = Path("src/btg_ai_trader/strategy")
+RISK_ENGINE_MODULE = "btg_ai_trader.risk_engine"
+ALLOWED_RISK_ADAPTER_IMPORTS = {"EconomicDirection", "RiskProposal"}
 
 FORBIDDEN_IMPORT_PREFIXES = {
     "MetaTrader5",
@@ -154,7 +156,34 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                     findings.append(
                         Finding(normalized, node.lineno, f"forbidden import: {alias.name}")
                     )
-                if alias.name.startswith("btg_ai_trader.risk_engine") and not risk_adapter:
+                if alias.name.startswith(RISK_ENGINE_MODULE):
+                    rule = (
+                        "Risk Engine namespace import forbidden in risk_adapter"
+                        if risk_adapter
+                        else "Risk Engine import allowed only in risk_adapter"
+                    )
+                    findings.append(Finding(normalized, node.lineno, rule))
+        elif isinstance(node, ast.ImportFrom):
+            module = node.module or ""
+            module_forbidden = _is_forbidden_import(module)
+            if module_forbidden:
+                findings.append(Finding(normalized, node.lineno, f"forbidden import: {module}"))
+
+            for alias in node.names:
+                qualified = f"{module}.{alias.name}" if module else alias.name
+                aliases[alias.asname or alias.name] = qualified
+
+                if not module_forbidden and _is_forbidden_import(qualified):
+                    findings.append(
+                        Finding(normalized, node.lineno, f"forbidden import: {qualified}")
+                    )
+
+                risk_import = module.startswith(RISK_ENGINE_MODULE) or qualified.startswith(
+                    RISK_ENGINE_MODULE
+                )
+                if not risk_import:
+                    continue
+                if not risk_adapter:
                     findings.append(
                         Finding(
                             normalized,
@@ -162,22 +191,15 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                             "Risk Engine import allowed only in risk_adapter",
                         )
                     )
-        elif isinstance(node, ast.ImportFrom):
-            module = node.module or ""
-            if _is_forbidden_import(module):
-                findings.append(Finding(normalized, node.lineno, f"forbidden import: {module}"))
-            if module.startswith("btg_ai_trader.risk_engine") and not risk_adapter:
-                findings.append(
-                    Finding(
-                        normalized,
-                        node.lineno,
-                        "Risk Engine import allowed only in risk_adapter",
+                    continue
+                if module != RISK_ENGINE_MODULE or alias.name not in ALLOWED_RISK_ADAPTER_IMPORTS:
+                    findings.append(
+                        Finding(
+                            normalized,
+                            node.lineno,
+                            "risk_adapter may import only EconomicDirection and RiskProposal",
+                        )
                     )
-                )
-            for alias in node.names:
-                aliases[alias.asname or alias.name] = (
-                    f"{module}.{alias.name}" if module else alias.name
-                )
         elif isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
             if node.name in FORBIDDEN_OPERATIONAL_NAMES:
                 findings.append(

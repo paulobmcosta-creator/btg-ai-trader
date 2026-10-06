@@ -36,3 +36,59 @@ def test_scanner_allows_unrelated_declaration_names(tmp_path: Path) -> None:
     target.write_text("class StrategyHelper:\n    pass\n", encoding="utf-8")
 
     assert _scan_file(target) == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "from btg_ai_trader.risk_engine import evaluate_risk\n",
+        "from btg_ai_trader.risk_engine import RiskAuthorization\n",
+        "import btg_ai_trader.risk_engine\n",
+        "from btg_ai_trader import risk_engine\n",
+    ],
+)
+def test_risk_adapter_rejects_broader_risk_engine_authority(
+    tmp_path: Path,
+    source: str,
+) -> None:
+    strategy_dir = tmp_path / "strategy"
+    strategy_dir.mkdir()
+    target = strategy_dir / "risk_adapter.py"
+    target.write_text(source, encoding="utf-8")
+
+    findings = _scan_file(target)
+
+    assert findings
+    assert any(
+        "Risk Engine" in str(finding) or "risk_adapter" in str(finding)
+        for finding in findings
+    )
+
+
+def test_risk_adapter_allows_only_required_risk_proposal_symbols(tmp_path: Path) -> None:
+    strategy_dir = tmp_path / "strategy"
+    strategy_dir.mkdir()
+    target = strategy_dir / "risk_adapter.py"
+    target.write_text(
+        "from btg_ai_trader.risk_engine import EconomicDirection as RiskEconomicDirection\n"
+        "from btg_ai_trader.risk_engine import RiskProposal\n",
+        encoding="utf-8",
+    )
+
+    assert _scan_file(target) == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "from urllib import request\nrequest.urlopen('https://example.invalid')\n",
+        "from urllib import request as req\nreq.urlopen('https://example.invalid')\n",
+    ],
+)
+def test_scanner_rejects_split_forbidden_imports(tmp_path: Path, source: str) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(source, encoding="utf-8")
+
+    findings = _scan_file(target)
+
+    assert any("forbidden import: urllib.request" in str(finding) for finding in findings)
