@@ -92,3 +92,44 @@ def test_scanner_rejects_split_forbidden_imports(tmp_path: Path, source: str) ->
     findings = _scan_file(target)
 
     assert any("forbidden import: urllib.request" in str(finding) for finding in findings)
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "import http.client\nhttp.client.HTTPSConnection('example.invalid')\n",
+        "from http import client\nclient.HTTPSConnection('example.invalid')\n",
+        "from http.client import HTTPSConnection\nHTTPSConnection('example.invalid')\n",
+        "import ftplib\nftplib.FTP('example.invalid')\n",
+    ],
+)
+def test_scanner_rejects_network_clients_outside_import_allowlist(
+    tmp_path: Path,
+    source: str,
+) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(source, encoding="utf-8")
+
+    findings = _scan_file(target)
+
+    assert any("outside Strategy allowlist" in str(finding) for finding in findings)
+
+
+def test_scanner_allows_only_current_strategy_dependency_surface(tmp_path: Path) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(
+        "from __future__ import annotations\n"
+        "import hashlib\n"
+        "import json\n"
+        "import types\n"
+        "from collections.abc import Mapping\n"
+        "from dataclasses import dataclass\n"
+        "from datetime import datetime\n"
+        "from decimal import Decimal\n"
+        "from enum import Enum\n"
+        "from btg_ai_trader.observer.identity import TradableInstrumentId\n"
+        "from btg_ai_trader.strategy.domain import CandidateStrategy\n",
+        encoding="utf-8",
+    )
+
+    assert _scan_file(target) == []

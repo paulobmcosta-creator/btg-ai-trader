@@ -10,6 +10,21 @@ from pathlib import Path
 STRATEGY_ROOT = Path("src/btg_ai_trader/strategy")
 RISK_ENGINE_MODULE = "btg_ai_trader.risk_engine"
 ALLOWED_RISK_ADAPTER_IMPORTS = {"EconomicDirection", "RiskProposal"}
+ALLOWED_IMPORT_MODULES = {
+    "__future__",
+    "hashlib",
+    "json",
+    "types",
+    "collections.abc",
+    "dataclasses",
+    "datetime",
+    "decimal",
+    "enum",
+    "btg_ai_trader.observer.identity",
+    "btg_ai_trader.strategy.domain",
+    "btg_ai_trader.strategy.engine",
+    "btg_ai_trader.strategy.risk_adapter",
+}
 
 FORBIDDEN_IMPORT_PREFIXES = {
     "MetaTrader5",
@@ -152,10 +167,6 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
         if isinstance(node, ast.Import):
             for alias in node.names:
                 aliases[alias.asname or alias.name] = alias.name
-                if _is_forbidden_import(alias.name):
-                    findings.append(
-                        Finding(normalized, node.lineno, f"forbidden import: {alias.name}")
-                    )
                 if alias.name.startswith(RISK_ENGINE_MODULE):
                     rule = (
                         "Risk Engine namespace import forbidden in risk_adapter"
@@ -163,43 +174,54 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                         else "Risk Engine import allowed only in risk_adapter"
                     )
                     findings.append(Finding(normalized, node.lineno, rule))
+                    continue
+                if alias.name not in ALLOWED_IMPORT_MODULES:
+                    rule = (
+                        f"forbidden import: {alias.name}"
+                        if _is_forbidden_import(alias.name)
+                        else f"import outside Strategy allowlist: {alias.name}"
+                    )
+                    findings.append(Finding(normalized, node.lineno, rule))
         elif isinstance(node, ast.ImportFrom):
             module = node.module or ""
-            module_forbidden = _is_forbidden_import(module)
-            if module_forbidden:
-                findings.append(Finding(normalized, node.lineno, f"forbidden import: {module}"))
-
             for alias in node.names:
                 qualified = f"{module}.{alias.name}" if module else alias.name
                 aliases[alias.asname or alias.name] = qualified
 
-                if not module_forbidden and _is_forbidden_import(qualified):
-                    findings.append(
-                        Finding(normalized, node.lineno, f"forbidden import: {qualified}")
-                    )
-
                 risk_import = module.startswith(RISK_ENGINE_MODULE) or qualified.startswith(
                     RISK_ENGINE_MODULE
                 )
-                if not risk_import:
-                    continue
-                if not risk_adapter:
-                    findings.append(
-                        Finding(
-                            normalized,
-                            node.lineno,
-                            "Risk Engine import allowed only in risk_adapter",
+                if risk_import:
+                    if not risk_adapter:
+                        findings.append(
+                            Finding(
+                                normalized,
+                                node.lineno,
+                                "Risk Engine import allowed only in risk_adapter",
+                            )
                         )
-                    )
-                    continue
-                if module != RISK_ENGINE_MODULE or alias.name not in ALLOWED_RISK_ADAPTER_IMPORTS:
-                    findings.append(
-                        Finding(
-                            normalized,
-                            node.lineno,
-                            "risk_adapter may import only EconomicDirection and RiskProposal",
+                        continue
+                    if (
+                        module != RISK_ENGINE_MODULE
+                        or alias.name not in ALLOWED_RISK_ADAPTER_IMPORTS
+                    ):
+                        findings.append(
+                            Finding(
+                                normalized,
+                                node.lineno,
+                                "risk_adapter may import only EconomicDirection and RiskProposal",
+                            )
                         )
-                    )
+                    continue
+
+                if module not in ALLOWED_IMPORT_MODULES:
+                    if _is_forbidden_import(module):
+                        rule = f"forbidden import: {module}"
+                    elif _is_forbidden_import(qualified):
+                        rule = f"forbidden import: {qualified}"
+                    else:
+                        rule = f"import outside Strategy allowlist: {module or qualified}"
+                    findings.append(Finding(normalized, node.lineno, rule))
         elif isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
             if node.name in FORBIDDEN_OPERATIONAL_NAMES:
                 findings.append(
