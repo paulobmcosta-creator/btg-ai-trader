@@ -133,3 +133,36 @@ def test_scanner_allows_only_current_strategy_dependency_surface(tmp_path: Path)
     )
 
     assert _scan_file(target) == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "file_open = open\nfile_open('state', 'w')\n",
+        "runner = eval\nrunner('1 + 1')\n",
+        "from datetime import datetime\nclock = datetime.now\nclock()\n",
+        "from datetime import datetime as dt\nclock = dt.utcnow\nclock()\n",
+    ],
+)
+def test_scanner_rejects_references_to_forbidden_callables(
+    tmp_path: Path,
+    source: str,
+) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(source, encoding="utf-8")
+
+    findings = _scan_file(target)
+
+    assert any("forbidden callable reference" in str(finding) for finding in findings)
+
+
+def test_scanner_allows_reference_to_safe_callable(tmp_path: Path) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(
+        "import hashlib\n"
+        "digest = hashlib.sha256\n"
+        "value = digest(b'payload').hexdigest()\n",
+        encoding="utf-8",
+    )
+
+    assert _scan_file(target) == []

@@ -239,14 +239,38 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                 findings.append(
                     Finding(normalized, node.lineno, f"forbidden I/O method: {node.func.attr}")
                 )
-        elif isinstance(node, ast.Name) and node.id in FORBIDDEN_OPERATIONAL_NAMES:
-            findings.append(
-                Finding(normalized, node.lineno, f"forbidden operational name: {node.id}")
-            )
-        elif isinstance(node, ast.Attribute) and node.attr in FORBIDDEN_OPERATIONAL_NAMES:
-            findings.append(
-                Finding(normalized, node.lineno, f"forbidden operational attribute: {node.attr}")
-            )
+        elif isinstance(node, ast.Name):
+            resolved = _resolve_expr(node, aliases)
+            if resolved in FORBIDDEN_CALLS:
+                findings.append(
+                    Finding(
+                        normalized,
+                        node.lineno,
+                        f"forbidden callable reference: {resolved}",
+                    )
+                )
+            if node.id in FORBIDDEN_OPERATIONAL_NAMES:
+                findings.append(
+                    Finding(normalized, node.lineno, f"forbidden operational name: {node.id}")
+                )
+        elif isinstance(node, ast.Attribute):
+            resolved = _resolve_expr(node, aliases)
+            if resolved in FORBIDDEN_CALLS:
+                findings.append(
+                    Finding(
+                        normalized,
+                        node.lineno,
+                        f"forbidden callable reference: {resolved}",
+                    )
+                )
+            if node.attr in FORBIDDEN_OPERATIONAL_NAMES:
+                findings.append(
+                    Finding(
+                        normalized,
+                        node.lineno,
+                        f"forbidden operational attribute: {node.attr}",
+                    )
+                )
     return findings
 
 
