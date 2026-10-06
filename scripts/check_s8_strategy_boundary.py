@@ -56,6 +56,22 @@ FORBIDDEN_IMPORT_PREFIXES = {
     "secrets",
 }
 
+FORBIDDEN_REFLECTION_NAMES = {
+    "__builtins__",
+    "__class__",
+    "__closure__",
+    "__code__",
+    "__dict__",
+    "__func__",
+    "__getattribute__",
+    "__globals__",
+    "__mro__",
+    "__base__",
+    "__bases__",
+    "__self__",
+    "__subclasses__",
+}
+
 FORBIDDEN_OPERATIONAL_NAMES = {
     "AuthorizationAllocation",
     "OrderIntent",
@@ -83,6 +99,13 @@ FORBIDDEN_CALLS = {
     "exec",
     "compile",
     "open",
+    "getattr",
+    "setattr",
+    "delattr",
+    "globals",
+    "locals",
+    "vars",
+    "dir",
     "importlib.import_module",
     "pickle.load",
     "pickle.loads",
@@ -273,6 +296,14 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                         f"forbidden callable reference: {resolved}",
                     )
                 )
+            if node.id in FORBIDDEN_REFLECTION_NAMES:
+                findings.append(
+                    Finding(
+                        normalized,
+                        node.lineno,
+                        f"forbidden reflection namespace: {node.id}",
+                    )
+                )
             if node.id in FORBIDDEN_OPERATIONAL_NAMES:
                 findings.append(
                     Finding(normalized, node.lineno, f"forbidden operational name: {node.id}")
@@ -285,6 +316,14 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                         normalized,
                         node.lineno,
                         f"forbidden callable reference: {resolved}",
+                    )
+                )
+            if node.attr in FORBIDDEN_REFLECTION_NAMES:
+                findings.append(
+                    Finding(
+                        normalized,
+                        node.lineno,
+                        f"forbidden reflection namespace: {node.attr}",
                     )
                 )
             if node.attr in FORBIDDEN_OPERATIONAL_NAMES:

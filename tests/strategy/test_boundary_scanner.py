@@ -205,3 +205,53 @@ def test_scanner_rejects_namespace_import_of_allowlisted_internal_module(
     findings = _scan_file(target)
 
     assert any("outside Strategy allowlist" in str(finding) for finding in findings)
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        (
+            "import json\n"
+            "json.__builtins__['open']('state', 'w').write('x')\n"
+        ),
+        "__builtins__['open']('state', 'w')\n",
+        (
+            "import json\n"
+            "json.__dict__['__builtins__']['open']('state', 'w')\n"
+        ),
+        (
+            "import json\n"
+            "getattr(json, '__builtins__')['open']('state', 'w')\n"
+        ),
+        "globals()['__builtins__']['open']('state', 'w')\n",
+    ],
+)
+def test_scanner_rejects_reflection_paths_to_forbidden_builtins(
+    tmp_path: Path,
+    source: str,
+) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(source, encoding="utf-8")
+
+    findings = _scan_file(target)
+
+    assert any(
+        "forbidden reflection namespace" in str(finding)
+        or "forbidden callable reference" in str(finding)
+        for finding in findings
+    )
+
+
+def test_scanner_keeps_required_object_setattr_internal_pattern_allowed(
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(
+        "class Holder:\n"
+        "    pass\n"
+        "holder = Holder()\n"
+        "object.__setattr__(holder, 'value', 1)\n",
+        encoding="utf-8",
+    )
+
+    assert _scan_file(target) == []
