@@ -2,7 +2,7 @@
 
 Fundação de um futuro sistema quantitativo intradiário em Python, orientado a dados, avaliação de cenários, gestão independente de risco e operação auditável.
 
-> **Estado:** Sprints 0A–0F e Sprints 1–7 estão formalmente concluídos. O Sprint 8 — Paper Trader teve apenas seu Entry Gate autorizado em 2026-10-02 e o gate candidato está `CHANGES_REQUIRED`: faltam um caminho operacional `StrategyDecision`/`TradeIntent` e um candidato formalmente `PAPER_ELIGIBLE` e congelado. Paper funcional, Live Trading, envio real de ordens e dinheiro real permanecem não autorizados.
+> **Estado:** Sprints 0A–0F e Sprints 1–7 estão formalmente concluídos. O Sprint 8 — Paper Trader permanece em Entry Gate `CHANGES_REQUIRED`. Em 2026-10-04 foi autorizada a remediação isolada de S8-B01 (caminho operacional `StrategyDecision`/`TradeIntent`) na Issue #95; o candidato de remediação aguarda CI/revisão e S8-B02 (`PAPER_ELIGIBLE` + freeze) continua aberto. Paper funcional, Live Trading, envio real de ordens e dinheiro real permanecem não autorizados.
 
 ## Segurança nesta fase
 
@@ -52,7 +52,7 @@ por ADR quando arquiteturalmente materiais.
 
 ## Próximo marco
 
-O checkpoint atual é o Sprint 8 Entry Gate na Issue #93. O gate está sendo materializado sem código funcional e registra dois blockers de pré-implementação: S8-B01 (StrategyDecision/TradeIntent operacional ausente) e S8-B02 (candidato PAPER_ELIGIBLE/frozen ausente). O desenvolvimento ocorre diretamente no GitHub; consulte o [checkpoint do programa](docs/program/PROGRAM_EXECUTION.md), o [Entry Contract do Sprint 8](docs/program/S8_ENTRY_CONTRACT.md), o [fechamento do Sprint 7](docs/program/S7_FINAL_ACCEPTANCE.md) e os [protocolos quantitativos](docs/protocols/quantitative/README.md).
+O checkpoint atual continua sendo o Sprint 8 Entry Gate da Issue #93/PR #94, ainda não integrado. A coordenação autorizou em 2026-10-04 a remediação empilhada de S8-B01 na Issue #95 e branch `s8/01-strategy-remediation`, sem autorizar Paper. O próximo gate técnico dessa remediação é CI exato + revisão independente; S8-B02 permanece aberto. Consulte o [checkpoint do programa](docs/program/PROGRAM_EXECUTION.md), o [Entry Contract do Sprint 8](docs/program/S8_ENTRY_CONTRACT.md), o [fechamento do Sprint 7](docs/program/S7_FINAL_ACCEPTANCE.md) e os [protocolos quantitativos](docs/protocols/quantitative/README.md).
 
 ## Aviso
 

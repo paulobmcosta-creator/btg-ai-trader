@@ -92,3 +92,30 @@ PAPER_CONFIRMATORY_RUN = NOT_AUTHORIZED
 LIVE_TRADING = NO
 REAL_MONEY = NO
 ```
+
+
+## 5. S8-B01 remediation candidate — 2026-10-04
+
+The Entry Gate rows above remain the historical adjudication of the predecessor. The separately authorized remediation candidate is evaluated as follows before canonical closure:
+
+| ID | Remediation capability | Candidate state |
+|---|---|---|
+| **S8-B01-RC-01** | Immutable version-specific `CandidateStrategy` identity | IMPLEMENTED_PENDING_CI_REVIEW |
+| **S8-B01-RC-02** | Causal immutable `DecisionOpportunity` boundary | IMPLEMENTED_PENDING_CI_REVIEW |
+| **S8-B01-RC-03** | Explicit `StrategyDecision` with `NO_TRADE` or `PROPOSE_TRADE` | IMPLEMENTED_PENDING_CI_REVIEW |
+| **S8-B01-RC-04** | Fail-closed mismatch/quality/staleness/missing-signal semantics | IMPLEMENTED_PENDING_CI_REVIEW |
+| **S8-B01-RC-05** | Immutable concrete `EconomicObjective` and `TradeIntent` lineage | IMPLEMENTED_PENDING_CI_REVIEW |
+| **S8-B01-RC-06** | Deterministic ordered rule evaluation | IMPLEMENTED_PENDING_CI_REVIEW |
+| **S8-B01-RC-07** | One-way `TradeIntent → RiskProposal` mapping with provenance | IMPLEMENTED_PENDING_CI_REVIEW |
+| **S8-B01-RC-08** | No allocation/order/Paper/broker/ledger/Live authority | REQUIRED_BY_BOUNDARY_CI |
+| **S8-B01-RC-09** | Dedicated Strategy tests with 100% statement/branch coverage | REQUIRED_BY_EXACT_HEAD_CI |
+| **S8-B01-RC-10** | Full regression + Ruff + strict mypy + compile + dependency integrity | REQUIRED_BY_EXACT_HEAD_CI |
+| **S8-B01-RC-11** | Independent Codex review | PENDING |
+| **S8-B01-RC-12** | Human merge authorization | NOT_AUTHORIZED |
+
+```text
+S8-B01_REMEDIATION_CANDIDATE = IMPLEMENTED_PENDING_EXACT_HEAD_CI_AND_INDEPENDENT_REVIEW
+S8-B01_CANONICAL_CLOSURE = NO
+S8-B02 = OPEN
+PROMOTION_TO_S8_FUNCTIONAL_IMPLEMENTATION = NO
+```

@@ -1,0 +1,144 @@
+name: Sprint 8 Strategy Remediation CI
+
+on:
+  push:
+    branches:
+      - "s8/01-strategy-remediation"
+  pull_request:
+    branches:
+      - "s8/00-entry-gate"
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: s8-strategy-remediation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: ${{ matrix.check }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        check:
+          [tests, strategy-coverage, lint, types, compile, dependencies, foundation,
+           s1-boundary, s2-boundary, s3-boundary, s4-boundary, s5-boundary,
+           s6-boundary, s7-boundary, strategy-boundary, scope]
+    steps:
+      - name: Check out exact reviewed commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        if: matrix.check != 'scope'
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+
+      - name: Install existing pinned development dependencies
+        if: matrix.check != 'scope'
+        run: python -m pip install -e ".[dev,ml]"
+
+      - name: Run full regression tests with branch coverage
+        if: matrix.check == 'tests'
+        run: python -m pytest --cov=btg_ai_trader --cov-branch --cov-report=term-missing
+
+      - name: Enforce Strategy package statement and branch coverage
+        if: matrix.check == 'strategy-coverage'
+        run: >
+          python -m pytest tests/strategy
+          --cov=btg_ai_trader.strategy
+          --cov-branch
+          --cov-fail-under=100
+          --cov-report=term-missing
+
+      - name: Run Ruff
+        if: matrix.check == 'lint'
+        run: python -m ruff check .
+
+      - name: Type check source, tests and scripts
+        if: matrix.check == 'types'
+        run: python -m mypy src tests scripts
+
+      - name: Compile source, tests and scripts
+        if: matrix.check == 'compile'
+        run: python -m compileall -q src tests scripts
+
+      - name: Validate installed dependencies
+        if: matrix.check == 'dependencies'
+        run: python -m pip check
+
+      - name: Verify frozen Foundation contracts
+        if: matrix.check == 'foundation'
+        run: python scripts/check_foundation_contract.py
+
+      - name: Verify Sprint 1 capability boundary
+        if: matrix.check == 's1-boundary'
+        run: python scripts/check_s1_boundary.py
+
+      - name: Verify Sprint 2 capability boundary
+        if: matrix.check == 's2-boundary'
+        run: python scripts/check_s2_boundary.py
+
+      - name: Verify Sprint 3 capability boundary
+        if: matrix.check == 's3-boundary'
+        run: python scripts/check_s3_boundary.py
+
+      - name: Verify Sprint 4 capability boundary
+        if: matrix.check == 's4-boundary'
+        run: |
+          python scripts/check_s4_boundary.py
+          python scripts/verify_s4_acceptance_symbols.py
+
+      - name: Verify Sprint 5 capability boundary
+        if: matrix.check == 's5-boundary'
+        run: |
+          python scripts/check_s5_boundary.py
+          python scripts/verify_s5_acceptance_symbols.py
+
+      - name: Verify Sprint 6 capability boundary
+        if: matrix.check == 's6-boundary'
+        run: python scripts/check_s6_boundary.py
+
+      - name: Verify Sprint 7 capability boundary
+        if: matrix.check == 's7-boundary'
+        run: python scripts/check_s7_boundary.py
+
+      - name: Verify S8 Strategy capability boundary
+        if: matrix.check == 'strategy-boundary'
+        run: python scripts/check_s8_strategy_boundary.py
+
+      - name: Verify exact remediation scope
+        if: matrix.check == 'scope'
+        shell: bash
+        env:
+          REMEDIATION_BASE_SHA: 7fce78b02d03cc8140bc021217a0230776cc53ff
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "${REMEDIATION_BASE_SHA}" HEAD
+          git diff --check "${REMEDIATION_BASE_SHA}" HEAD
+          git diff --quiet "${REMEDIATION_BASE_SHA}" HEAD -- pyproject.toml docs/foundation docs/protocols docs/adr
+
+          while IFS= read -r path; do
+            case "${path}" in
+              src/btg_ai_trader/strategy/*|tests/strategy/*|scripts/check_s8_strategy_boundary.py|scripts/check_s1_boundary.py|tests/negative_capabilities/test_runtime.py|.github/workflows/s8-strategy-remediation-ci.yml|AGENTS.md|README.md|docs/BTG_AI_TRADER_MASTER_PLAN.md|docs/program/PROGRAM_EXECUTION.md|docs/program/S8_ENTRY_CONTRACT.md|docs/program/S8_DECISION_REGISTER.md|docs/program/S8_CAPABILITY_MATRIX.md|docs/program/S8_ENTRY_GATE.md|docs/sprints/SPRINT_8.md|docs/program/workstreams/S8-STRATEGY-REMEDIATION.md)
+                ;;
+              *)
+                echo "Unauthorized S8-B01 remediation path: ${path}" >&2
+                exit 1
+                ;;
+            esac
+          done < <(git diff --name-only "${REMEDIATION_BASE_SHA}" HEAD)
+
+          grep -F "S8-B01_REMEDIATION = AUTHORIZED" docs/program/workstreams/S8-STRATEGY-REMEDIATION.md
+          grep -F "S8-B02 = OPEN" docs/program/workstreams/S8-STRATEGY-REMEDIATION.md
+          grep -F "S8_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED" docs/program/workstreams/S8-STRATEGY-REMEDIATION.md
+          grep -F "PAPER_CONFIRMATORY_RUN = NOT_AUTHORIZED" docs/program/workstreams/S8-STRATEGY-REMEDIATION.md
+          grep -F "MERGE = FORBIDDEN_WITHOUT_HUMAN_AUTHORIZATION" docs/program/workstreams/S8-STRATEGY-REMEDIATION.md

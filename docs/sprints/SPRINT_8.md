@@ -12,7 +12,10 @@ SPRINT_7_FUNCTIONAL_CANONICAL_HEAD = e379e9b34a8b607e86165bd3336d23fcd9406259
 
 S8_ENTRY_GATE_CANDIDATE = CHANGES_REQUIRED
 OPEN_S8_ENTRY_GATE_BLOCKERS = 2
-S8-B01 = OPEN
+S8-B01 = OPEN_CANONICALLY__REMEDIATION_AUTHORIZED
+S8-B01_REMEDIATION_ISSUE = #95
+S8-B01_REMEDIATION_WORK_BRANCH = s8/01-strategy-remediation
+S8-B01_REMEDIATION_CANDIDATE = IMPLEMENTED_PENDING_EXACT_HEAD_CI_AND_INDEPENDENT_REVIEW
 S8-B02 = OPEN
 
 S8_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
@@ -51,3 +54,20 @@ AUTO_PROMOTION_TO_LIVE = FORBIDDEN
 ```
 
 The Entry Gate itself changes no functional source code.
+
+
+## S8-B01 remediation phase — 2026-10-04
+
+A separate human authorization opened Issue #95 and `s8/01-strategy-remediation` from exact PR #94 head `7fce78b02d03cc8140bc021217a0230776cc53ff`.
+
+This phase is pre-Paper blocker remediation only. It may materialize `CandidateStrategy`, `DecisionOpportunity`, `StrategyDecision`, `EconomicObjective`, `TradeIntent` and the one-way adapter into the existing S7 `RiskProposal`.
+
+It cannot implement `AuthorizationAllocation`, order planning/execution, Paper accounting/fills, broker connectivity, canonical FinancialLedger mutation, Live or real money. S8-B02 remains open and independently blocking.
+
+```text
+S8-B01_REMEDIATION_CANDIDATE = IMPLEMENTED_PENDING_EXACT_HEAD_CI_AND_INDEPENDENT_REVIEW
+S8-B01_CANONICAL_CLOSURE = NO
+S8-B02 = OPEN
+PROMOTION_TO_S8_FUNCTIONAL_IMPLEMENTATION = NO
+PAPER_CONFIRMATORY_RUN = NOT_AUTHORIZED
+```
