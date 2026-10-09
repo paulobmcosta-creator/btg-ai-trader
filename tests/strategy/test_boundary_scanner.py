@@ -316,3 +316,45 @@ def test_scanner_rejects_loader_and_spec_reflection(
         or "forbidden I/O method" in str(finding)
         for finding in findings
     )
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "import json\njson.dump({'x': 1}, handle)\n",
+        "import json\njson.load(handle)\n",
+        "import json as codec\ncodec.dump({'x': 1}, handle)\n",
+        "import json as codec\ncodec.load(handle)\n",
+    ],
+)
+def test_scanner_rejects_json_file_helpers(
+    tmp_path: Path,
+    source: str,
+) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(source, encoding="utf-8")
+
+    findings = _scan_file(target)
+
+    assert any(
+        "module attribute outside Strategy allowlist" in str(finding)
+        for finding in findings
+    )
+
+
+def test_scanner_allows_only_required_namespace_module_apis(tmp_path: Path) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(
+        "import hashlib\n"
+        "import json\n"
+        "import types\n"
+        "import weakref\n"
+        "digest = hashlib.sha256(b'x').hexdigest()\n"
+        "encoded = json.dumps({'digest': digest})\n"
+        "proxy = types.MappingProxyType({'encoded': encoded})\n"
+        "reference_type = weakref.ReferenceType\n"
+        "reference_factory = weakref.ref\n",
+        encoding="utf-8",
+    )
+
+    assert _scan_file(target) == []

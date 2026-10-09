@@ -16,36 +16,137 @@ from btg_ai_trader.observer.identity import TradableInstrumentId
 
 _MAX_TIMEDELTA_SECONDS = timedelta.max.days * 86_400 + timedelta.max.seconds
 
-_IssuanceRegister = Callable[[object, str], None]
 _IssuanceVerify = Callable[[object, str], bool]
 
 
-def _make_issuance_registry() -> tuple[_IssuanceRegister, _IssuanceVerify]:
+def _make_decision_issuance() -> tuple[
+    Callable[[CandidateStrategy, DecisionOpportunity], StrategyDecision],
+    _IssuanceVerify,
+]:
     records: dict[int, tuple[weakref.ReferenceType[object], str]] = {}
 
-    def register(value: object, digest: str) -> None:
+    def remember(value: object, digest: str) -> None:
         key = id(value)
 
         def cleanup(reference: weakref.ReferenceType[object]) -> None:
             del reference
             records.pop(key, None)
 
-        reference = weakref.ref(value, cleanup)
-        records[key] = (reference, digest)
+        records[key] = (weakref.ref(value, cleanup), digest)
+
+    def issue(
+        candidate: CandidateStrategy,
+        opportunity: DecisionOpportunity,
+    ) -> StrategyDecision:
+        disposition, reason_codes, matched_rule_id = _evaluate_outcome(candidate, opportunity)
+        payload: dict[str, object] = {
+            "candidate_id": candidate.candidate_id,
+            "candidate_digest": candidate.candidate_digest,
+            "opportunity_id": opportunity.opportunity_id,
+            "opportunity_digest": opportunity.opportunity_digest,
+            "disposition": disposition,
+            "reason_codes": reason_codes,
+            "matched_rule_id": matched_rule_id,
+            "decided_at": opportunity.decision_time,
+        }
+        digest = _digest(payload)
+        decision = StrategyDecision(
+            decision_id=f"strategy-decision:{digest[:24]}",
+            candidate_id=candidate.candidate_id,
+            candidate_digest=candidate.candidate_digest,
+            opportunity_id=opportunity.opportunity_id,
+            opportunity_digest=opportunity.opportunity_digest,
+            disposition=disposition,
+            reason_codes=reason_codes,
+            matched_rule_id=matched_rule_id,
+            decided_at=opportunity.decision_time,
+            decision_digest=digest,
+        )
+        remember(decision, digest)
+        return decision
 
     def verify(value: object, digest: str) -> bool:
         current = records.get(id(value))
-        return (
-            current is not None
-            and current[0]() is value
-            and current[1] == digest
+        return current is not None and current[0]() is value and current[1] == digest
+
+    return issue, verify
+
+
+def _make_intent_issuance() -> tuple[
+    Callable[[StrategyDecision, CandidateStrategy, DecisionOpportunity], TradeIntent],
+    _IssuanceVerify,
+]:
+    records: dict[int, tuple[weakref.ReferenceType[object], str]] = {}
+
+    def remember(value: object, digest: str) -> None:
+        key = id(value)
+
+        def cleanup(reference: weakref.ReferenceType[object]) -> None:
+            del reference
+            records.pop(key, None)
+
+        records[key] = (weakref.ref(value, cleanup), digest)
+
+    def issue(
+        decision: StrategyDecision,
+        candidate: CandidateStrategy,
+        opportunity: DecisionOpportunity,
+    ) -> TradeIntent:
+        if not decision.is_engine_issued:
+            raise ValueError("TradeIntent requires an engine-issued StrategyDecision")
+        if decision.disposition is not StrategyDisposition.PROPOSE_TRADE:
+            raise ValueError("TradeIntent requires PROPOSE_TRADE")
+        if (decision.candidate_id, decision.candidate_digest) != (
+            candidate.candidate_id,
+            candidate.candidate_digest,
+        ):
+            raise ValueError("StrategyDecision candidate identity mismatch")
+        if (
+            decision.opportunity_id,
+            decision.opportunity_digest,
+            decision.decided_at,
+        ) != (
+            opportunity.opportunity_id,
+            opportunity.opportunity_digest,
+            opportunity.decision_time,
+        ):
+            raise ValueError("StrategyDecision opportunity identity mismatch")
+
+        rules_by_id = {rule.rule_id: rule for rule in candidate.rules}
+        objective = rules_by_id[decision.matched_rule_id or ""].objective
+        payload: dict[str, object] = {
+            "decision_digest": decision.decision_digest,
+            "candidate_id": candidate.candidate_id,
+            "candidate_digest": candidate.candidate_digest,
+            "opportunity_digest": opportunity.opportunity_digest,
+            "instrument_id": opportunity.instrument_id,
+            "portfolio_id": opportunity.portfolio_id,
+            "objective_digest": objective.objective_digest,
+            "created_at": opportunity.decision_time,
+            "source_digest": decision.decision_digest,
+        }
+        digest = _digest(payload)
+        intent = TradeIntent(
+            intent_id=f"trade-intent:{digest[:24]}",
+            decision_digest=decision.decision_digest,
+            candidate_id=candidate.candidate_id,
+            candidate_digest=candidate.candidate_digest,
+            opportunity_digest=opportunity.opportunity_digest,
+            instrument_id=opportunity.instrument_id,
+            portfolio_id=opportunity.portfolio_id,
+            objective=objective,
+            created_at=opportunity.decision_time,
+            source_digest=decision.decision_digest,
+            intent_digest=digest,
         )
+        remember(intent, digest)
+        return intent
 
-    return register, verify
+    def verify(value: object, digest: str) -> bool:
+        current = records.get(id(value))
+        return current is not None and current[0]() is value and current[1] == digest
 
-
-_register_decision_issuance, _verify_decision_issuance = _make_issuance_registry()
-_register_intent_issuance, _verify_intent_issuance = _make_issuance_registry()
+    return issue, verify
 
 
 def _require_text(value: str, field_name: str) -> None:
@@ -378,6 +479,9 @@ def _evaluate_outcome(
     return StrategyDisposition.NO_TRADE, (DecisionReason.NO_RULE_MATCHED,), None
 
 
+_issue_strategy_decision, _verify_decision_issuance = _make_decision_issuance()
+
+
 @dataclass(frozen=True, slots=True, weakref_slot=True)
 class StrategyDecision:
     decision_id: str
@@ -443,32 +547,11 @@ class StrategyDecision:
         candidate: CandidateStrategy,
         opportunity: DecisionOpportunity,
     ) -> StrategyDecision:
-        disposition, reason_codes, matched_rule_id = _evaluate_outcome(candidate, opportunity)
-        payload: dict[str, object] = {
-            "candidate_id": candidate.candidate_id,
-            "candidate_digest": candidate.candidate_digest,
-            "opportunity_id": opportunity.opportunity_id,
-            "opportunity_digest": opportunity.opportunity_digest,
-            "disposition": disposition,
-            "reason_codes": reason_codes,
-            "matched_rule_id": matched_rule_id,
-            "decided_at": opportunity.decision_time,
-        }
-        digest = _digest(payload)
-        decision = cls(
-            decision_id=f"strategy-decision:{digest[:24]}",
-            candidate_id=candidate.candidate_id,
-            candidate_digest=candidate.candidate_digest,
-            opportunity_id=opportunity.opportunity_id,
-            opportunity_digest=opportunity.opportunity_digest,
-            disposition=disposition,
-            reason_codes=reason_codes,
-            matched_rule_id=matched_rule_id,
-            decided_at=opportunity.decision_time,
-            decision_digest=digest,
-        )
-        _register_decision_issuance(decision, digest)
-        return decision
+        del cls
+        return _issue_strategy_decision(candidate, opportunity)
+
+
+_issue_trade_intent, _verify_intent_issuance = _make_intent_issuance()
 
 
 @dataclass(frozen=True, slots=True, weakref_slot=True)
@@ -535,55 +618,8 @@ class TradeIntent:
         candidate: CandidateStrategy,
         opportunity: DecisionOpportunity,
     ) -> TradeIntent:
-        if not decision.is_engine_issued:
-            raise ValueError("TradeIntent requires an engine-issued StrategyDecision")
-        if decision.disposition is not StrategyDisposition.PROPOSE_TRADE:
-            raise ValueError("TradeIntent requires PROPOSE_TRADE")
-        if (decision.candidate_id, decision.candidate_digest) != (
-            candidate.candidate_id,
-            candidate.candidate_digest,
-        ):
-            raise ValueError("StrategyDecision candidate identity mismatch")
-        if (
-            decision.opportunity_id,
-            decision.opportunity_digest,
-            decision.decided_at,
-        ) != (
-            opportunity.opportunity_id,
-            opportunity.opportunity_digest,
-            opportunity.decision_time,
-        ):
-            raise ValueError("StrategyDecision opportunity identity mismatch")
-
-        rules_by_id = {rule.rule_id: rule for rule in candidate.rules}
-        objective = rules_by_id[decision.matched_rule_id or ""].objective
-        payload: dict[str, object] = {
-            "decision_digest": decision.decision_digest,
-            "candidate_id": candidate.candidate_id,
-            "candidate_digest": candidate.candidate_digest,
-            "opportunity_digest": opportunity.opportunity_digest,
-            "instrument_id": opportunity.instrument_id,
-            "portfolio_id": opportunity.portfolio_id,
-            "objective_digest": objective.objective_digest,
-            "created_at": opportunity.decision_time,
-            "source_digest": decision.decision_digest,
-        }
-        digest = _digest(payload)
-        intent = cls(
-            intent_id=f"trade-intent:{digest[:24]}",
-            decision_digest=decision.decision_digest,
-            candidate_id=candidate.candidate_id,
-            candidate_digest=candidate.candidate_digest,
-            opportunity_digest=opportunity.opportunity_digest,
-            instrument_id=opportunity.instrument_id,
-            portfolio_id=opportunity.portfolio_id,
-            objective=objective,
-            created_at=opportunity.decision_time,
-            source_digest=decision.decision_digest,
-            intent_digest=digest,
-        )
-        _register_intent_issuance(intent, digest)
-        return intent
+        del cls
+        return _issue_trade_intent(decision, candidate, opportunity)
 
 
 @dataclass(frozen=True, slots=True)

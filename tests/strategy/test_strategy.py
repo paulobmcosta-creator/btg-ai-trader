@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
+import btg_ai_trader.strategy.domain as strategy_domain
 from btg_ai_trader.observer.identity import TradableInstrumentId
 from btg_ai_trader.risk_engine import EconomicDirection as RiskEconomicDirection
 from btg_ai_trader.strategy import (
@@ -463,6 +464,11 @@ def test_objective_content_tampering_invalidates_intent_and_risk_adapter() -> No
     assert not intent.is_engine_issued
     with pytest.raises(ValueError, match="engine-issued"):
         to_risk_proposal(intent)
+
+
+def test_raw_issuance_registrars_are_not_exposed() -> None:
+    assert not hasattr(strategy_domain, "_register_decision_issuance")
+    assert not hasattr(strategy_domain, "_register_intent_issuance")
 
 
 def test_recomputed_intent_digest_cannot_refresh_issuance_trust() -> None:

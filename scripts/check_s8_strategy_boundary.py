@@ -11,6 +11,12 @@ STRATEGY_ROOT = Path("src/btg_ai_trader/strategy")
 RISK_ENGINE_MODULE = "btg_ai_trader.risk_engine"
 ALLOWED_RISK_ADAPTER_IMPORTS = {"EconomicDirection", "RiskProposal"}
 ALLOWED_MODULE_IMPORTS = {"hashlib", "json", "types", "weakref"}
+ALLOWED_MODULE_ATTRIBUTES = {
+    "hashlib": {"sha256"},
+    "json": {"dumps"},
+    "types": {"MappingProxyType"},
+    "weakref": {"ReferenceType", "ref"},
+}
 ALLOWED_FROM_IMPORTS = {
     "__future__": {"annotations"},
     "collections.abc": {"Callable", "Mapping", "Sequence"},
@@ -316,6 +322,17 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                 )
         elif isinstance(node, ast.Attribute):
             resolved = _resolve_expr(node, aliases)
+            module_name, separator, remainder = resolved.partition(".")
+            if separator and module_name in ALLOWED_MODULE_ATTRIBUTES:
+                first_attribute = remainder.split(".", maxsplit=1)[0]
+                if first_attribute not in ALLOWED_MODULE_ATTRIBUTES[module_name]:
+                    findings.append(
+                        Finding(
+                            normalized,
+                            node.lineno,
+                            f"module attribute outside Strategy allowlist: {resolved}",
+                        )
+                    )
             if resolved in FORBIDDEN_CALLS:
                 findings.append(
                     Finding(
