@@ -102,7 +102,10 @@ Only an engine-issued `PROPOSE_TRADE` decision may produce an engine-issued `Tra
 
 `to_risk_proposal()` is the only Strategy-to-Risk adapter in this workstream. It:
 
-- accepts only an engine-issued `TradeIntent`;
+- checks the engine-issued marker as defense in depth, not authentication;
+- requires separately admitted candidate and causal evidence from a trusted consumer source;
+- independently replays the policy and rejects NO_TRADE or any economic/lineage mismatch;
+- constructs RiskProposal exclusively from the replayed intent, not the caller's object;
 - maps the four economic directions explicitly to the canonical S7 enum;
 - preserves quantity, exposure, units, instrument, portfolio and decision time;
 - sets `RiskProposal.source_digest = TradeIntent.intent_digest`;
@@ -180,3 +183,38 @@ MERGE = FORBIDDEN_WITHOUT_HUMAN_AUTHORIZATION
 The original S1 boundary verifier already excludes post-S1 package roots (Replay through Risk) before comparing the frozen S1 source inventory. Adding the explicitly authorized `src/btg_ai_trader/strategy` root to that same exclusion list preserves, rather than relaxes, the S1 inventory pins.
 
 Likewise, NEG-CAP-10 is clarified to compare `sys.modules` immediately before and after S1 execution. Its invariant is that executing S1 must not load future financial modules; unrelated test-collection/import order must not cause a false positive merely because a later-sprint module legitimately exists.
+
+## 9. 2026-10-13 — Consumer-side provenance revalidation (P1)
+
+The old `is_engine_issued` closure marker can be falsified in the same
+Python interpreter by replacing the read-only snapshot's *closure cell*.
+SHA content digests and `frozen=True` dataclasses are not authenticity.
+
+The Strategy→Risk adapter now **fails closed** without both
+`admitted_candidate` and `admitted_opportunity`. The consumer must source
+those inputs independently of the `TradeIntent` supplier, from a trusted
+upstream policy/evidence admission boundary. It reconstructs the complete
+deterministic Strategy decision and exact economic intent and compares all
+fields before emitting a proposal from the independently replayed values.
+NO_TRADE, unknown admission or any disagreement forbids forwarding.
+
+**Bounded threat model:** simply passing alternate objects created by an
+untrusted caller is NOT independent admission. This Sprint does not provide
+a trusted admission service or an isolation sandbox. Arbitrary hostile code
+in the same interpreter can introspect/monkeypatch Python functions, and the
+AST negative-capability checks are defense-in-depth, not process isolation.
+The later authorized composition owner must independently admit/fix source
+candidate and causal opportunity; otherwise no `RiskProposal` is authorized.
+This P1 remediation cannot be interpreted as Paper or Live readiness.
+
+New adversarial cases forge the verifier closure itself and recompute intent
+digests, verify consumer-side rejection, missing-context fail-closed,
+provenance mismatches and NO_TRADE. Re-review the exact head before closure.
+
+```text
+S8-B01_CANONICAL_CLOSURE = NO
+S8-B02 = OPEN
+S8_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+PAPER_CONFIRMATORY_RUN = NOT_AUTHORIZED
+MERGE = FORBIDDEN_WITHOUT_HUMAN_AUTHORIZATION
+```

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import dataclasses
+import weakref
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from types import MappingProxyType
@@ -400,7 +401,11 @@ def test_risk_adapter_maps_all_directions_without_losing_economic_objective(
     c = candidate(rules=(rule(direction=direction),))
     result = evaluate_strategy(c, opportunity())
     assert result.trade_intent is not None
-    proposal = to_risk_proposal(result.trade_intent)
+    proposal = to_risk_proposal(
+        result.trade_intent,
+        admitted_candidate=candidate(rules=(rule(direction=direction),)),
+        admitted_opportunity=opportunity(),
+    )
     assert proposal.proposal_id == f"risk-proposal:{result.trade_intent.intent_digest[:24]}"
     assert proposal.instrument_id == result.trade_intent.instrument_id
     assert proposal.portfolio_id == result.trade_intent.portfolio_id
@@ -416,6 +421,99 @@ def test_risk_adapter_maps_all_directions_without_losing_economic_objective(
 def test_risk_adapter_rejects_forged_intent() -> None:
     with pytest.raises(ValueError, match="engine-issued"):
         to_risk_proposal(object())  # type: ignore[arg-type]
+
+
+
+def test_risk_adapter_requires_separately_admitted_evidence() -> None:
+    result = evaluate_strategy(candidate(), opportunity())
+    assert result.trade_intent is not None
+    intent = result.trade_intent
+    with pytest.raises(ValueError, match="independently admitted"):
+        to_risk_proposal(intent)
+    with pytest.raises(ValueError, match="independently admitted"):
+        to_risk_proposal(intent, admitted_candidate=candidate())
+    with pytest.raises(ValueError, match="independently admitted"):
+        to_risk_proposal(intent, admitted_candidate=object(), admitted_opportunity=opportunity())
+    with pytest.raises(ValueError, match="independently admitted"):
+        to_risk_proposal(intent, admitted_candidate=candidate(), admitted_opportunity=object())
+
+
+def test_risk_adapter_rejects_inconsistent_admitted_provenance() -> None:
+    result = evaluate_strategy(candidate(), opportunity())
+    assert result.trade_intent is not None
+    intent = result.trade_intent
+    with pytest.raises(ValueError, match="independent provenance mismatch"):
+        to_risk_proposal(
+            intent,
+            admitted_candidate=candidate(rules=(rule(threshold=Decimal("0.75")),)),
+            admitted_opportunity=opportunity(),
+        )
+    with pytest.raises(ValueError, match="independent provenance mismatch"):
+        to_risk_proposal(
+            intent,
+            admitted_candidate=candidate(),
+            admitted_opportunity=opportunity(signals={"score": Decimal("0.95")}),
+        )
+    with pytest.raises(ValueError, match="independent provenance mismatch"):
+        to_risk_proposal(
+            intent,
+            admitted_candidate=candidate(),
+            admitted_opportunity=dataclasses.replace(opportunity(), source_digest="other"),
+        )
+    with pytest.raises(ValueError, match="independent provenance mismatch"):
+        to_risk_proposal(
+            intent,
+            admitted_candidate=dataclasses.replace(candidate(), portfolio_id="other"),
+            admitted_opportunity=opportunity(),
+        )
+    with pytest.raises(ValueError, match="independent replay did not authorize"):
+        to_risk_proposal(
+            intent,
+            admitted_candidate=candidate(),
+            admitted_opportunity=opportunity(signals={"score": Decimal("0.1")}),
+        )
+
+
+def test_forged_verifier_closure_cannot_bypass_consumer_replay() -> None:
+    # Reproduces P1: Python permits replacement of verifier closure cells.
+    result = evaluate_strategy(candidate(), opportunity())
+    intent = result.trade_intent
+    assert intent is not None
+    verifier = strategy_domain._verify_intent_issuance
+    cells = [
+        cell for cell in verifier.__closure__ or ()
+        if isinstance(cell.cell_contents, MappingProxyType)
+    ]
+    assert len(cells) == 1
+    cell = cells[0]
+    original_snapshot = cell.cell_contents
+    try:
+        object.__setattr__(intent.objective, "requested_exposure", Decimal("999"))
+        forged_digest = intent._expected_digest()
+        object.__setattr__(intent, "intent_digest", forged_digest)
+        object.__setattr__(intent, "intent_id", f"trade-intent:{forged_digest[:24]}")
+        cell.cell_contents = MappingProxyType(
+            {id(intent): (weakref.ref(intent), forged_digest)}
+        )
+        assert intent.is_engine_issued  # deliberately compromised marker
+        with pytest.raises(ValueError, match="independent provenance mismatch"):
+            to_risk_proposal(
+                intent, admitted_candidate=candidate(),
+                admitted_opportunity=opportunity(),
+            )
+    finally:
+        cell.cell_contents = original_snapshot
+
+
+def test_unissued_clone_fails_even_with_independent_replay() -> None:
+    result = evaluate_strategy(candidate(), opportunity())
+    assert result.trade_intent is not None
+    clone = dataclasses.replace(result.trade_intent)
+    with pytest.raises(ValueError, match="engine-issued"):
+        to_risk_proposal(
+            clone, admitted_candidate=candidate(),
+            admitted_opportunity=opportunity(),
+        )
 
 
 def test_dataclass_replace_cannot_preserve_trade_intent_engine_trust() -> None:
