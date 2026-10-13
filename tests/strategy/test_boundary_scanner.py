@@ -387,3 +387,48 @@ def test_scanner_rejects_traceback_and_frame_reflection(
     findings = _scan_file(target)
 
     assert any("forbidden reflection namespace" in str(finding) for finding in findings)
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "handle.write(b'data')\n",
+        "handle.read()\n",
+        "handle.readlines()\n",
+        "handle.writelines(['x'])\n",
+        "handle.readinto(buffer)\n",
+    ],
+)
+def test_scanner_rejects_generic_stream_io(tmp_path: Path, source: str) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(source, encoding="utf-8")
+    assert any("forbidden I/O method" in str(f) for f in _scan_file(target))
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "import json\ncodec = json\ncodec.dump({'a': 1}, handle)\n",
+        "import json\ncodec = json\ncodec.load(handle)\n",
+        "import json\nfirst = json\nsecond = first\nsecond.dump({}, handle)\n",
+        "import json\n(codec := json).dump({}, handle)\n",
+    ],
+)
+def test_scanner_rejects_assignment_aliased_module_io(
+    tmp_path: Path, source: str
+) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(source, encoding="utf-8")
+    assert any(
+        "module attribute outside Strategy allowlist" in str(f)
+        for f in _scan_file(target)
+    )
+
+
+def test_scanner_allows_assignment_aliased_json_dumps(tmp_path: Path) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(
+        "import json\ncodec = json\nencoded = codec.dumps({'value': 1})\n",
+        encoding="utf-8",
+    )
+    assert _scan_file(target) == []

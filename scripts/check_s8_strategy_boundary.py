@@ -160,6 +160,16 @@ FORBIDDEN_CALLS = {
 }
 
 FORBIDDEN_IO_METHODS = {
+    "read",
+    "write",
+    "readline",
+    "readlines",
+    "writelines",
+    "readinto",
+    "readinto1",
+    "seek",
+    "truncate",
+    "flush",
     "write_text",
     "write_bytes",
     "read_text",
@@ -292,6 +302,23 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                             f"symbol outside Strategy import allowlist: {qualified}",
                         )
                     )
+        elif isinstance(node, ast.Assign):
+            resolved = _resolve_expr(node.value, aliases)
+            if resolved in ALLOWED_MODULE_IMPORTS:
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        aliases[target.id] = resolved
+            elif isinstance(node.value, ast.Name):
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        aliases.pop(target.id, None)
+        elif isinstance(node, ast.NamedExpr):
+            resolved = _resolve_expr(node.value, aliases)
+            if isinstance(node.target, ast.Name):
+                if resolved in ALLOWED_MODULE_IMPORTS:
+                    aliases[node.target.id] = resolved
+                else:
+                    aliases.pop(node.target.id, None)
         elif isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
             if node.name in FORBIDDEN_OPERATIONAL_NAMES:
                 findings.append(
