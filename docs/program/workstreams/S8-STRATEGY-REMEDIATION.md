@@ -218,3 +218,17 @@ S8_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 PAPER_CONFIRMATORY_RUN = NOT_AUTHORIZED
 MERGE = FORBIDDEN_WITHOUT_HUMAN_AUTHORIZATION
 ```
+
+## 10. 2026-10-13 — P2 compound-alias bypass
+
+The Strategy AST boundary now fails closed on opaque module-value transfers
+through destructuring, nested container binding, for/async-for loops,
+comprehensions, annotated bindings and computed named expressions. The safe
+simple alias `codec = json; codec.dumps(...)` remains explicitly supported.
+Adversarial regression fixtures cover the previously reported
+`(codec,) = (json,)` write path and several related patterns.
+
+The verifier is a static negative-capability check, **not a Python sandbox**.
+Untrusted Strategy code must still be isolated at an appropriately approved
+runtime boundary. This correction does not promote the candidate, grant Paper
+authority, or close S8-B01 without independent exact-head review.

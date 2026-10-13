@@ -230,6 +230,22 @@ def _resolve_expr(node: ast.AST, aliases: dict[str, str]) -> str:
     return ""
 
 
+def _contains_module_value(node: ast.AST, aliases: dict[str, str]) -> bool:
+    """Detect module values transferred through opaque binding expressions.
+
+    Attribute calls like json.dumps() do not transfer the module itself.
+    Direct, simple module aliases are handled by the existing alias map.
+    Unsupported compound bindings fail closed rather than being guessed.
+    """
+    if isinstance(node, ast.Attribute):
+        return False
+    if isinstance(node, ast.Name):
+        return _resolve_expr(node, aliases) in ALLOWED_MODULE_IMPORTS
+    return any(
+        _contains_module_value(child, aliases) for child in ast.iter_child_nodes(node)
+    )
+
+
 def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
     findings: list[Finding] = []
     aliases: dict[str, str] = {}
@@ -307,14 +323,37 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                     )
         elif isinstance(node, ast.Assign):
             resolved = _resolve_expr(node.value, aliases)
-            if resolved in ALLOWED_MODULE_IMPORTS:
+            simple_targets = all(isinstance(target, ast.Name) for target in node.targets)
+            if _contains_module_value(node.value, aliases) and not (
+                simple_targets and resolved in ALLOWED_MODULE_IMPORTS
+            ):
+                findings.append(
+                    Finding(
+                        normalized,
+                        node.lineno,
+                        "unverifiable module alias binding: compound assignment",
+                    )
+                )
+            if resolved in ALLOWED_MODULE_IMPORTS and simple_targets:
                 for target in node.targets:
                     if isinstance(target, ast.Name):
                         aliases[target.id] = resolved
-            elif isinstance(node.value, ast.Name):
+            else:
                 for target in node.targets:
                     if isinstance(target, ast.Name):
                         aliases.pop(target.id, None)
+        elif isinstance(node, ast.AnnAssign):
+            resolved = _resolve_expr(node.value, aliases) if node.value is not None else ""
+            if node.value is not None and _contains_module_value(node.value, aliases):
+                findings.append(
+                    Finding(
+                        normalized,
+                        node.lineno,
+                        "unverifiable module alias binding: annotated assignment",
+                    )
+                )
+            if isinstance(node.target, ast.Name):
+                aliases.pop(node.target.id, None)
         elif isinstance(node, ast.NamedExpr):
             resolved = _resolve_expr(node.value, aliases)
             if isinstance(node.target, ast.Name):
@@ -322,6 +361,23 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                     aliases[node.target.id] = resolved
                 else:
                     aliases.pop(node.target.id, None)
+                    if _contains_module_value(node.value, aliases):
+                        findings.append(
+                            Finding(
+                                normalized,
+                                node.lineno,
+                                "unverifiable module alias binding: named expression",
+                            )
+                        )
+        elif isinstance(node, ast.For | ast.AsyncFor | ast.comprehension):
+            if _contains_module_value(node.iter, aliases):
+                findings.append(
+                    Finding(
+                        normalized,
+                        node.lineno,
+                        "unverifiable module alias binding: loop/comprehension",
+                    )
+                )
         elif isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
             if node.name in FORBIDDEN_OPERATIONAL_NAMES:
                 findings.append(

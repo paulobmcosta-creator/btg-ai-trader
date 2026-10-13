@@ -432,3 +432,40 @@ def test_scanner_allows_assignment_aliased_json_dumps(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     assert _scan_file(target) == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "import json\n(codec,) = (json,)\ncodec.dump({}, handle)\n",
+        "import json\n[codec] = [json]\ncodec.dump({}, handle)\n",
+        "import json\n((codec,),) = ((json,),)\ncodec.dump({}, handle)\n",
+        "import json\nfor codec in [json]:\n    codec.dump({}, handle)\n",
+        "import json\nvalues = [codec.dump({}, handle) for codec in [json]]\n",
+        "import json\ncodec = [json][0]\ncodec.dump({}, handle)\n",
+        "import json\ncodec: object = json\ncodec.dump({}, handle)\n",
+        "import json\n(codec := [json][0]).dump({}, handle)\n",
+        "import json\n[codec for codec in [json]]\n",
+    ],
+)
+def test_scanner_fails_closed_on_opaque_module_alias_transfers(
+    tmp_path: Path, source: str
+) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(source, encoding="utf-8")
+    findings = _scan_file(target)
+    assert any("unverifiable module alias binding" in str(finding) for finding in findings)
+
+
+def test_scanner_still_allows_simple_module_alias_and_value_calls(
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(
+        "import json\n"
+        "codec = json\n"
+        "encoded = codec.dumps({'ok': 1})\n"
+        "encoded_values = [codec.dumps({'ok': n}) for n in (1, 2)]\n",
+        encoding="utf-8",
+    )
+    assert _scan_file(target) == []
