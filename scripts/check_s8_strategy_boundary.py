@@ -213,6 +213,8 @@ def _is_forbidden_import(name: str) -> bool:
 
 
 def _resolve_expr(node: ast.AST, aliases: dict[str, str]) -> str:
+    if isinstance(node, ast.NamedExpr):
+        return _resolve_expr(node.value, aliases)
     if isinstance(node, ast.Name):
         return aliases.get(node.id, node.id)
     if isinstance(node, ast.Attribute):
