@@ -460,7 +460,7 @@ def test_risk_adapter_rejects_inconsistent_admitted_provenance() -> None:
             admitted_candidate=candidate(),
             admitted_opportunity=dataclasses.replace(opportunity(), source_digest="other"),
         )
-    with pytest.raises(ValueError, match="independent provenance mismatch"):
+    with pytest.raises(ValueError, match="independent replay did not authorize"):
         to_risk_proposal(
             intent,
             admitted_candidate=dataclasses.replace(candidate(), portfolio_id="other"),
