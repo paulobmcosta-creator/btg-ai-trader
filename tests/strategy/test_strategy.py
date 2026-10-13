@@ -485,6 +485,37 @@ def test_issuance_verifier_does_not_expose_mutable_registry(
                 value[object()] = "forged"  # type: ignore[index]
 
 
+@pytest.mark.parametrize(
+    ("verifier_name", "artifact_name"),
+    [
+        ("_verify_decision_issuance", "decision"),
+        ("_verify_intent_issuance", "trade_intent"),
+    ],
+)
+def test_weakref_cleanup_is_safe_when_called_twice(
+    verifier_name: str,
+    artifact_name: str,
+) -> None:
+    result = evaluate_strategy(candidate(), opportunity())
+    artifact = getattr(result, artifact_name)
+    assert artifact is not None
+    verifier = getattr(strategy_domain, verifier_name)
+    snapshots = [
+        cell.cell_contents
+        for cell in verifier.__closure__ or ()
+        if isinstance(cell.cell_contents, MappingProxyType)
+    ]
+    assert len(snapshots) == 1
+    reference, _digest = snapshots[0][id(artifact)]
+    callback = reference.__callback__
+    assert callback is not None
+
+    callback(reference)
+    callback(reference)
+
+    assert not artifact.is_engine_issued
+
+
 def test_mutating_verifier_snapshot_cannot_reissue_tampered_intent() -> None:
     result = evaluate_strategy(candidate(), opportunity())
     assert result.trade_intent is not None
