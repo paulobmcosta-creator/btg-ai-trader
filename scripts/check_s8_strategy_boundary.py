@@ -223,8 +223,9 @@ def _resolve_expr(node: ast.AST, aliases: dict[str, str]) -> str:
         while isinstance(current, ast.Attribute):
             parts.append(current.attr)
             current = current.value
-        if isinstance(current, ast.Name):
-            parts.append(aliases.get(current.id, current.id))
+        root = _resolve_expr(current, aliases)
+        if root:
+            parts.append(root)
         return ".".join(reversed(parts))
     return ""
 
