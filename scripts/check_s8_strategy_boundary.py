@@ -374,7 +374,7 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                 findings.append(
                     Finding(
                         normalized,
-                        node.lineno,
+                        node.iter.lineno,
                         "unverifiable module alias binding: loop/comprehension",
                     )
                 )
