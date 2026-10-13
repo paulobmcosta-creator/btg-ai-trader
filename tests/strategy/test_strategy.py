@@ -466,6 +466,47 @@ def test_objective_content_tampering_invalidates_intent_and_risk_adapter() -> No
         to_risk_proposal(intent)
 
 
+@pytest.mark.parametrize(
+    "verifier_name",
+    ["_verify_decision_issuance", "_verify_intent_issuance"],
+)
+def test_issuance_verifier_does_not_expose_mutable_registry(
+    verifier_name: str,
+) -> None:
+    verifier = getattr(strategy_domain, verifier_name)
+    captured = [cell.cell_contents for cell in verifier.__closure__ or ()]
+
+    assert captured
+    for value in captured:
+        if isinstance(value, dict):
+            pytest.fail("issuance verifier exposes a writable dictionary")
+        if isinstance(value, MappingProxyType):
+            with pytest.raises(TypeError):
+                value[object()] = "forged"  # type: ignore[index]
+
+
+def test_mutating_verifier_snapshot_cannot_reissue_tampered_intent() -> None:
+    result = evaluate_strategy(candidate(), opportunity())
+    assert result.trade_intent is not None
+    intent = result.trade_intent
+    assert intent.is_engine_issued
+    verifier = strategy_domain._verify_intent_issuance
+    captured = [cell.cell_contents for cell in verifier.__closure__ or ()]
+    snapshots = [value for value in captured if isinstance(value, MappingProxyType)]
+    assert len(snapshots) == 1
+
+    object.__setattr__(intent, "objective", objective(EconomicDirection.INCREASE_SHORT))
+    forged_digest = intent._expected_digest()
+    object.__setattr__(intent, "intent_digest", forged_digest)
+    object.__setattr__(intent, "intent_id", f"trade-intent:{forged_digest[:24]}")
+
+    with pytest.raises(TypeError):
+        snapshots[0][id(intent)] = ("forged", forged_digest)  # type: ignore[index]
+    assert not intent.is_engine_issued
+    with pytest.raises(ValueError, match="engine-issued"):
+        to_risk_proposal(intent)
+
+
 def test_raw_issuance_registrars_are_not_exposed() -> None:
     assert not hasattr(strategy_domain, "_register_decision_issuance")
     assert not hasattr(strategy_domain, "_register_intent_issuance")

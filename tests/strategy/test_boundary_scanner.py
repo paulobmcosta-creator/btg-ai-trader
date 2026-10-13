@@ -358,3 +358,32 @@ def test_scanner_allows_only_required_namespace_module_apis(tmp_path: Path) -> N
     )
 
     assert _scan_file(target) == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        (
+            "try:\n"
+            "    raise RuntimeError('probe')\n"
+            "except RuntimeError as error:\n"
+            "    error.__traceback__.tb_frame.f_globals['__builtins__']['open']('file', 'w')\n"
+        ),
+        "frame = error.__traceback__.tb_frame\n",
+        "access = frame.f_globals\n",
+        "access = frame.f_locals\n",
+        "access = frame.f_builtins\n",
+        "access = generator.gi_frame\n",
+        "access = coroutine.cr_frame\n",
+    ],
+)
+def test_scanner_rejects_traceback_and_frame_reflection(
+    tmp_path: Path,
+    source: str,
+) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(source, encoding="utf-8")
+
+    findings = _scan_file(target)
+
+    assert any("forbidden reflection namespace" in str(finding) for finding in findings)

@@ -78,6 +78,17 @@ FORBIDDEN_REFLECTION_NAMES = {
     "__self__",
     "__spec__",
     "__subclasses__",
+    "__traceback__",
+    "tb_frame",
+    "tb_next",
+    "f_globals",
+    "f_locals",
+    "f_builtins",
+    "f_back",
+    "f_code",
+    "gi_frame",
+    "cr_frame",
+    "ag_frame",
 }
 
 FORBIDDEN_OPERATIONAL_NAMES = {

@@ -23,16 +23,30 @@ def _make_decision_issuance() -> tuple[
     Callable[[CandidateStrategy, DecisionOpportunity], StrategyDecision],
     _IssuanceVerify,
 ]:
-    records: dict[int, tuple[weakref.ReferenceType[object], str]] = {}
+    # Verification exposes only a read-only snapshot, never a writable trust ledger.
+    records: Mapping[int, tuple[weakref.ReferenceType[object], str]] = (
+        types.MappingProxyType({})
+    )
 
     def remember(value: object, digest: str) -> None:
+        nonlocal records
         key = id(value)
 
         def cleanup(reference: weakref.ReferenceType[object]) -> None:
-            del reference
-            records.pop(key, None)
+            nonlocal records
+            current = records.get(key)
+            if current is not None and current[0] is reference:
+                records = types.MappingProxyType(
+                    {
+                        stored_key: entry
+                        for stored_key, entry in records.items()
+                        if stored_key != key
+                    }
+                )
 
-        records[key] = (weakref.ref(value, cleanup), digest)
+        records = types.MappingProxyType(
+            {**records, key: (weakref.ref(value, cleanup), digest)}
+        )
 
     def issue(
         candidate: CandidateStrategy,
@@ -76,16 +90,30 @@ def _make_intent_issuance() -> tuple[
     Callable[[StrategyDecision, CandidateStrategy, DecisionOpportunity], TradeIntent],
     _IssuanceVerify,
 ]:
-    records: dict[int, tuple[weakref.ReferenceType[object], str]] = {}
+    # Verification exposes only a read-only snapshot, never a writable trust ledger.
+    records: Mapping[int, tuple[weakref.ReferenceType[object], str]] = (
+        types.MappingProxyType({})
+    )
 
     def remember(value: object, digest: str) -> None:
+        nonlocal records
         key = id(value)
 
         def cleanup(reference: weakref.ReferenceType[object]) -> None:
-            del reference
-            records.pop(key, None)
+            nonlocal records
+            current = records.get(key)
+            if current is not None and current[0] is reference:
+                records = types.MappingProxyType(
+                    {
+                        stored_key: entry
+                        for stored_key, entry in records.items()
+                        if stored_key != key
+                    }
+                )
 
-        records[key] = (weakref.ref(value, cleanup), digest)
+        records = types.MappingProxyType(
+            {**records, key: (weakref.ref(value, cleanup), digest)}
+        )
 
     def issue(
         decision: StrategyDecision,
