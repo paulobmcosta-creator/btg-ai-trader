@@ -432,6 +432,20 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                         )
                     )
         elif isinstance(node, ast.Call):
+            # A module passed to an unknown function can emerge via its
+            # return value or be used for I/O. Do not assume pure helpers.
+            # This also catches nested, *args and **kwargs transfers.
+            if any(
+                _contains_module_value(argument, aliases)
+                for argument in (*node.args, *(kw.value for kw in node.keywords))
+            ):
+                findings.append(
+                    Finding(
+                        normalized,
+                        node.lineno,
+                        "unverifiable module alias binding: module-valued call argument",
+                    )
+                )
             call_name = _resolve_expr(node.func, aliases)
             if call_name in FORBIDDEN_CALLS:
                 findings.append(Finding(normalized, node.lineno, f"forbidden call: {call_name}"))

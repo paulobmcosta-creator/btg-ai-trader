@@ -290,3 +290,19 @@ prove arbitrary Python code in the same interpreter is isolated. No Paper
 execution, candidate promotion, Risk authority, real order capability, or
 merge is authorized. Independent review of the exact resulting head
 remains mandatory.
+
+## 13. 2026-10-14 — P2 module capability transfer through calls
+
+The latest independent review of `4d8687af` reproduced
+`passthrough(json).dump(...)`: module values supplied to arbitrary helper
+calls could escape and perform I/O without a finding. The scanner now fails
+closed when any call argument carries an allowlisted module capability,
+including positional, keyword, unpacked positional/keyword, nested-container,
+and module-alias cases. Negative regression tests cover each class; pure
+value arguments and `json.dumps` remain allowed.
+
+This fix restricts only the approved S8-B01 scanner/tests and records its
+rationale. Static source inspection is defense in depth, not isolation of
+arbitrary code; all other runtime trust and financial authorization gates
+remain unchanged. Canonical S8-B01 closure requires exact-head CI and a
+separate independent review with no blocking findings.

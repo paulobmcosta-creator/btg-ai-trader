@@ -544,3 +544,67 @@ def test_scanner_allows_non_module_function_defaults(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     assert _scan_file(target) == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        (
+            "import json\n"
+            "def passthrough(value):\n    return value\n"
+            "passthrough(json).dump({}, handle)\n"
+        ),
+        (
+            "import json\n"
+            "def passthrough(*, value):\n    return value\n"
+            "passthrough(value=json).dump({}, handle)\n"
+        ),
+        (
+            "import json\n"
+            "def passthrough(*values):\n    return values[0]\n"
+            "passthrough(*(json,)).dump({}, handle)\n"
+        ),
+        (
+            "import json\n"
+            "def passthrough(**values):\n    return values['codec']\n"
+            "passthrough(**{'codec': json}).dump({}, handle)\n"
+        ),
+        (
+            "import json\n"
+            "def passthrough(value):\n    return value[0]\n"
+            "passthrough([json]).dump({}, handle)\n"
+        ),
+        (
+            "import json\n"
+            "codec = json\n"
+            "def passthrough(value):\n    return value\n"
+            "passthrough(codec).dump({}, handle)\n"
+        ),
+        (
+            "import json\n"
+            "def passthrough(value):\n    return value\n"
+            "passthrough({'codec': (json,)})['codec'][0].dump({}, handle)\n"
+        ),
+    ],
+)
+def test_scanner_fails_closed_on_module_capability_call_arguments(
+    tmp_path: Path, source: str
+) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(source, encoding="utf-8")
+    assert any(
+        "unverifiable module alias binding: module-valued call argument" in str(finding)
+        for finding in _scan_file(target)
+    )
+
+
+def test_scanner_allows_pure_values_as_function_arguments(tmp_path: Path) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(
+        "import json\n"
+        "def encode(value):\n    return json.dumps(value)\n"
+        "value = encode({'ok': True})\n"
+        "other = json.dumps({'nested': [json.dumps({'a': 1})]})\n",
+        encoding="utf-8",
+    )
+    assert _scan_file(target) == []
