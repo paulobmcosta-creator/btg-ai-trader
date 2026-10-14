@@ -243,7 +243,7 @@ def test_scanner_rejects_reflection_paths_to_forbidden_builtins(
     )
 
 
-def test_scanner_keeps_required_object_setattr_internal_pattern_allowed(
+def test_scanner_rejects_generic_object_setattr_outside_domain_constructor(
     tmp_path: Path,
 ) -> None:
     target = tmp_path / "probe.py"
@@ -255,7 +255,10 @@ def test_scanner_keeps_required_object_setattr_internal_pattern_allowed(
         encoding="utf-8",
     )
 
-    assert _scan_file(target) == []
+    assert any(
+        "call outside audited Strategy allowlist" in str(finding)
+        for finding in _scan_file(target)
+    )
 
 
 @pytest.mark.parametrize(

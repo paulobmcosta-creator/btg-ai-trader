@@ -405,9 +405,11 @@ def _approved_write_target(
         if isinstance(scope, ast.FunctionDef | ast.AsyncFunctionDef)
     }
     return (
-        node.value.id == "frozen" and "_freeze_signals" in functions
-        or node.value.id == "ledger"
-        and bool(functions & {"_make_decision_issuance", "_make_intent_issuance"})
+        (node.value.id == "frozen" and "_freeze_signals" in functions)
+        or (
+            node.value.id == "ledger"
+            and bool(functions & {"_make_decision_issuance", "_make_intent_issuance"})
+        )
     )
 
 

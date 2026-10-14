@@ -357,3 +357,11 @@ reproduce the two Codex P2 examples and expanded mutation/callback variants.
 The scanner is static defense in depth, not a Python sandbox. No Paper/Live,
 broker API, financial state, candidate promotion, or merge authority changes.
 Exact-head CI and a separate independent re-review remain mandatory.
+
+### Narrowed object.__setattr__ authorization
+
+The previously permissive fixture for generic `object.__setattr__(holder, ...)`
+was updated to a **negative** expectation: arbitrary mutation from a new
+fixture file is no longer accepted. The approved domain-owned
+`__post_init__(self)` initialization remains allowed by the scanner.
+This tightens, rather than relaxes, the original operational boundary.
