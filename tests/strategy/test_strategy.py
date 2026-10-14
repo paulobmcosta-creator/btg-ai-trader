@@ -556,7 +556,13 @@ def test_forged_verifier_closure_cannot_bypass_consumer_replay() -> None:
             {id(intent): (weakref.ref(intent), forged_digest)}
         )
         assert intent.is_engine_issued  # deliberately compromised marker
-        with pytest.raises(ValueError, match="independent provenance mismatch"):
+        # The stable proxy may reject even earlier, when independent
+        # replay cannot register its newly issued intent behind a forged
+        # verifier. Both paths must fail closed before a RiskProposal.
+        with pytest.raises(
+            ValueError,
+            match="independent provenance mismatch|PROPOSE_TRADE result requires engine-issued",
+        ):
             to_risk_proposal(
                 intent, admitted_candidate=candidate(),
                 admitted_opportunity=opportunity(),
