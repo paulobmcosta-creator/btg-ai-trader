@@ -356,8 +356,68 @@ def test_priority_is_deterministic_and_trade_intent_preserves_lineage() -> None:
 
 def test_boundary_age_equal_to_limit_is_admissible() -> None:
     c = candidate(max_age=5)
-    result = evaluate_strategy(c, opportunity(knowledge_time=dt(1), decision_time=dt(6)))
+    result = evaluate_strategy(
+        c, opportunity(event_time=dt(1), knowledge_time=dt(1), decision_time=dt(6))
+    )
     assert result.decision.disposition is StrategyDisposition.PROPOSE_TRADE
+
+
+
+def test_old_market_event_received_just_now_is_no_trade() -> None:
+    # A fresh admission timestamp cannot rejuvenate an old market observation.
+    c = candidate(max_age=5)
+    opp = opportunity(
+        event_time=dt(-86_400),
+        knowledge_time=dt(1),
+        decision_time=dt(2),
+    )
+    result = evaluate_strategy(c, opp)
+    assert result.decision.disposition is StrategyDisposition.NO_TRADE
+    assert result.decision.reason_codes == (DecisionReason.EVIDENCE_TOO_OLD,)
+    assert result.trade_intent is None
+    assert result.decision.is_engine_issued
+
+
+def test_market_event_age_exact_boundary_and_one_microsecond_past() -> None:
+    c = candidate(max_age=5)
+    at_limit = opportunity(
+        event_time=dt(1),
+        knowledge_time=dt(5),
+        decision_time=dt(6),
+    )
+    admissible = evaluate_strategy(c, at_limit)
+    assert admissible.decision.disposition is StrategyDisposition.PROPOSE_TRADE
+    assert admissible.trade_intent is not None
+
+    beyond_limit = opportunity(
+        event_time=dt(1) - timedelta(microseconds=1),
+        knowledge_time=dt(5),
+        decision_time=dt(6),
+    )
+    rejected = evaluate_strategy(c, beyond_limit)
+    assert rejected.decision.disposition is StrategyDisposition.NO_TRADE
+    assert rejected.decision.reason_codes == (DecisionReason.EVIDENCE_TOO_OLD,)
+    assert rejected.trade_intent is None
+
+
+def test_market_event_freshness_uses_utc_instants_across_offsets() -> None:
+    c = candidate(max_age=5)
+    sao_paulo = ZoneInfo("America/Sao_Paulo")
+    at_limit = opportunity(
+        event_time=dt(1).astimezone(sao_paulo),
+        knowledge_time=dt(3),
+        decision_time=dt(6),
+    )
+    assert evaluate_strategy(c, at_limit).trade_intent is not None
+
+    delayed = opportunity(
+        event_time=dt(0).astimezone(sao_paulo),
+        knowledge_time=dt(5),
+        decision_time=dt(6),
+    )
+    result = evaluate_strategy(c, delayed)
+    assert result.decision.disposition is StrategyDisposition.NO_TRADE
+    assert result.decision.reason_codes == (DecisionReason.EVIDENCE_TOO_OLD,)
 
 
 def test_causal_order_uses_utc_instants_across_dst_fold() -> None:
@@ -612,6 +672,41 @@ def test_weakref_cleanup_is_safe_when_called_twice(
     callback(reference)
 
     assert not artifact.is_engine_issued
+
+
+
+@pytest.mark.parametrize(
+    "verifier_name",
+    ["_verify_decision_issuance", "_verify_intent_issuance"],
+)
+def test_issuance_registry_view_is_stable_across_retained_batch(
+    verifier_name: str,
+) -> None:
+    # Quadratic ledger-copy regression: the read-only proxy must remain one
+    # shared object while each distinct issued result adds an O(1) entry.
+    verifier = getattr(strategy_domain, verifier_name)
+    proxies = [
+        cell.cell_contents
+        for cell in verifier.__closure__ or ()
+        if isinstance(cell.cell_contents, MappingProxyType)
+    ]
+    assert len(proxies) == 1
+    view = proxies[0]
+    initial_count = len(view)
+    c = candidate()
+    opp = opportunity()
+    retained = [evaluate_strategy(c, opp) for _ in range(160)]
+    assert len(retained) == 160
+    assert len(view) >= initial_count + len(retained)
+    refreshed = [
+        cell.cell_contents
+        for cell in verifier.__closure__ or ()
+        if isinstance(cell.cell_contents, MappingProxyType)
+    ]
+    assert len(refreshed) == 1
+    assert refreshed[0] is view
+    with pytest.raises(TypeError):
+        view[id(retained[0])] = "tampered"  # type: ignore[index]
 
 
 def test_mutating_verifier_snapshot_cannot_reissue_tampered_intent() -> None:

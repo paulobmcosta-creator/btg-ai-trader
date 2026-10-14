@@ -469,3 +469,35 @@ def test_scanner_still_allows_simple_module_alias_and_value_calls(
         encoding="utf-8",
     )
     assert _scan_file(target) == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "import json\ndef codec():\n    return json\ncodec().dump({}, handle)\n",
+        "import json\ndef codec():\n    return (json,)\ncodec()[0].dump({}, handle)\n",
+        "import json\ncodec = lambda: json\ncodec().dump({}, handle)\n",
+        "import json\ndef codec():\n    yield json\nnext(codec()).dump({}, handle)\n",
+        "import json\ndef codec():\n    yield from [json]\nnext(codec()).dump({}, handle)\n",
+        "import json\ndef codec():\n    return [json][0]\ncodec().dump({}, handle)\n",
+    ],
+)
+def test_scanner_rejects_helper_returned_module_io(
+    tmp_path: Path, source: str
+) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(source, encoding="utf-8")
+    assert any(
+        "unverifiable module alias binding" in str(finding)
+        for finding in _scan_file(target)
+    )
+
+
+def test_scanner_allows_helper_returning_pure_json_value(tmp_path: Path) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(
+        "import json\ndef codec():\n    return json.dumps({'ok': 1})\n"
+        "value = codec()\n",
+        encoding="utf-8",
+    )
+    assert _scan_file(target) == []

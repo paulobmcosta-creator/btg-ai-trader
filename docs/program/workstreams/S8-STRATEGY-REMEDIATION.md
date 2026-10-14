@@ -232,3 +232,43 @@ The verifier is a static negative-capability check, **not a Python sandbox**.
 Untrusted Strategy code must still be isolated at an appropriately approved
 runtime boundary. This correction does not promote the candidate, grant Paper
 authority, or close S8-B01 without independent exact-head review.
+
+## 11. 2026-10-14 — Market-event freshness and bounded issuance ledger
+
+The newly reviewed P1 is addressed in the deterministic Strategy outcome:
+the `max_evidence_age_seconds` threshold now applies to the difference
+between `decision_time` and **both** `event_time` and `knowledge_time`,
+with UTC-normalized instants and the pre-existing causal order invariant.
+An old market event received moments before a decision must return
+`NO_TRADE / EVIDENCE_TOO_OLD`, and equality at the bound remains admissible.
+Regression tests cover day-old delayed evidence, a microsecond beyond the
+limit, exact equality, and cross-timezone event observations.
+
+The P2 quadratic issuance bookkeeping is replaced by one stable read-only
+`MappingProxyType` view over a private O(1)-average mutable ledger. Only the
+private issuer can register, and the weakref cleanup removes an entry only
+when the callback identity matches that entry (safe if IDs are reused).
+The verifier still captures a read-only proxy; retained-batch tests assert
+its identity does not change with issuance and prevent reintroduction of
+a copy-per-decision path. As already documented in §9, Python closure
+reflection is **not** a same-process adversarial authenticity boundary.
+
+The P2 scanner now rejects module capabilities returned or yielded by
+helpers, including nested return containers and lambdas. Negative fixtures
+demonstrate `def codec(): return json; codec().dump(...)` is blocked without
+rejecting pure `json.dumps` value returns. The AST scanner remains
+defense-in-depth, not a sandbox.
+
+This changes no upstream protocol, Risk authorization, Paper eligibility,
+financial ledger or broker surface. S8-B01 remains subject to exact-head
+CI and independent re-review. No merge or S8 functional authority is granted.
+
+```text
+S8-B01_CANONICAL_CLOSURE = NO
+S8-B02 = OPEN
+S8_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+PAPER_CONFIRMATORY_RUN = NOT_AUTHORIZED
+LIVE_TRADING = NO
+REAL_MONEY = NO
+MERGE = FORBIDDEN_WITHOUT_HUMAN_AUTHORIZATION
+```

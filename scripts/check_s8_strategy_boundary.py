@@ -378,6 +378,24 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                         "unverifiable module alias binding: loop/comprehension",
                     )
                 )
+        elif isinstance(node, ast.Return | ast.Yield | ast.YieldFrom):
+            if node.value is not None and _contains_module_value(node.value, aliases):
+                findings.append(
+                    Finding(
+                        normalized,
+                        node.lineno,
+                        "unverifiable module alias binding: returned/yielded module",
+                    )
+                )
+        elif isinstance(node, ast.Lambda):
+            if _contains_module_value(node.body, aliases):
+                findings.append(
+                    Finding(
+                        normalized,
+                        node.lineno,
+                        "unverifiable module alias binding: lambda module return",
+                    )
+                )
         elif isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
             if node.name in FORBIDDEN_OPERATIONAL_NAMES:
                 findings.append(
