@@ -608,3 +608,42 @@ def test_scanner_allows_pure_values_as_function_arguments(tmp_path: Path) -> Non
         encoding="utf-8",
     )
     assert _scan_file(target) == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "def run(client, order):\n    client.submit_order(order)\n",
+        "def run(client, order):\n    client.cancel_order(order)\n",
+        "def run(effect):\n    effect()\n",
+        "def run(client):\n    client.get()\n",
+        "def run(client):\n    client.send('order')\n",
+        "def run(client):\n    getattr(client, 'submit_order')('order')\n",
+        "def run(effect):\n    callback = effect\n    callback()\n",
+        "def run(client):\n    client.submit_order\n",
+    ],
+)
+def test_scanner_rejects_unapproved_injected_calls(
+    tmp_path: Path, source: str
+) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(source, encoding="utf-8")
+    findings = _scan_file(target)
+    assert any(
+        "call outside audited Strategy allowlist" in str(finding)
+        or "forbidden operational attribute" in str(finding)
+        for finding in findings
+    )
+
+
+def test_scanner_allows_reviewed_strategy_call_sites(tmp_path: Path) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(
+        "import hashlib\n"
+        "import json\n"
+        "encoded = json.dumps({'ok': True}).encode('utf-8')\n"
+        "digest = hashlib.sha256(encoded).hexdigest()\n"
+        "assert digest\n",
+        encoding="utf-8",
+    )
+    assert _scan_file(target) == []

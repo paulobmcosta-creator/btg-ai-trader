@@ -255,6 +255,99 @@ def _has_module_default(arguments: ast.arguments, aliases: dict[str, str]) -> bo
     )
 
 
+
+# A closed set of reviewed Strategy call sites. All new call capabilities must
+# be explicitly reviewed and added here rather than implicitly inheriting the
+# authority of an arbitrary caller-supplied receiver or callback.
+ALLOWED_STRATEGY_CALLS = frozenset(
+    {
+        "ValueError",
+        "Decimal",
+        "RiskProposal",
+        "StrategyDecision",
+        "StrategyDecision._issue",
+        "StrategyEvaluationResult",
+        "TradeIntent",
+        "TradeIntent._build",
+        "_digest",
+        "_evaluate_outcome",
+        "_freeze_signals",
+        "_issue_strategy_decision",
+        "_issue_trade_intent",
+        "_jsonable",
+        "_make_decision_issuance",
+        "_make_intent_issuance",
+        "_matches",
+        "_require_aware",
+        "_require_decimal",
+        "_require_text",
+        "_utc_instant",
+        "_verify_decision_issuance",
+        "_verify_intent_issuance",
+        "all",
+        "any",
+        "dataclass",
+        "evaluate_strategy",
+        "field",
+        "hashlib.sha256",
+        "id",
+        "isinstance",
+        "json.dumps",
+        "ledger.get",
+        "ledger.pop",
+        "len",
+        "object.__setattr__",
+        "records.get",
+        "remember",
+        "set",
+        "signals.items",
+        "sorted",
+        "str",
+        "self._expected_digest",
+        "timedelta",
+        "tuple",
+        "types.MappingProxyType",
+        "value.astimezone",
+        "value.is_finite",
+        "value.isoformat",
+        "value.items",
+        "value.strip",
+        "value.tzinfo.utcoffset",
+        "weakref.ref",
+    }
+)
+
+# Only these previously reviewed methods may be chained off an approved
+# primitive-producing call. Generic attribute calls on unresolved objects
+# never receive this allowance.
+ALLOWED_STRATEGY_CALL_CHAINS = {
+    ("json.dumps", "encode"),
+    ("hashlib.sha256", "hexdigest"),
+}
+
+
+def _approved_strategy_call(node: ast.Call, aliases: dict[str, str]) -> bool:
+    """Fail closed unless the call is one of the exact audited pure call sites."""
+    name = _resolve_expr(node.func, aliases)
+    if name in ALLOWED_STRATEGY_CALLS:
+        return True
+    if (
+        isinstance(node.func, ast.Attribute)
+        and isinstance(node.func.value, ast.Call)
+    ):
+        inner = _resolve_expr(node.func.value.func, aliases)
+        return (inner, node.func.attr) in ALLOWED_STRATEGY_CALL_CHAINS
+    # The only supported indirect call is the weakref stored by our
+    # issuance ledger. All arbitrary subscripted callbacks are denied.
+    return (
+        isinstance(node.func, ast.Subscript)
+        and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == "current"
+        and isinstance(node.func.slice, ast.Constant)
+        and node.func.slice.value == 0
+    )
+
+
 def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
     findings: list[Finding] = []
     aliases: dict[str, str] = {}
@@ -432,6 +525,14 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                         )
                     )
         elif isinstance(node, ast.Call):
+            if not _approved_strategy_call(node, aliases):
+                findings.append(
+                    Finding(
+                        normalized,
+                        node.lineno,
+                        "call outside audited Strategy allowlist",
+                    )
+                )
             # A module passed to an unknown function can emerge via its
             # return value or be used for I/O. Do not assume pure helpers.
             # This also catches nested, *args and **kwargs transfers.

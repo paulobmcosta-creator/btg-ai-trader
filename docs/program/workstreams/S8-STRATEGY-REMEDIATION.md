@@ -306,3 +306,24 @@ rationale. Static source inspection is defense in depth, not isolation of
 arbitrary code; all other runtime trust and financial authorization gates
 remain unchanged. Canonical S8-B01 closure requires exact-head CI and a
 separate independent review with no blocking findings.
+
+
+## 14. 2026-10-14 — Codex P2 arbitrary injected callable
+
+Codex review of `9e62c65d` identified a critical static-policy omission:
+`client.submit_order(order)` / `client.cancel_order(order)` and injected
+`effect()` calls passed despite explicit Strategy non-capabilities.
+
+The dedicated scanner now **fails closed by default on AST calls**, subject
+to a small, explicit allowlist of existing, manually reviewed, pure
+Strategy call sites and two typed primitive-result chains. A restricted
+issuance-ledger weakref retrieval is the only approved indirect callback
+call. New helper/receiver methods cannot be added without a deliberate
+review of that exact call surface and tests. Adversarial fixtures include
+order-submit/cancel, arbitrary effect/callback methods and dynamic
+`getattr`; existing hash/JSON call chains remain permitted.
+
+This is not a sandbox and lexical call allowlisting cannot authenticate a
+caller-supplied object in a hostile shared Python runtime. Risk consumer
+replay requires **independently admitted** Strategy/evidence as described
+in §9. This remediation changes no Risk Engine or Paper/Live authority.
