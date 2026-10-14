@@ -413,16 +413,85 @@ def _approved_write_target(
     )
 
 
+
+# A spelling in ALLOWED_STRATEGY_CALLS is never sufficient provenance.
+# Detect unsafe rebinding in each lexical function and at module level;
+# a locally bound callback must not inherit authority from an approved name.
+def _trusted_assignment_source(node: ast.AST, aliases: dict[str, str]) -> bool:
+    if isinstance(node, ast.Dict):
+        return not node.keys and not node.values
+    if isinstance(node, ast.Attribute):
+        return _resolve_expr(node, aliases) in {"hashlib.sha256", "json.dumps"}
+    if isinstance(node, ast.Name):
+        return _resolve_expr(node, aliases) in ALLOWED_MODULE_IMPORTS
+    if isinstance(node, ast.Call):
+        return _resolve_expr(node.func, aliases) == "types.MappingProxyType"
+    return False
+
+
+def _root_scopes(
+    parents: dict[ast.AST, ast.AST], node: ast.AST
+) -> tuple[ast.AST, ...]:
+    current = node
+    while current in parents:
+        current = parents[current]
+    return (current,)
+
+
+def _unsafe_binding_roots(
+    tree: ast.AST,
+    parents: dict[ast.AST, ast.AST],
+    imported_aliases: dict[str, str],
+) -> dict[str, set[ast.AST]]:
+    unsafe: dict[str, set[ast.AST]] = {}
+    for bound in ast.walk(tree):
+        if not isinstance(bound, ast.Name) or not isinstance(bound.ctx, ast.Store):
+            continue
+        owner: ast.AST = _enclosing_functions(bound, parents)[0] if (
+            _enclosing_functions(bound, parents)
+        ) else tree
+        parent = parents.get(bound)
+        while parent is not None and not isinstance(
+            parent,
+            ast.Assign | ast.AnnAssign | ast.NamedExpr | ast.For | ast.AsyncFor
+            | ast.comprehension | ast.With | ast.AsyncWith,
+        ):
+            parent = parents.get(parent)
+        trusted = False
+        if isinstance(parent, ast.Assign | ast.AnnAssign | ast.NamedExpr):
+            rhs = parent.value
+            trusted = rhs is not None and _trusted_assignment_source(rhs, imported_aliases)
+            if isinstance(rhs, ast.Call):
+                # The two issuer factories are audited module-owned constructors.
+                trusted = trusted or (
+                    owner is tree
+                    and bound.id.startswith(("_issue_", "_verify_"))
+                    and _resolve_expr(rhs.func, imported_aliases)
+                    in {"_make_decision_issuance", "_make_intent_issuance"}
+                )
+        if not trusted:
+            unsafe.setdefault(bound.id, set()).add(owner)
+    return unsafe
+
+
 def _approved_strategy_call(
     node: ast.Call,
     aliases: dict[str, str],
     local_declarations: set[str],
     path: Path,
     parents: dict[ast.AST, ast.AST],
+    unsafe_binding_roots: dict[str, set[ast.AST]],
 ) -> bool:
     """Deny injected capabilities even when they shadow audited names."""
     name = _resolve_expr(node.func, aliases)
     root = _call_root(node.func)
+    current_scopes = _enclosing_functions(node, parents)
+    if root and root in unsafe_binding_roots:
+        unsafe_owners = unsafe_binding_roots[root]
+        if next(iter(_root_scopes(parents, node))) in unsafe_owners or any(
+            scope in unsafe_owners for scope in current_scopes
+        ):
+            return False
     scoped_parameters = _scope_parameters(node, parents)
     if root and root in scoped_parameters:
         functions = _enclosing_functions(node, parents)
@@ -477,6 +546,17 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
         child: node for node in ast.walk(tree)
         for child in ast.iter_child_nodes(node)
     }
+    imported_aliases: dict[str, str] = {}
+    for imported in ast.walk(tree):
+        if isinstance(imported, ast.Import):
+            for alias in imported.names:
+                imported_aliases[alias.asname or alias.name] = alias.name
+        elif isinstance(imported, ast.ImportFrom):
+            for alias in imported.names:
+                imported_aliases[alias.asname or alias.name] = (
+                    f"{imported.module}.{alias.name}"
+                )
+    unsafe_binding_roots = _unsafe_binding_roots(tree, parents, imported_aliases)
     # Local function/class construction is allowed after scanning their bodies,
     # but a parameter or assignment can shadow that symbol with an injected
     # callback. Exclude such names from this dynamic whitelist.
@@ -730,9 +810,17 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                             f"forbidden operational attribute: {node.attr}",
                         )
                     )
+        elif isinstance(node, ast.Global | ast.Nonlocal):
+            findings.append(
+                Finding(
+                    normalized,
+                    node.lineno,
+                    "global/nonlocal state is forbidden in Strategy",
+                )
+            )
         elif isinstance(node, ast.Call):
             if not _approved_strategy_call(
-                node, aliases, local_declarations, path, parents
+                node, aliases, local_declarations, path, parents, unsafe_binding_roots
             ):
                 findings.append(
                     Finding(

@@ -730,3 +730,104 @@ def test_scanner_rejects_unapproved_setattr_even_with_builtin_name(tmp_path: Pat
         "call outside audited Strategy allowlist" in str(item)
         for item in _scan_file(target)
     )
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        (
+            "def f(holder, value):\n"
+            "    evaluate_strategy = holder\n"
+            "    evaluate_strategy(value)\n"
+        ),
+        (
+            "def f(effect):\n"
+            "    ledger = effect\n"
+            "    ledger.pop('position')\n"
+        ),
+        (
+            "def f(effect):\n"
+            "    callback = effect\n"
+            "    evaluate_strategy = callback\n"
+            "    evaluate_strategy('position')\n"
+        ),
+        (
+            "def f(effect):\n"
+            "    ledger: object = effect\n"
+            "    ledger.pop('position')\n"
+        ),
+        (
+            "def f(effect):\n"
+            "    ledger = {}\n"
+            "    ledger = effect\n"
+            "    ledger.pop('position')\n"
+        ),
+        (
+            "def f(effect):\n"
+            "    for ledger in [effect]:\n"
+            "        ledger.pop('position')\n"
+        ),
+        (
+            "def f(effect):\n"
+            "    ledger = (effect if True else {})\n"
+            "    ledger.pop('position')\n"
+        ),
+        (
+            "evaluate_strategy = lambda value: value\n"
+            "evaluate_strategy('position')\n"
+        ),
+    ],
+)
+def test_scanner_rejects_allowlisted_spelling_with_untrusted_assignment(
+    tmp_path: Path, source: str
+) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(source, encoding="utf-8")
+    assert any(
+        "call outside audited Strategy allowlist" in str(item)
+        for item in _scan_file(target)
+    )
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "counter = 0\ndef f():\n    global counter\n    counter += 1\n",
+        (
+            "def outer():\n"
+            "    counter = 0\n"
+            "    def inner():\n"
+            "        nonlocal counter\n"
+            "        counter = counter + 1\n"
+            "    return inner\n"
+        ),
+        "def f():\n    global ledger\n    ledger = {}\n",
+        "def f():\n    global counter\n    return counter\n",
+    ],
+)
+def test_scanner_rejects_global_and_nonlocal_state_access(
+    tmp_path: Path, source: str
+) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(source, encoding="utf-8")
+    assert any(
+        "global/nonlocal state is forbidden in Strategy" in str(item)
+        for item in _scan_file(target)
+    )
+
+
+def test_scanner_allows_private_local_ledger_dictionary(tmp_path: Path) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(
+        "def f():\n"
+        "    ledger = {}\n"
+        "    ledger['x'] = 1\n"
+        "    ledger.pop('x')\n",
+        encoding="utf-8",
+    )
+    # Even locally created dictionary mutations are constrained by the
+    # separate approved-write-target checker; no broad exemption.
+    assert any(
+        "external or unverified mutation target forbidden" in str(item)
+        for item in _scan_file(target)
+    )

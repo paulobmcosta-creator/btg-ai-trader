@@ -365,3 +365,26 @@ was updated to a **negative** expectation: arbitrary mutation from a new
 fixture file is no longer accepted. The approved domain-owned
 `__post_init__(self)` initialization remains allowed by the scanner.
 This tightens, rather than relaxes, the original operational boundary.
+
+## 16. 2026-10-14 — Codex P2 assigned-call provenance and global state
+
+Codex independent review of `b5d1679b` independently confirmed the
+previously logged P2 alias-origin bypass: a caller callback assigned to an
+allowlisted name (`evaluate_strategy = holder` / `ledger = effect`) could
+inherit authority based solely on spelling. It also identified unguarded
+`global` and `nonlocal` state access, incompatible with deterministic
+side-effect-free Strategy.
+
+The scanner now conservatively computes untrusted assignment roots in each
+lexical scope and module scope; approved call names are denied when their
+receiver or callable can be rebound from unverified data. Only audited
+literal-local dictionary construction, approved pure callable references,
+the private `MappingProxyType` constructor and the two issuer factory
+outputs can establish an accepted assignment origin. Any `global` or
+`nonlocal` statement fails closed. Negative regressions reproduce both
+Codex findings and alias chains/annotations/loops/conditional assignments.
+
+A source scanner is **not a sandbox**. Independent re-review on the exact
+head and continued consumer-side independent candidate/data admission remain
+requirements. There is no Paper/Live authority, merge, or new cost-bearing
+dependency.
