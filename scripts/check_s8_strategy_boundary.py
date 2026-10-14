@@ -319,6 +319,17 @@ ALLOWED_STRATEGY_CALLS = frozenset(
     }
 )
 
+# Narrowly permitted modules from the existing from-import contract.
+# Resolve only audited functions/types imported from those modules.
+ALLOWED_STRATEGY_IMPORTED_CALL_PREFIXES = (
+    "dataclasses.",
+    "decimal.",
+    "datetime.",
+    "btg_ai_trader.strategy.domain.",
+    "btg_ai_trader.strategy.engine.",
+    "btg_ai_trader.risk_engine.",
+)
+
 # Only these previously reviewed methods may be chained off an approved
 # primitive-producing call. Generic attribute calls on unresolved objects
 # never receive this allowance.
@@ -335,6 +346,9 @@ def _approved_strategy_call(
     name = _resolve_expr(node.func, aliases)
     if name in ALLOWED_STRATEGY_CALLS or name in local_declarations:
         return True
+    for prefix in ALLOWED_STRATEGY_IMPORTED_CALL_PREFIXES:
+        if name.startswith(prefix) and name[len(prefix):] in ALLOWED_STRATEGY_CALLS:
+            return True
     if (
         isinstance(node.func, ast.Attribute)
         and isinstance(node.func.value, ast.Call)
@@ -470,7 +484,7 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                 )
             if (
                 resolved in ALLOWED_MODULE_IMPORTS
-                or resolved in ALLOWED_STRATEGY_CALLS and "." in resolved
+                or (resolved in ALLOWED_STRATEGY_CALLS and "." in resolved)
             ) and simple_targets:
                 for target in node.targets:
                     if isinstance(target, ast.Name) and target.id not in shadowed:
