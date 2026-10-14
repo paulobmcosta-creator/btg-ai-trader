@@ -506,13 +506,20 @@ def test_scanner_allows_helper_returning_pure_json_value(tmp_path: Path) -> None
 @pytest.mark.parametrize(
     "source",
     [
-        "import json\ndef encode(value, handle, codec=json):\n    codec.dump(value, handle)\n",
-        "import json\ndef encode(value, handle, *, codec=json):\n    codec.dump(value, handle)\n",
-        "import json\ndef encode(value, handle, codec=(json,)):\n    codec[0].dump(value, handle)\n",
-        "import json\nmodule = json\ndef encode(value, handle, codec=module):\n    codec.dump(value, handle)\n",
-        "import json\nencode = lambda value, handle, codec=json: codec.dump(value, handle)\n",
-        "import json\nencode = lambda value, *, codec=json: codec.dump(value, handle)\n",
-        "import json\nasync def encode(value, handle, *, codec=json):\n    codec.dump(value, handle)\n",
+        "import json\n"
+        "def encode(value, handle, codec=json):\n    codec.dump(value, handle)\n",
+        "import json\n"
+        "def encode(value, handle, *, codec=json):\n    codec.dump(value, handle)\n",
+        "import json\n"
+        "def encode(value, handle, codec=(json,)):\n    codec[0].dump(value, handle)\n",
+        "import json\n"
+        "module = json\ndef encode(value, handle, codec=module):\n    codec.dump(value, handle)\n",
+        "import json\n"
+        "encode = lambda value, handle, codec=json: codec.dump(value, handle)\n",
+        "import json\n"
+        "encode = lambda value, *, codec=json: codec.dump(value, handle)\n",
+        "import json\n"
+        "async def encode(value, handle, *, codec=json):\n    codec.dump(value, handle)\n",
     ],
 )
 def test_scanner_rejects_module_capabilities_captured_in_function_defaults(
