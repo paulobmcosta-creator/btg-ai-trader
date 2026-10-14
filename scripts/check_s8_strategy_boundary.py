@@ -429,6 +429,20 @@ def _trusted_assignment_source(node: ast.AST, aliases: dict[str, str]) -> bool:
     return False
 
 
+def _lexical_scopes(
+    node: ast.AST, parents: dict[ast.AST, ast.AST]
+) -> tuple[ast.AST, ...]:
+    scopes: list[ast.AST] = []
+    current = node
+    while current in parents:
+        current = parents[current]
+        if isinstance(
+            current, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda | ast.ClassDef
+        ):
+            scopes.append(current)
+    return tuple(scopes)
+
+
 def _root_scopes(
     parents: dict[ast.AST, ast.AST], node: ast.AST
 ) -> tuple[ast.AST, ...]:
@@ -442,14 +456,14 @@ def _unsafe_binding_roots(
     tree: ast.AST,
     parents: dict[ast.AST, ast.AST],
     imported_aliases: dict[str, str],
+    path: Path,
 ) -> dict[str, set[ast.AST]]:
     unsafe: dict[str, set[ast.AST]] = {}
     for bound in ast.walk(tree):
         if not isinstance(bound, ast.Name) or not isinstance(bound.ctx, ast.Store):
             continue
-        owner: ast.AST = _enclosing_functions(bound, parents)[0] if (
-            _enclosing_functions(bound, parents)
-        ) else tree
+        scopes = _lexical_scopes(bound, parents)
+        owner: ast.AST = scopes[0] if scopes else tree
         parent = parents.get(bound)
         while parent is not None and not isinstance(
             parent,
@@ -462,6 +476,15 @@ def _unsafe_binding_roots(
             rhs = parent.value
             trusted = rhs is not None and _trusted_assignment_source(rhs, imported_aliases)
             if isinstance(rhs, ast.Call):
+                # A verifier's retained read-only ledger supplies the weakref;
+                # do not authorize untrusted getters or injected receivers.
+                trusted = trusted or (
+                    path.name == "domain.py"
+                    and isinstance(owner, ast.FunctionDef)
+                    and owner.name == "verify"
+                    and bound.id == "current"
+                    and _resolve_expr(rhs.func, imported_aliases) == "records.get"
+                )
                 # The two issuer factories are audited module-owned constructors.
                 trusted = trusted or (
                     owner is tree
@@ -485,7 +508,7 @@ def _approved_strategy_call(
     """Deny injected capabilities even when they shadow audited names."""
     name = _resolve_expr(node.func, aliases)
     root = _call_root(node.func)
-    current_scopes = _enclosing_functions(node, parents)
+    current_scopes = _lexical_scopes(node, parents)
     if root and root in unsafe_binding_roots:
         unsafe_owners = unsafe_binding_roots[root]
         if next(iter(_root_scopes(parents, node))) in unsafe_owners or any(
@@ -556,7 +579,9 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                 imported_aliases[alias.asname or alias.name] = (
                     f"{imported.module}.{alias.name}"
                 )
-    unsafe_binding_roots = _unsafe_binding_roots(tree, parents, imported_aliases)
+    unsafe_binding_roots = _unsafe_binding_roots(
+        tree, parents, imported_aliases, path
+    )
     # Local function/class construction is allowed after scanning their bodies,
     # but a parameter or assignment can shadow that symbol with an injected
     # callback. Exclude such names from this dynamic whitelist.
