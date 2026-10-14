@@ -338,3 +338,22 @@ References to broker submission/cancellation attributes are forbidden even
 without an immediate invocation. Shadowed local helper callbacks fail closed.
 This preserves legitimate pure helpers without granting caller-supplied
 callbacks a generic invocation capability.
+
+## 15. 2026-10-14 — Independent Codex P2 findings on exact head a5b7388c
+
+Independent review documented two missing negative capabilities in the Strategy
+scanner: **(a)** a parameter named like an approved call or receiver could run
+injected code, and **(b)** attribute/subscript writes to caller-owned objects
+were not screened. Both are now explicitly denied with AST lexical scope
+inspection. A narrowly constrained exception permits only audited read-only
+parameter methods in their existing Strategy domain helpers. Local dictionary
+writes remain permitted exclusively for `ledger` inside the two private
+issuance factories and `frozen` inside `_freeze_signals`. External writes,
+augmented assignment, deletion and destructuring into injected objects fail
+closed. `object.__setattr__` remains permitted only for direct dataclass
+`self` construction in Strategy domain `__post_init__`. Negative tests
+reproduce the two Codex P2 examples and expanded mutation/callback variants.
+
+The scanner is static defense in depth, not a Python sandbox. No Paper/Live,
+broker API, financial state, candidate promotion, or merge authority changes.
+Exact-head CI and a separate independent re-review remain mandatory.

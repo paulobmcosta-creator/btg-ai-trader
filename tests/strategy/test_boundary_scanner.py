@@ -674,3 +674,56 @@ def test_scanner_rejects_broker_method_reference_without_invocation(
         "forbidden operational attribute" in str(finding)
         for finding in _scan_file(target)
     )
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "def f(evaluate_strategy, value):\n    evaluate_strategy(value)\n",
+        "def f(ledger):\n    ledger.pop('position')\n",
+        "def f(json):\n    json.dumps({'x': 1})\n",
+        "def f(*, RiskProposal):\n    RiskProposal()\n",
+        "def f(**values):\n    return values['callback']()\n",
+        "def f(object):\n    object.__setattr__(state, 'orders', 1)\n",
+    ],
+)
+def test_scanner_blocks_shadowed_approved_names(tmp_path: Path, source: str) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(source, encoding="utf-8")
+    assert any(
+        "call outside audited Strategy allowlist" in str(item)
+        for item in _scan_file(target)
+    )
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "def f(state):\n    state.balance = 0\n",
+        "def f(state):\n    state['orders'] = ()\n",
+        "def f(state):\n    state.balance += 1\n",
+        "def f(state):\n    del state['orders']\n",
+        "def f(state):\n    del state.balance\n",
+        "def f(state):\n    [state['orders']] = [1]\n",
+        "def f(state):\n    for state['orders'] in (1, 2):\n        pass\n",
+    ],
+)
+def test_scanner_blocks_mutation_of_injected_objects(tmp_path: Path, source: str) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(source, encoding="utf-8")
+    assert any(
+        "external or unverified mutation target forbidden" in str(item)
+        for item in _scan_file(target)
+    )
+
+
+def test_scanner_rejects_unapproved_setattr_even_with_builtin_name(tmp_path: Path) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(
+        "def f(state):\n    object.__setattr__(state, 'balance', 0)\n",
+        encoding="utf-8",
+    )
+    assert any(
+        "call outside audited Strategy allowlist" in str(item)
+        for item in _scan_file(target)
+    )

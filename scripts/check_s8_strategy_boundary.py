@@ -339,11 +339,113 @@ ALLOWED_STRATEGY_CALL_CHAINS = {
 }
 
 
-def _approved_strategy_call(
-    node: ast.Call, aliases: dict[str, str], local_declarations: set[str]
+
+# A lexical exception is allowed only for read-only methods of validated
+# domain inputs within their existing audited functions.
+AUDITED_PARAMETER_METHODS = frozenset(
+    {
+        ("_require_text", "value.strip"),
+        ("_require_aware", "value.tzinfo.utcoffset"),
+        ("_utc_instant", "value.astimezone"),
+        ("_require_decimal", "value.is_finite"),
+        ("_jsonable", "value.isoformat"),
+        ("_jsonable", "value.items"),
+        ("_freeze_signals", "signals.items"),
+        ("is_engine_issued", "self._expected_digest"),
+    }
+)
+
+
+def _enclosing_functions(
+    node: ast.AST, parents: dict[ast.AST, ast.AST]
+) -> tuple[ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda, ...]:
+    scopes: list[ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda] = []
+    current = node
+    while current in parents:
+        current = parents[current]
+        if isinstance(current, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda):
+            scopes.append(current)
+    return tuple(scopes)
+
+
+def _scope_parameters(node: ast.AST, parents: dict[ast.AST, ast.AST]) -> set[str]:
+    parameter_names: set[str] = set()
+    for scope in _enclosing_functions(node, parents):
+        args = scope.args
+        parameter_names.update(arg.arg for arg in (*args.posonlyargs, *args.args, *args.kwonlyargs))
+        if args.vararg is not None:
+            parameter_names.add(args.vararg.arg)
+        if args.kwarg is not None:
+            parameter_names.add(args.kwarg.arg)
+    return parameter_names
+
+
+def _call_root(node: ast.AST) -> str:
+    current = node
+    while isinstance(current, ast.Attribute | ast.Subscript):
+        current = current.value
+    return current.id if isinstance(current, ast.Name) else ""
+
+
+def _approved_write_target(
+    node: ast.Attribute | ast.Subscript,
+    path: Path,
+    parents: dict[ast.AST, ast.AST],
 ) -> bool:
-    """Permit only reviewed call sites or non-shadowed locally defined helpers."""
+    if not isinstance(node, ast.Subscript) or not isinstance(node.ctx, ast.Store):
+        return False
+    if not str(path).replace("\\", "/").endswith("/strategy/domain.py"):
+        return False
+    if not isinstance(node.value, ast.Name):
+        return False
+    if node.value.id in _scope_parameters(node, parents):
+        return False
+    functions = {
+        scope.name for scope in _enclosing_functions(node, parents)
+        if isinstance(scope, ast.FunctionDef | ast.AsyncFunctionDef)
+    }
+    return (
+        node.value.id == "frozen" and "_freeze_signals" in functions
+        or node.value.id == "ledger"
+        and bool(functions & {"_make_decision_issuance", "_make_intent_issuance"})
+    )
+
+
+def _approved_strategy_call(
+    node: ast.Call,
+    aliases: dict[str, str],
+    local_declarations: set[str],
+    path: Path,
+    parents: dict[ast.AST, ast.AST],
+) -> bool:
+    """Deny injected capabilities even when they shadow audited names."""
     name = _resolve_expr(node.func, aliases)
+    root = _call_root(node.func)
+    scoped_parameters = _scope_parameters(node, parents)
+    if root and root in scoped_parameters:
+        functions = _enclosing_functions(node, parents)
+        function_name = (
+            functions[0].name
+            if functions and isinstance(functions[0], ast.FunctionDef | ast.AsyncFunctionDef)
+            else ""
+        )
+        if (
+            path.name != "domain.py"
+            or (function_name, name) not in AUDITED_PARAMETER_METHODS
+        ):
+            return False
+    if name == "object.__setattr__":
+        functions = _enclosing_functions(node, parents)
+        if not (
+            functions
+            and isinstance(functions[0], ast.FunctionDef)
+            and functions[0].name == "__post_init__"
+            and node.args
+            and isinstance(node.args[0], ast.Name)
+            and node.args[0].id == "self"
+            and path.name == "domain.py"
+        ):
+            return False
     if name in ALLOWED_STRATEGY_CALLS or name in local_declarations:
         return True
     for prefix in ALLOWED_STRATEGY_IMPORTED_CALL_PREFIXES:
@@ -369,6 +471,10 @@ def _approved_strategy_call(
 def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
     findings: list[Finding] = []
     aliases: dict[str, str] = {}
+    parents = {
+        child: node for node in ast.walk(tree)
+        for child in ast.iter_child_nodes(node)
+    }
     # Local function/class construction is allowed after scanning their bodies,
     # but a parameter or assignment can shadow that symbol with an injected
     # callback. Exclude such names from this dynamic whitelist.
@@ -575,8 +681,57 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                             "unverifiable module alias binding: function argument default",
                         )
                     )
+        elif isinstance(node, ast.Attribute | ast.Subscript):
+            if isinstance(node.ctx, ast.Store | ast.Del):
+                if not _approved_write_target(node, path, parents):
+                    findings.append(
+                        Finding(
+                            normalized,
+                            node.lineno,
+                            "external or unverified mutation target forbidden",
+                        )
+                    )
+            if isinstance(node, ast.Attribute):
+                resolved = _resolve_expr(node, aliases)
+                module_name, separator, remainder = resolved.partition(".")
+                if separator and module_name in ALLOWED_MODULE_ATTRIBUTES:
+                    first_attribute = remainder.split(".", maxsplit=1)[0]
+                    if first_attribute not in ALLOWED_MODULE_ATTRIBUTES[module_name]:
+                        findings.append(
+                            Finding(
+                                normalized,
+                                node.lineno,
+                                f"module attribute outside Strategy allowlist: {resolved}",
+                            )
+                        )
+                if resolved in FORBIDDEN_CALLS:
+                    findings.append(
+                        Finding(
+                            normalized,
+                            node.lineno,
+                            f"forbidden callable reference: {resolved}",
+                        )
+                    )
+                if node.attr in FORBIDDEN_REFLECTION_NAMES:
+                    findings.append(
+                        Finding(
+                            normalized,
+                            node.lineno,
+                            f"forbidden reflection namespace: {node.attr}",
+                        )
+                    )
+                if node.attr in FORBIDDEN_OPERATIONAL_NAMES:
+                    findings.append(
+                        Finding(
+                            normalized,
+                            node.lineno,
+                            f"forbidden operational attribute: {node.attr}",
+                        )
+                    )
         elif isinstance(node, ast.Call):
-            if not _approved_strategy_call(node, aliases, local_declarations):
+            if not _approved_strategy_call(
+                node, aliases, local_declarations, path, parents
+            ):
                 findings.append(
                     Finding(
                         normalized,
@@ -626,43 +781,6 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
             if node.id in FORBIDDEN_OPERATIONAL_NAMES:
                 findings.append(
                     Finding(normalized, node.lineno, f"forbidden operational name: {node.id}")
-                )
-        elif isinstance(node, ast.Attribute):
-            resolved = _resolve_expr(node, aliases)
-            module_name, separator, remainder = resolved.partition(".")
-            if separator and module_name in ALLOWED_MODULE_ATTRIBUTES:
-                first_attribute = remainder.split(".", maxsplit=1)[0]
-                if first_attribute not in ALLOWED_MODULE_ATTRIBUTES[module_name]:
-                    findings.append(
-                        Finding(
-                            normalized,
-                            node.lineno,
-                            f"module attribute outside Strategy allowlist: {resolved}",
-                        )
-                    )
-            if resolved in FORBIDDEN_CALLS:
-                findings.append(
-                    Finding(
-                        normalized,
-                        node.lineno,
-                        f"forbidden callable reference: {resolved}",
-                    )
-                )
-            if node.attr in FORBIDDEN_REFLECTION_NAMES:
-                findings.append(
-                    Finding(
-                        normalized,
-                        node.lineno,
-                        f"forbidden reflection namespace: {node.attr}",
-                    )
-                )
-            if node.attr in FORBIDDEN_OPERATIONAL_NAMES:
-                findings.append(
-                    Finding(
-                        normalized,
-                        node.lineno,
-                        f"forbidden operational attribute: {node.attr}",
-                    )
                 )
     return findings
 
