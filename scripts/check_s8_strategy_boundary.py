@@ -378,9 +378,11 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
         if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef)
     }
     shadowed: set[str] = set()
+    parameters: set[str] = set()
     for declaration in ast.walk(tree):
         if isinstance(declaration, ast.arg):
             shadowed.add(declaration.arg)
+            parameters.add(declaration.arg)
         elif isinstance(declaration, ast.Assign):
             shadowed.update(
                 bound.id for target in declaration.targets
@@ -487,7 +489,7 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                 or (resolved in ALLOWED_STRATEGY_CALLS and "." in resolved)
             ) and simple_targets:
                 for target in node.targets:
-                    if isinstance(target, ast.Name) and target.id not in shadowed:
+                    if isinstance(target, ast.Name) and target.id not in parameters:
                         aliases[target.id] = resolved
             else:
                 for target in node.targets:
