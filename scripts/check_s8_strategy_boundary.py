@@ -106,6 +106,8 @@ FORBIDDEN_OPERATIONAL_NAMES = {
     "BrokerClient",
     "OrderManager",
     "order_send",
+    "submit_order",
+    "cancel_order",
     "order_check",
     "order_calc_margin",
     "account_info",
@@ -326,10 +328,12 @@ ALLOWED_STRATEGY_CALL_CHAINS = {
 }
 
 
-def _approved_strategy_call(node: ast.Call, aliases: dict[str, str]) -> bool:
-    """Fail closed unless the call is one of the exact audited pure call sites."""
+def _approved_strategy_call(
+    node: ast.Call, aliases: dict[str, str], local_declarations: set[str]
+) -> bool:
+    """Permit only reviewed call sites or non-shadowed locally defined helpers."""
     name = _resolve_expr(node.func, aliases)
-    if name in ALLOWED_STRATEGY_CALLS:
+    if name in ALLOWED_STRATEGY_CALLS or name in local_declarations:
         return True
     if (
         isinstance(node.func, ast.Attribute)
@@ -351,6 +355,34 @@ def _approved_strategy_call(node: ast.Call, aliases: dict[str, str]) -> bool:
 def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
     findings: list[Finding] = []
     aliases: dict[str, str] = {}
+    # Local function/class construction is allowed after scanning their bodies,
+    # but a parameter or assignment can shadow that symbol with an injected
+    # callback. Exclude such names from this dynamic whitelist.
+    local_declarations: set[str] = {
+        node.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef)
+    }
+    shadowed: set[str] = set()
+    for declaration in ast.walk(tree):
+        if isinstance(declaration, ast.arg):
+            shadowed.add(declaration.arg)
+        elif isinstance(declaration, ast.Assign):
+            shadowed.update(
+                bound.id for target in declaration.targets
+                for bound in ast.walk(target) if isinstance(bound, ast.Name)
+            )
+        elif isinstance(declaration, ast.AnnAssign | ast.NamedExpr):
+            shadowed.update(
+                bound.id for bound in ast.walk(declaration.target)
+                if isinstance(bound, ast.Name)
+            )
+        elif isinstance(declaration, ast.For | ast.AsyncFor | ast.comprehension):
+            shadowed.update(
+                bound.id for bound in ast.walk(declaration.target)
+                if isinstance(bound, ast.Name)
+            )
+    local_declarations.difference_update(shadowed)
     normalized = str(path).replace("\\", "/")
     risk_adapter = normalized.endswith("/strategy/risk_adapter.py")
 
@@ -436,9 +468,12 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                         "unverifiable module alias binding: compound assignment",
                     )
                 )
-            if resolved in ALLOWED_MODULE_IMPORTS and simple_targets:
+            if (
+                resolved in ALLOWED_MODULE_IMPORTS
+                or resolved in ALLOWED_STRATEGY_CALLS and "." in resolved
+            ) and simple_targets:
                 for target in node.targets:
-                    if isinstance(target, ast.Name):
+                    if isinstance(target, ast.Name) and target.id not in shadowed:
                         aliases[target.id] = resolved
             else:
                 for target in node.targets:
@@ -525,7 +560,7 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                         )
                     )
         elif isinstance(node, ast.Call):
-            if not _approved_strategy_call(node, aliases):
+            if not _approved_strategy_call(node, aliases, local_declarations):
                 findings.append(
                     Finding(
                         normalized,

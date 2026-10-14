@@ -327,3 +327,14 @@ This is not a sandbox and lexical call allowlisting cannot authenticate a
 caller-supplied object in a hostile shared Python runtime. Risk consumer
 replay requires **independently admitted** Strategy/evidence as described
 in §9. This remediation changes no Risk Engine or Paper/Live authority.
+
+### Exact-head test reconciliation — local helpers and aliases
+
+The fail-closed call policy additionally recognizes functions/classes declared
+in the scanned source **only if their names are not shadowed** by parameter,
+assignment or loop-target bindings. Reviewed aliases of pure module APIs
+(e.g. `digest = hashlib.sha256`) retain their original callable identity.
+References to broker submission/cancellation attributes are forbidden even
+without an immediate invocation. Shadowed local helper callbacks fail closed.
+This preserves legitimate pure helpers without granting caller-supplied
+callbacks a generic invocation capability.

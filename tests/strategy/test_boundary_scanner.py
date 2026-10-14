@@ -647,3 +647,30 @@ def test_scanner_allows_reviewed_strategy_call_sites(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     assert _scan_file(target) == []
+
+
+def test_scanner_rejects_shadowed_local_helper_callback(tmp_path: Path) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(
+        "def helper(value):\n    return value\n"
+        "def run(helper):\n    helper('effect')\n",
+        encoding="utf-8",
+    )
+    assert any(
+        "call outside audited Strategy allowlist" in str(finding)
+        for finding in _scan_file(target)
+    )
+
+
+def test_scanner_rejects_broker_method_reference_without_invocation(
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(
+        "def run(client):\n    return client.submit_order\n",
+        encoding="utf-8",
+    )
+    assert any(
+        "forbidden operational attribute" in str(finding)
+        for finding in _scan_file(target)
+    )
