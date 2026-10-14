@@ -272,3 +272,21 @@ LIVE_TRADING = NO
 REAL_MONEY = NO
 MERGE = FORBIDDEN_WITHOUT_HUMAN_AUTHORIZATION
 ```
+
+
+## 12. 2026-10-14 — P2 transferred modules in function defaults
+
+Independent Codex review of `5700a412` found that a function argument's
+default value could capture the module object without an AST boundary finding:
+`def encode(value, handle, codec=json): codec.dump(value, handle)`.
+The scanner now rejects transfers of allowlisted module capabilities
+through positional and keyword-only function defaults in `def`,
+`async def`, and `lambda`, including nested containers and simple
+aliases. It preserves legitimate pure-value defaults. Dedicated negative
+regressions demonstrate the scanner fails closed on each case.
+
+This correction is static negative-capability defense in depth; it does not
+prove arbitrary Python code in the same interpreter is isolated. No Paper
+execution, candidate promotion, Risk authority, real order capability, or
+merge is authorized. Independent review of the exact resulting head
+remains mandatory.

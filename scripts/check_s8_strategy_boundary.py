@@ -246,6 +246,15 @@ def _contains_module_value(node: ast.AST, aliases: dict[str, str]) -> bool:
     )
 
 
+def _has_module_default(arguments: ast.arguments, aliases: dict[str, str]) -> bool:
+    """Reject module capabilities captured in positional or keyword defaults."""
+    return any(
+        _contains_module_value(value, aliases)
+        for value in (*arguments.defaults, *arguments.kw_defaults)
+        if value is not None
+    )
+
+
 def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
     findings: list[Finding] = []
     aliases: dict[str, str] = {}
@@ -396,6 +405,14 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                         "unverifiable module alias binding: lambda module return",
                     )
                 )
+            if _has_module_default(node.args, aliases):
+                findings.append(
+                    Finding(
+                        normalized,
+                        node.lineno,
+                        "unverifiable module alias binding: lambda argument default",
+                    )
+                )
         elif isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
             if node.name in FORBIDDEN_OPERATIONAL_NAMES:
                 findings.append(
@@ -405,6 +422,15 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                         f"forbidden operational declaration: {node.name}",
                     )
                 )
+            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+                if _has_module_default(node.args, aliases):
+                    findings.append(
+                        Finding(
+                            normalized,
+                            node.lineno,
+                            "unverifiable module alias binding: function argument default",
+                        )
+                    )
         elif isinstance(node, ast.Call):
             call_name = _resolve_expr(node.func, aliases)
             if call_name in FORBIDDEN_CALLS:

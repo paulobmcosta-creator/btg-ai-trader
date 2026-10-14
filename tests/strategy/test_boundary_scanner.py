@@ -501,3 +501,39 @@ def test_scanner_allows_helper_returning_pure_json_value(tmp_path: Path) -> None
         encoding="utf-8",
     )
     assert _scan_file(target) == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "import json\ndef encode(value, handle, codec=json):\n    codec.dump(value, handle)\n",
+        "import json\ndef encode(value, handle, *, codec=json):\n    codec.dump(value, handle)\n",
+        "import json\ndef encode(value, handle, codec=(json,)):\n    codec[0].dump(value, handle)\n",
+        "import json\nmodule = json\ndef encode(value, handle, codec=module):\n    codec.dump(value, handle)\n",
+        "import json\nencode = lambda value, handle, codec=json: codec.dump(value, handle)\n",
+        "import json\nencode = lambda value, *, codec=json: codec.dump(value, handle)\n",
+        "import json\nasync def encode(value, handle, *, codec=json):\n    codec.dump(value, handle)\n",
+    ],
+)
+def test_scanner_rejects_module_capabilities_captured_in_function_defaults(
+    tmp_path: Path, source: str
+) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(source, encoding="utf-8")
+    assert any(
+        "unverifiable module alias binding:" in str(finding)
+        and "argument default" in str(finding)
+        for finding in _scan_file(target)
+    )
+
+
+def test_scanner_allows_non_module_function_defaults(tmp_path: Path) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(
+        "import json\n"
+        "def encode(value='default', *, active=True):\n"
+        "    return json.dumps({'value': value, 'active': active})\n"
+        "encode_value = lambda value='default': json.dumps({'value': value})\n",
+        encoding="utf-8",
+    )
+    assert _scan_file(target) == []
