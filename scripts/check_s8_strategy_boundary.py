@@ -576,6 +576,7 @@ AUDITED_STRATEGY_ITERATIONS: frozenset[tuple[str, str]] = frozenset(
         ("__post_init__", "self.rules"),
         ("__post_init__", "self.reason_codes"),
         ("required_signals", "self.rules"),
+        ("candidate_digest", "self.rules"),
         ("_evaluate_outcome", "candidate.required_signals"),
         ("_evaluate_outcome", "candidate.rules"),
     }
@@ -820,7 +821,7 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
         elif isinstance(node, ast.For | ast.AsyncFor | ast.comprehension):
             if (
                 isinstance(node, ast.AsyncFor)
-                or isinstance(node, ast.comprehension) and node.is_async
+                or (isinstance(node, ast.comprehension) and node.is_async)
                 or not _approved_iteration(node.iter, path, parents)
             ):
                 findings.append(
