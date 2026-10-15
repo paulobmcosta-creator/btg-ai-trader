@@ -13,6 +13,7 @@ from btg_ai_trader.strategy.domain import (
     DecisionOpportunity,
     EconomicDirection,
     TradeIntent,
+    _utc_instant,
 )
 from btg_ai_trader.strategy.engine import evaluate_strategy
 
@@ -61,6 +62,8 @@ def to_risk_proposal(
         quantity_unit=objective.quantity_unit,
         requested_exposure=objective.requested_exposure,
         exposure_unit=objective.exposure_unit,
-        created_at=expected.created_at,
+        # Risk compares this to its as_of_time; preserve the UTC instant
+        # rather than a DST-ambiguous same-zone wall clock / fold.
+        created_at=_utc_instant(expected.created_at),
         source_digest=expected.intent_digest,
     )

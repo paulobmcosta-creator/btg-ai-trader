@@ -388,3 +388,32 @@ A source scanner is **not a sandbox**. Independent re-review on the exact
 head and continued consumer-side independent candidate/data admission remain
 requirements. There is no Paper/Live authority, merge, or new cost-bearing
 dependency.
+
+
+## 17. 2026-10-14 — Independent Codex P1 DST Risk boundary + P2 implicit iteration
+
+Exact-head independent Codex review of `35235e70` found two blockers:
+
+- **P1 / DST fold:** The Strategy-to-Risk adapter forwarded the original
+  timezone-aware `TradeIntent.created_at` unchanged. Risk compares that
+  timestamp against `as_of_time`; Python's same-`ZoneInfo` fold semantics
+  can compare wall-clock values rather than the underlying UTC instants.
+  The adapter now reuses the Strategy domain's reviewed `_utc_instant()`
+  and constructs every `RiskProposal` with **UTC `created_at`**.
+  Tests cover New York's 2026 fall-back (fold 1 proposal after fold 0
+  evaluation despite earlier wall time), a non-UTC Sao Paulo offset,
+  original lineage unchanged, and preservation of source digest.
+
+- **P2 / injected iterables:** Iterating arbitrary caller-supplied objects
+  implicitly invokes `__iter__` and `__next__` without an explicit
+  `ast.Call`. The Strategy scanner now rejects unresolved iterators in
+  `for`, `async for` and comprehensions, non-literal destructuring,
+  `yield from` and starred value expansion. It permits only builtin
+  literal containers and an exact source/function-scoped set of already
+  audited domain iteration forms. New negative fixtures cover injected
+  iterable variants, and positive cases retain pure built-in literals.
+
+These corrections do not modify canonical S7 Risk logic or authorize a
+broker, real orders, Paper confirmatory runs, candidate promotion, or merge.
+The static scanner is defense in depth, not an untrusted-Python sandbox.
+Independent exact-commit re-review remains obligatory for S8-B01 closure.

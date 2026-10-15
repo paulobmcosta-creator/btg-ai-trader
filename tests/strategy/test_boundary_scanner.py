@@ -831,3 +831,63 @@ def test_scanner_allows_private_local_ledger_dictionary(tmp_path: Path) -> None:
         "external or unverified mutation target forbidden" in str(item)
         for item in _scan_file(target)
     )
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "def run(client):\n    for item in client:\n        pass\n",
+        "async def run(client):\n    async for item in client:\n        pass\n",
+        "def run(client):\n    return [item for item in client]\n",
+        "def run(client):\n    return {item for item in client}\n",
+        "def run(client):\n    return (item for item in client)\n",
+        "def run(client):\n    return {item: 1 for item in client}\n",
+        "def run(client):\n    first, second = client\n",
+        "def run(client):\n    first, *rest = client\n",
+        "def run(client):\n    first, second = (x for x in client)\n",
+        "def run(client):\n    yield from client\n",
+        "def run(client):\n    return [*client]\n",
+        "def run(client):\n    return (*client,)\n",
+    ],
+)
+def test_scanner_rejects_implicit_execution_from_injected_iterables(
+    tmp_path: Path, source: str
+) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(source, encoding="utf-8")
+    findings = _scan_file(target)
+    assert any(
+        "unverified iterable" in str(finding) for finding in findings
+    )
+
+
+def test_scanner_allows_literal_builtin_iteration_and_unpack(tmp_path: Path) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(
+        "def safe():\n"
+        "    for item in (1, 2, 3):\n"
+        "        pass\n"
+        "    a, b = [4, 5]\n"
+        "    values = [n for n in (1, 2)]\n"
+        "    return a, b, values\n",
+        encoding="utf-8",
+    )
+    assert _scan_file(target) == []
+
+
+def test_scanner_rejects_injected_iteration_even_inside_strategy_domain(
+    tmp_path: Path,
+) -> None:
+    directory = tmp_path / "strategy"
+    directory.mkdir()
+    target = directory / "domain.py"
+    target.write_text(
+        "def arbitrary(client):\n"
+        "    for item in client:\n"
+        "        pass\n",
+        encoding="utf-8",
+    )
+    assert any(
+        "unverified iterable execution forbidden" in str(finding)
+        for finding in _scan_file(target)
+    )

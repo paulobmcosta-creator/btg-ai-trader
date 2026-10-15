@@ -38,6 +38,7 @@ ALLOWED_FROM_IMPORTS = {
         "StrategyEvidenceQuality",
         "StrategyRule",
         "TradeIntent",
+        "_utc_instant",
     },
     "btg_ai_trader.strategy.engine": {
         "evaluate_strategy",
@@ -562,6 +563,78 @@ def _approved_strategy_call(
     )
 
 
+
+# Explicitly reviewed iterable expressions in the existing immutable Strategy
+# domain. This is deliberately NOT a general allowance for caller-supplied
+# iterables: arbitrary __iter__/__next__ implementations can cause effects.
+AUDITED_STRATEGY_ITERATIONS: frozenset[tuple[str, str]] = frozenset(
+    {
+        ("issue", "candidate.rules"),
+        ("_jsonable", "sorted(value.items(), key=lambda pair: str(pair[0]))"),
+        ("_jsonable", "value"),
+        ("_freeze_signals", "sorted(signals.items())"),
+        ("__post_init__", "self.rules"),
+        ("__post_init__", "self.reason_codes"),
+        ("required_signals", "self.rules"),
+        ("_evaluate_outcome", "candidate.required_signals"),
+        ("_evaluate_outcome", "candidate.rules"),
+    }
+)
+
+AUDITED_STRATEGY_UNPACK_CALLS = frozenset(
+    {
+        ("issue", "_evaluate_outcome"),
+        ("<module>", "_make_decision_issuance"),
+        ("<module>", "_make_intent_issuance"),
+    }
+)
+
+
+def _source_function(
+    node: ast.AST, parents: dict[ast.AST, ast.AST]
+) -> str:
+    scopes = _enclosing_functions(node, parents)
+    if scopes and isinstance(scopes[0], ast.FunctionDef | ast.AsyncFunctionDef):
+        return scopes[0].name
+    return "<module>"
+
+
+def _literal_iterable(node: ast.AST) -> bool:
+    """Only builtin literal containers; no starred unpacking or generators."""
+    if isinstance(node, ast.Tuple | ast.List | ast.Set):
+        return not any(isinstance(item, ast.Starred) for item in node.elts)
+    if isinstance(node, ast.Dict):
+        return all(key is not None for key in node.keys)
+    return isinstance(node, ast.Constant) and isinstance(node.value, str | bytes)
+
+
+def _approved_iteration(
+    node: ast.AST, path: Path, parents: dict[ast.AST, ast.AST]
+) -> bool:
+    if _literal_iterable(node):
+        return True
+    return (
+        path.name == "domain.py"
+        and (_source_function(node, parents), ast.unparse(node))
+        in AUDITED_STRATEGY_ITERATIONS
+    )
+
+
+def _approved_unpacking(
+    rhs: ast.AST, path: Path, parents: dict[ast.AST, ast.AST]
+) -> bool:
+    if _literal_iterable(rhs):
+        return True
+    return (
+        path.name == "domain.py"
+        and isinstance(rhs, ast.Call)
+        and (
+            _source_function(rhs, parents),
+            _resolve_expr(rhs.func, {}),
+        ) in AUDITED_STRATEGY_UNPACK_CALLS
+    )
+
+
 def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
     findings: list[Finding] = []
     aliases: dict[str, str] = {}
@@ -685,6 +758,15 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                         )
                     )
         elif isinstance(node, ast.Assign):
+            if any(isinstance(target, ast.Tuple | ast.List) for target in node.targets):
+                if not _approved_unpacking(node.value, path, parents):
+                    findings.append(
+                        Finding(
+                            normalized,
+                            node.lineno,
+                            "unverified iterable destructuring forbidden",
+                        )
+                    )
             resolved = _resolve_expr(node.value, aliases)
             simple_targets = all(isinstance(target, ast.Name) for target in node.targets)
             if _contains_module_value(node.value, aliases) and not (
@@ -736,6 +818,18 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                             )
                         )
         elif isinstance(node, ast.For | ast.AsyncFor | ast.comprehension):
+            if (
+                isinstance(node, ast.AsyncFor)
+                or isinstance(node, ast.comprehension) and node.is_async
+                or not _approved_iteration(node.iter, path, parents)
+            ):
+                findings.append(
+                    Finding(
+                        normalized,
+                        node.iter.lineno,
+                        "unverified iterable execution forbidden",
+                    )
+                )
             if _contains_module_value(node.iter, aliases):
                 findings.append(
                     Finding(
@@ -745,12 +839,30 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                     )
                 )
         elif isinstance(node, ast.Return | ast.Yield | ast.YieldFrom):
+            if isinstance(node, ast.YieldFrom) and node.value is not None:
+                if not _approved_iteration(node.value, path, parents):
+                    findings.append(
+                        Finding(
+                            normalized,
+                            node.lineno,
+                            "unverified iterable execution forbidden",
+                        )
+                    )
             if node.value is not None and _contains_module_value(node.value, aliases):
                 findings.append(
                     Finding(
                         normalized,
                         node.lineno,
                         "unverifiable module alias binding: returned/yielded module",
+                    )
+                )
+        elif isinstance(node, ast.Starred) and isinstance(node.ctx, ast.Load):
+            if not _approved_iteration(node.value, path, parents):
+                findings.append(
+                    Finding(
+                        normalized,
+                        node.lineno,
+                        "unverified iterable expansion forbidden",
                     )
                 )
         elif isinstance(node, ast.Lambda):

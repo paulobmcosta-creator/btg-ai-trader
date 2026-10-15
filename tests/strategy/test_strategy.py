@@ -925,3 +925,50 @@ def test_evaluation_result_rejects_inconsistent_artifacts() -> None:
     assert other_result.trade_intent is not None
     with pytest.raises(ValueError, match="decision_digest"):
         StrategyEvaluationResult(valid.decision, other_result.trade_intent)
+
+
+def test_risk_adapter_utc_normalizes_dst_fold_timestamp() -> None:
+    eastern = ZoneInfo("America/New_York")
+    # Fold 1 is 06:30Z, while the later-looking local 01:45 fold 0 is 05:45Z.
+    # Without UTC normalization a same-zone datetime comparison can wrongly
+    # consider this future proposal older than the Risk evaluation boundary.
+    decision_time = datetime(2026, 11, 1, 1, 30, tzinfo=eastern, fold=1)
+    as_of_time = datetime(2026, 11, 1, 1, 45, tzinfo=eastern, fold=0)
+    policy = candidate(max_age=5)
+    evidence = opportunity(
+        event_time=decision_time,
+        knowledge_time=decision_time,
+        decision_time=decision_time,
+    )
+    result = evaluate_strategy(policy, evidence)
+    assert result.trade_intent is not None
+    proposal = to_risk_proposal(
+        result.trade_intent,
+        admitted_candidate=policy,
+        admitted_opportunity=evidence,
+    )
+    assert result.trade_intent.created_at == decision_time
+    assert proposal.created_at.tzinfo is UTC
+    assert proposal.created_at == datetime(2026, 11, 1, 6, 30, tzinfo=UTC)
+    assert proposal.created_at > as_of_time
+    assert proposal.source_digest == result.trade_intent.intent_digest
+
+
+def test_risk_adapter_utc_normalization_preserves_real_instant_across_offsets() -> None:
+    offset_time = datetime(2026, 10, 4, 9, 30, tzinfo=ZoneInfo("America/Sao_Paulo"))
+    policy = candidate(max_age=10)
+    evidence = opportunity(
+        event_time=offset_time,
+        knowledge_time=offset_time,
+        decision_time=offset_time,
+    )
+    intent = evaluate_strategy(policy, evidence).trade_intent
+    assert intent is not None
+    proposal = to_risk_proposal(
+        intent,
+        admitted_candidate=policy,
+        admitted_opportunity=evidence,
+    )
+    assert proposal.created_at == offset_time.astimezone(UTC)
+    assert proposal.created_at.tzinfo is UTC
+    assert proposal.source_digest == intent.intent_digest
