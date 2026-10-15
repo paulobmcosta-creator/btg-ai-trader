@@ -948,6 +948,28 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                             f"forbidden operational attribute: {node.attr}",
                         )
                     )
+        elif isinstance(node, ast.With | ast.AsyncWith):
+            # Both context-manager forms call __enter__/__exit__ (or their
+            # async counterparts) on potentially injected external objects.
+            # There are no audited Strategy-owned context managers.
+            findings.append(
+                Finding(
+                    normalized,
+                    node.lineno,
+                    "implicit context-manager execution forbidden",
+                )
+            )
+        elif isinstance(node, ast.Await | ast.Match):
+            # Await dispatches __await__, while structural matching may
+            # invoke __match_args__/attribute access and custom equality.
+            # Neither construct belongs to the reviewed Strategy surface.
+            findings.append(
+                Finding(
+                    normalized,
+                    node.lineno,
+                    "unreviewed implicit dispatch construct forbidden",
+                )
+            )
         elif isinstance(node, ast.Global | ast.Nonlocal):
             findings.append(
                 Finding(

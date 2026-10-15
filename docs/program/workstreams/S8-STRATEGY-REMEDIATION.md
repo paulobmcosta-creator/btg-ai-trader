@@ -417,3 +417,27 @@ These corrections do not modify canonical S7 Risk logic or authorize a
 broker, real orders, Paper confirmatory runs, candidate promotion, or merge.
 The static scanner is defense in depth, not an untrusted-Python sandbox.
 Independent exact-commit re-review remains obligatory for S8-B01 closure.
+
+
+## 18. 2026-10-15 — Independent Codex P2 context-manager implicit dispatch
+
+Codex's exact-head review of `3301a99f` detected an unguarded
+`with client:` / `async with client:` capability path. Both can
+invoke externally supplied `__enter__`/`__exit__` or
+`__aenter__`/`__aexit__` methods without any explicit `ast.Call`,
+allowing operational side effects despite the explicit call allowlist.
+
+The dedicated Strategy scanner now denies all `ast.With` and
+`ast.AsyncWith` nodes, as the authorized Strategy package has no
+approved context-manager surface. The same narrowly scoped review
+also denies `ast.Await` and `ast.Match`: their implicit
+`__await__` and structural-pattern dispatch are not needed by this
+Strategy contract and are not safe to infer as pure from syntax.
+Adversarial tests cover synchronous/asynchronous and multi-manager
+forms, aliases, and other implicit dispatch cases.
+
+No new package/runtime authority or upstream S7 Risk changes.
+The scanner is static defense in depth, not a general Python
+sandbox. Exact-head CI and independent re-review are required
+before any S8-B01 closure; Paper, Live, money and merges remain
+unauthorized.

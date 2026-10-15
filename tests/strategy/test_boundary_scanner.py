@@ -891,3 +891,59 @@ def test_scanner_rejects_injected_iteration_even_inside_strategy_domain(
         "unverified iterable execution forbidden" in str(finding)
         for finding in _scan_file(target)
     )
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "def f(client):\n    with client:\n        pass\n",
+        "def f(client):\n    with client as entered:\n        return entered\n",
+        "async def f(client):\n    async with client:\n        pass\n",
+        "async def f(client):\n    async with client as entered:\n        return entered\n",
+        "def f(client, other):\n    with client, other:\n        pass\n",
+        "def f(client):\n    with client as x, client as y:\n        return x\n",
+        "def f(client):\n    with (client):\n        pass\n",
+        "def f(client):\n    callback = client\n    with callback:\n        pass\n",
+    ],
+)
+def test_scanner_rejects_injected_context_managers(
+    tmp_path: Path, source: str
+) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(source, encoding="utf-8")
+    findings = _scan_file(target)
+    assert any(
+        "implicit context-manager execution forbidden" in str(finding)
+        for finding in findings
+    )
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "async def f(client):\n    return await client\n",
+        "def f(client):\n    match client:\n        case _:\n            return 1\n",
+        "def f(client):\n    match client:\n        case [x, y]:\n            return x\n",
+    ],
+)
+def test_scanner_rejects_other_unreviewed_implicit_dispatch(
+    tmp_path: Path, source: str
+) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(source, encoding="utf-8")
+    assert any(
+        "unreviewed implicit dispatch construct forbidden" in str(finding)
+        for finding in _scan_file(target)
+    )
+
+
+def test_scanner_allows_regular_pure_if_without_context_manager(tmp_path: Path) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(
+        "def calculate(value):\n"
+        "    if value is None:\n"
+        "        return 0\n"
+        "    return 1\n",
+        encoding="utf-8",
+    )
+    assert _scan_file(target) == []
