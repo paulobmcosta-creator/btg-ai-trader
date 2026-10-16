@@ -483,3 +483,32 @@ that Python permits a general sandbox or that the already-reviewed
 runtime can accept arbitrary hostile objects safely. Consumer-side
 admission, immutable candidate controls and evidence gates remain
 mandatory. No merges or Paper/Live/real-money actions are authorized.
+
+
+## 21. 2026-10-16 — Independent Codex P2 subscript implicit execution
+
+Codex's exact-head review of `33babf71` found that arbitrary reads
+such as `client["balance"]` can invoke untrusted `__getitem__` even
+without an explicit `ast.Call`. The earlier attribute-load guard did
+not cover `ast.Subscript` in `Load` context.
+
+The scanner now rejects all unreviewed `Subscript/Load` expressions
+outside the existing full-byte sealed Strategy runtime sources. The same
+verified source-identity gate used for audited attribute loads is applied
+to index reads. Outside this audited source boundary, the only exception
+is direct indexing of `ast.literal_eval`-validated built-in list,
+tuple, str, bytes or dict values with literal primitive keys/indices:
+no caller-owned receiver, local-variable alias, computed index,
+user-defined `__getitem__`, `__index__`, `__hash__` or `__eq__`
+can be silently classified as safe.
+
+Adversarial fixtures cover injected objects, chained/aliased index
+access, caller-supplied indexes, dynamic mapping keys/values, and an
+unreviewed addition to the known Strategy domain module. Positive
+fixtures cover safe literal-only indexing and the unchanged domain,
+engine and Risk adapter. The scanner remains static defense-in-depth,
+not a general Python sandbox, and unchanged files require independent
+admission of runtime inputs from trusted boundaries.
+
+No S7 Risk Engine changes, broker integration, Paper/Live functional
+authorization, paid dependency, money use or merge is approved here.

@@ -1074,3 +1074,81 @@ def test_scanner_allows_only_audited_primitive_attribute_reads(tmp_path: Path) -
         encoding="utf-8",
     )
     assert _scan_file(target) == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "def f(client):\n    return client['balance']\n",
+        "def f(client):\n    return client[0]\n",
+        "def f(client):\n    return client[:1]\n",
+        "def f(client):\n    account = client\n    return account['balance']\n",
+        "def f(client):\n    return client['positions'][0]\n",
+        "def f(client):\n    return [client[i] for i in (0,)]\n",
+        "def f(client):\n    return client['callback']()\n",
+        "def f(client):\n    return [1, 2][client]\n",
+        "def f(client):\n    return {'x': 1}[client]\n",
+        "def f(client):\n    return {'x': client}['x']\n",
+        "def f(client):\n    return {client: 1}['x']\n",
+        "def f(client):\n    local = [1, 2]\n    return local[0]\n",
+        "def f(client):\n    return client[0 if True else 1]\n",
+        "def f(client):\n    return (client,)[0]\n",
+        "def f(client):\n    return client[... ]\n",
+    ],
+)
+def test_scanner_rejects_untrusted_implicit_subscript_loads(
+    tmp_path: Path, source: str
+) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(source, encoding="utf-8")
+    findings = _scan_file(target)
+    assert any(
+        "unverified subscript read may invoke external __getitem__" in str(finding)
+        for finding in findings
+    )
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "def f():\n    return [10, 20][0]\n",
+        "def f():\n    return ('a', 'b')[1]\n",
+        "def f():\n    return {'balance': 5}['balance']\n",
+        "def f():\n    return 'safe'[0]\n",
+        "def f():\n    return b'safe'[1]\n",
+        "def f():\n    return {1: 'one'}[1]\n",
+    ],
+)
+def test_scanner_allows_direct_builtin_literal_subscript(
+    tmp_path: Path, source: str
+) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(source, encoding="utf-8")
+    assert _scan_file(target) == []
+
+
+def test_scanner_blocks_new_subscript_even_inside_strategy_domain(
+    tmp_path: Path,
+) -> None:
+    original = Path("src/btg_ai_trader/strategy/domain.py").read_text(
+        encoding="utf-8"
+    )
+    target = tmp_path / "strategy" / "domain.py"
+    target.parent.mkdir()
+    target.write_text(
+        original + "\n\ndef unreviewed(client):\n    return client['balance']\n",
+        encoding="utf-8",
+    )
+    assert any(
+        "unverified subscript read may invoke external __getitem__" in str(finding)
+        for finding in _scan_file(target)
+    )
+
+
+def test_scanner_accepts_only_sealed_existing_strategy_subscripts() -> None:
+    for source in (
+        "src/btg_ai_trader/strategy/domain.py",
+        "src/btg_ai_trader/strategy/engine.py",
+        "src/btg_ai_trader/strategy/risk_adapter.py",
+    ):
+        assert _scan_file(Path(source)) == []

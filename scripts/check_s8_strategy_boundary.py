@@ -746,6 +746,26 @@ def _reviewed_attribute_source(path: Path) -> bool:
     return hashlib.sha1(git_blob).hexdigest() == expected
 
 
+def _approved_unpinned_subscript_read(node: ast.Subscript) -> bool:
+    """Permit only direct indexing of a fully literal built-in container.
+
+    ast.literal_eval does not execute caller objects. In particular, neither
+    an unknown receiver nor an unknown key (which could run __index__,
+    __hash__ or __eq__) is admissible. This does not bless local variables
+    whose provenance cannot be established from this expression alone.
+    """
+    try:
+        container = ast.literal_eval(node.value)
+        index = ast.literal_eval(node.slice)
+    except (ValueError, TypeError, SyntaxError, MemoryError, RecursionError):
+        return False
+    if type(container) in (list, tuple, str, bytes):
+        return type(index) is int
+    if type(container) is dict:
+        return type(index) in (str, int, bytes, bool, tuple)
+    return False
+
+
 def _approved_unpinned_attribute_read(
     node: ast.Attribute,
     aliases: dict[str, str],
@@ -801,7 +821,9 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
         tree, parents, imported_aliases, path
     )
     unsafe_decorator_names = _unsafe_decorator_bindings(tree)
-    reviewed_attribute_source = _reviewed_attribute_source(path)
+    # Reviewed source bytes seal both attribute and subscript reads; any change
+    # to these runtime modules fails closed for non-literal implicit dispatch.
+    reviewed_source = _reviewed_attribute_source(path)
     # Local function/class construction is allowed after scanning their bodies,
     # but a parameter or assignment can shadow that symbol with an injected
     # callback. Exclude such names from this dynamic whitelist.
@@ -1060,15 +1082,24 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                         )
                     )
         elif isinstance(node, ast.Attribute | ast.Subscript):
-            if isinstance(node, ast.Attribute) and isinstance(node.ctx, ast.Load):
-                if not reviewed_attribute_source and not _approved_unpinned_attribute_read(
-                    node, aliases, imported_aliases, parents, unsafe_binding_roots,
-                ):
+            if isinstance(node.ctx, ast.Load) and not reviewed_source:
+                if isinstance(node, ast.Attribute):
+                    if not _approved_unpinned_attribute_read(
+                        node, aliases, imported_aliases, parents, unsafe_binding_roots,
+                    ):
+                        findings.append(
+                            Finding(
+                                normalized,
+                                node.lineno,
+                                "unverified attribute read may invoke external property",
+                            )
+                        )
+                elif not _approved_unpinned_subscript_read(node):
                     findings.append(
                         Finding(
                             normalized,
                             node.lineno,
-                            "unverified attribute read may invoke external property",
+                            "unverified subscript read may invoke external __getitem__",
                         )
                     )
             if isinstance(node.ctx, ast.Store | ast.Del):
