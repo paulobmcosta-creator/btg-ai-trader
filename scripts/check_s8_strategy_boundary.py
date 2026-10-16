@@ -742,7 +742,7 @@ def _reviewed_attribute_source(path: Path) -> bool:
     if expected is None or not normalized.endswith(f"/strategy/{path.name}"):
         return False
     data = path.read_bytes()
-    git_blob = b"blob " + str(len(data)).encode("ascii") + b"\\0" + data
+    git_blob = b"blob " + str(len(data)).encode("ascii") + bytes((0,)) + data
     return hashlib.sha1(git_blob).hexdigest() == expected
 
 
