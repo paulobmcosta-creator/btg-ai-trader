@@ -754,6 +754,12 @@ def _approved_unpinned_attribute_read(
     unsafe_binding_roots: dict[str, set[ast.AST]],
 ) -> bool:
     """Only sealed primitive library reads; no caller-property dispatch."""
+    # A result method chained from a reviewed primitive constructor does
+    # not have a Name root; evaluate this narrow case before root rejection.
+    if isinstance(node.value, ast.Call):
+        receiver = _resolve_expr(node.value.func, aliases)
+        if (receiver, node.attr) in ALLOWED_STRATEGY_CALL_CHAINS:
+            return True
     root = _call_root(node)
     if not root or root in _scope_parameters(node, parents):
         return False
@@ -770,11 +776,6 @@ def _approved_unpinned_attribute_read(
             member in ALLOWED_MODULE_ATTRIBUTES[module]
             and (imported_aliases.get(root) == module or root in aliases)
         ):
-            return True
-    # Preserve the two audited methods chained from pure primitive calls.
-    if isinstance(node.value, ast.Call):
-        receiver = _resolve_expr(node.value.func, aliases)
-        if (receiver, node.attr) in ALLOWED_STRATEGY_CALL_CHAINS:
             return True
     return False
 
