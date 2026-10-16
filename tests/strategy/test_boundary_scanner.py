@@ -1007,3 +1007,70 @@ def test_scanner_rejects_forged_decorator_origin(tmp_path: Path, source: str) ->
         "untrusted or unaudited decorator execution forbidden" in str(item)
         for item in _scan_file(target)
     )
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "def f(client):\n    return client.balance\n",
+        "def f(client):\n    return client.account_id\n",
+        "def f(client):\n    return client.orders\n",
+        "def f(client):\n    value = client\n    return value.balance\n",
+        "def f(client):\n    return client.balance.limit\n",
+        "def f(client):\n    return (client).balance\n",
+        "def f(client):\n    return client.balance if True else 0\n",
+        "def f(client):\n    return [client.balance for _ in (1,)]\n",
+        "def f(client):\n    balance = client.balance\n    return balance\n",
+        "class Helper:\n    def f(self, client):\n        return client.balance\n",
+        "import json\ndef f(json):\n    return json.dumps\n",
+    ],
+)
+def test_scanner_rejects_unverified_attribute_loads(
+    tmp_path: Path, source: str
+) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(source, encoding="utf-8")
+    findings = _scan_file(target)
+    assert any(
+        "unverified attribute read may invoke external property" in str(item)
+        for item in findings
+    )
+
+
+def test_scanner_rejects_new_property_even_in_strategy_domain(tmp_path: Path) -> None:
+    canonical = Path("src/btg_ai_trader/strategy/domain.py").read_text(
+        encoding="utf-8"
+    )
+    target = tmp_path / "strategy" / "domain.py"
+    target.parent.mkdir()
+    target.write_text(
+        canonical + "\n\ndef injected(client):\n    return client.balance\n",
+        encoding="utf-8",
+    )
+    assert any(
+        "unverified attribute read may invoke external property" in str(item)
+        for item in _scan_file(target)
+    )
+
+
+def test_scanner_keeps_sealed_existing_strategy_attribute_reads() -> None:
+    for source in (
+        "src/btg_ai_trader/strategy/domain.py",
+        "src/btg_ai_trader/strategy/engine.py",
+        "src/btg_ai_trader/strategy/risk_adapter.py",
+    ):
+        assert _scan_file(Path(source)) == []
+
+
+def test_scanner_allows_only_audited_primitive_attribute_reads(tmp_path: Path) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(
+        "import hashlib\n"
+        "import json\n"
+        "import types\n"
+        "digest = hashlib.sha256(b'input').hexdigest()\n"
+        "payload = json.dumps({'digest': digest}).encode('utf-8')\n"
+        "immutable = types.MappingProxyType({'payload': payload})\n",
+        encoding="utf-8",
+    )
+    assert _scan_file(target) == []

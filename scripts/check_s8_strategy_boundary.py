@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import hashlib
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -723,6 +724,61 @@ def _approved_decorator(
     return (parent.name, node.name, decorator.id) in REVIEWED_METHOD_DECORATORS
 
 
+
+# Pin the exact already-reviewed Strategy runtime sources for attribute loads.
+# A new attribute in any Strategy module MUST trigger a new explicit
+# source-integrity review; spelling-only allowlists are not a security proof.
+# Values are Git blob SHA-1s (SHA-1 over "blob <len>\\0" + raw bytes).
+REVIEWED_STRATEGY_ATTRIBUTE_BLOBS = {
+    "domain.py": "137f0998719f37f021280c6a672e6ceda606653f",
+    "engine.py": "65cda8d12e2b640c68c45c1bcff538223a3b496b",
+    "risk_adapter.py": "f549b88c1b3d07d501afd39419944c20e124c7f3",
+}
+
+
+def _reviewed_attribute_source(path: Path) -> bool:
+    normalized = str(path).replace("\\", "/")
+    expected = REVIEWED_STRATEGY_ATTRIBUTE_BLOBS.get(path.name)
+    if expected is None or not normalized.endswith(f"/strategy/{path.name}"):
+        return False
+    data = path.read_bytes()
+    git_blob = b"blob " + str(len(data)).encode("ascii") + b"\\0" + data
+    return hashlib.sha1(git_blob).hexdigest() == expected
+
+
+def _approved_unpinned_attribute_read(
+    node: ast.Attribute,
+    aliases: dict[str, str],
+    imported_aliases: dict[str, str],
+    parents: dict[ast.AST, ast.AST],
+    unsafe_binding_roots: dict[str, set[ast.AST]],
+) -> bool:
+    """Only sealed primitive library reads; no caller-property dispatch."""
+    root = _call_root(node)
+    if not root or root in _scope_parameters(node, parents):
+        return False
+    if root in unsafe_binding_roots:
+        unsafe_owners = unsafe_binding_roots[root]
+        if next(iter(_root_scopes(parents, node))) in unsafe_owners or any(
+            scope in unsafe_owners for scope in _lexical_scopes(node, parents)
+        ):
+            return False
+    resolved = _resolve_expr(node, aliases)
+    module, separator, member = resolved.partition(".")
+    if separator and module in ALLOWED_MODULE_ATTRIBUTES:
+        if (
+            member in ALLOWED_MODULE_ATTRIBUTES[module]
+            and (imported_aliases.get(root) == module or root in aliases)
+        ):
+            return True
+    # Preserve the two audited methods chained from pure primitive calls.
+    if isinstance(node.value, ast.Call):
+        receiver = _resolve_expr(node.value.func, aliases)
+        if (receiver, node.attr) in ALLOWED_STRATEGY_CALL_CHAINS:
+            return True
+    return False
+
+
 def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
     findings: list[Finding] = []
     aliases: dict[str, str] = {}
@@ -744,6 +800,7 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
         tree, parents, imported_aliases, path
     )
     unsafe_decorator_names = _unsafe_decorator_bindings(tree)
+    reviewed_attribute_source = _reviewed_attribute_source(path)
     # Local function/class construction is allowed after scanning their bodies,
     # but a parameter or assignment can shadow that symbol with an injected
     # callback. Exclude such names from this dynamic whitelist.
@@ -1002,6 +1059,17 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                         )
                     )
         elif isinstance(node, ast.Attribute | ast.Subscript):
+            if isinstance(node, ast.Attribute) and isinstance(node.ctx, ast.Load):
+                if not reviewed_attribute_source and not _approved_unpinned_attribute_read(
+                    node, aliases, imported_aliases, parents, unsafe_binding_roots,
+                ):
+                    findings.append(
+                        Finding(
+                            normalized,
+                            node.lineno,
+                            "unverified attribute read may invoke external property",
+                        )
+                    )
             if isinstance(node.ctx, ast.Store | ast.Del):
                 if not _approved_write_target(node, path, parents):
                     findings.append(

@@ -456,3 +456,30 @@ cover callbacks, methods, decorator factories, class/async functions,
 stacking, aliasing and forged names. Existing Strategy decorators remain
 subject to the full exact-head boundary scan. No new Paper/Live authority,
 broker capabilities, costs or merge authorized.
+
+## 20. 2026-10-16 — Independent Codex P2 attribute-load implicit execution
+
+Exact-head Codex review of `8ca6ad7a` identified that `client.balance`
+could execute an injected object's `__getattribute__` or descriptor
+even without an explicit `ast.Call`. Arbitrary attribute reads are
+therefore not side-effect-free by inspection.
+
+The Strategy scanner now fails closed on all unreviewed attribute-load
+expressions. Existing audited Strategy runtime source files have a
+Git-blob content lock (full byte identity) for their pre-reviewed
+attribute access patterns; **any source change invalidates that lock**
+and requires explicit independent re-audit and lock update, rather than
+automatically trusting newly added attributes by name or function.
+Outside these sealed files, only imported and allowlisted primitive
+module capabilities and the two approved primitive-result methods are
+permitted, with parameter-shadowing/untrusted binding checks retained.
+
+New regression cases cover injected properties, nested and aliased
+access, comprehension use, parameter-shadowed imported names,
+changed domain source and positive audited primitive cases.
+
+This is a deliberately conservative change-control control, not proof
+that Python permits a general sandbox or that the already-reviewed
+runtime can accept arbitrary hostile objects safely. Consumer-side
+admission, immutable candidate controls and evidence gates remain
+mandatory. No merges or Paper/Live/real-money actions are authorized.
