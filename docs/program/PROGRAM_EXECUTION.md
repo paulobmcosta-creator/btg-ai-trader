@@ -165,7 +165,11 @@ SPRINT_8_CANONICAL_BRANCH = sprint/8-paper-trader
 SPRINT_8_ENTRY_GATE_WORK_BRANCH = s8/00-entry-gate
 S8_ENTRY_GATE_CANDIDATE = CHANGES_REQUIRED
 OPEN_S8_ENTRY_GATE_BLOCKERS = 2
-S8-B01 = OPEN
+S8-B01 = OPEN_CANONICALLY__REMEDIATION_AUTHORIZED
+S8-B01_REMEDIATION_ISSUE = #95
+S8-B01_REMEDIATION_WORK_BRANCH = s8/01-strategy-remediation
+S8-B01_REMEDIATION_AUTHORIZATION_DATE = 2026-10-04
+S8-B01_REMEDIATION_CANDIDATE = IMPLEMENTED_PENDING_EXACT_HEAD_CI_AND_INDEPENDENT_REVIEW
 S8-B02 = OPEN
 S8_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 PAPER_CONFIRMATORY_RUN = NOT_AUTHORIZED
@@ -346,7 +350,7 @@ Two root blockers prevent functional Paper authorization:
 1. **S8-B01:** no operational Signal/Strategy → `StrategyDecision` → `TradeIntent` runtime path exists in the canonical predecessor;
 2. **S8-B02:** no exact candidate has canonical `PAPER_ELIGIBLE` adjudication plus candidate freeze under Protocol 0E-G.
 
-The immediate governance task is exact-head CI plus independent review of the blocked Entry Gate packet. Merge of the Entry Gate requires separate explicit human authorization. Functional Paper implementation remains forbidden.
+The Entry Gate packet reached exact-head CI and independent-review PASS in PR #94, but its merge remains separately subject to explicit human authorization. On 2026-10-04, Issue #95 separately authorized a stacked pre-Paper remediation of S8-B01 from exact PR #94 head `7fce78b02d03cc8140bc021217a0230776cc53ff`. The remediation candidate materializes CandidateStrategy, DecisionOpportunity, StrategyDecision, EconomicObjective, TradeIntent and a one-way TradeIntent→RiskProposal adapter. Canonical B01 closure still requires exact-head CI, independent review and any separately authorized integration. S8-B02 and functional Paper remain forbidden/open.
 
 ```text
 SPRINT_8_STATUS = ENTRY_GATE_CANDIDATE_CHANGES_REQUIRED
@@ -359,3 +363,22 @@ PAPER_CONFIRMATORY_RUN = NOT_AUTHORIZED
 LIVE_TRADING = NO
 REAL_MONEY = NO
 ```
+
+
+## S8-B01 remediation checkpoint — 2026-10-04
+
+```text
+S8_B01_REMEDIATION_AUTHORITY = ISSUE_95
+S8_B01_REMEDIATION_BASE = 7fce78b02d03cc8140bc021217a0230776cc53ff
+S8_B01_REMEDIATION_BRANCH = s8/01-strategy-remediation
+S8_B01_REMEDIATION_CANDIDATE = IMPLEMENTED_PENDING_EXACT_HEAD_CI_AND_INDEPENDENT_REVIEW
+S8_B01_CANONICAL_CLOSURE = NO
+S8-B02 = OPEN
+PROMOTION_TO_S8_FUNCTIONAL_IMPLEMENTATION = NO
+S8_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
+PAPER_CONFIRMATORY_RUN = NOT_AUTHORIZED
+LIVE_TRADING = NO
+REAL_MONEY = NO
+```
+
+The remediation is deliberately upstream of Paper and has no order, broker, account, allocation, Paper-accounting or FinancialLedger authority.

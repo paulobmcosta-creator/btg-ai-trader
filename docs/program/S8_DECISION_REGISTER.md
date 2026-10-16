@@ -90,3 +90,27 @@ PROMOTION_TO_S8_FUNCTIONAL_IMPLEMENTATION = NO
 S8_FUNCTIONAL_IMPLEMENTATION = NOT_AUTHORIZED
 PAPER_CONFIRMATORY_RUN = NOT_AUTHORIZED
 ```
+
+
+## 6. S8-B01 remediation decisions — authorized 2026-10-04
+
+### S8-D-13 — CandidateStrategy owns operational policy identity
+`CandidateStrategy` is immutable and version-specific. Decision thresholds, ordered business rules, timing/freshness bound, requested sizing/exposure and code/input-spec identity belong to the candidate and participate in its digest. The infrastructure does not invent a favorable canonical candidate.
+
+### S8-D-14 — DecisionOpportunity is the causal Strategy input boundary
+Strategy consumes an explicit immutable `DecisionOpportunity` that binds concrete instrument/portfolio, `event_time <= knowledge_time <= decision_time`, upstream input-spec identity, finite Decimal signals, evidence quality and provenance. The Strategy package is not an implicit Signal generator.
+
+### S8-D-15 — Every opportunity has an explicit strategic outcome
+The engine returns `StrategyDecision.NO_TRADE` or `StrategyDecision.PROPOSE_TRADE`. Instrument/portfolio/input-spec mismatch, non-valid evidence, stale evidence and missing required signals fail closed to `NO_TRADE`, preserving the 0E-F requirement that NO_TRADE behavior be measurable.
+
+### S8-D-16 — TradeIntent authority is narrower than StrategyDecision
+Only an engine-issued `PROPOSE_TRADE` may produce an engine-issued `TradeIntent`. The intent binds one concrete `TradableInstrumentId`, one portfolio, one immutable `EconomicObjective`, exact candidate/opportunity/decision provenance and no downstream execution authority.
+
+### S8-D-17 — Strategy-to-Risk is a one-way provenance adapter
+The Strategy remediation maps an engine-issued `TradeIntent` into the existing S7 `RiskProposal` without creating `RiskDecision`, `RiskAuthorization` or any order/execution artifact. The RiskProposal source digest is the TradeIntent digest.
+
+### S8-D-18 — Rule selection is deterministic and explicit
+Candidate rules have unique IDs and unique non-negative priorities, are canonicalized by priority, and the first matching rule is selected. Identical immutable inputs must yield identical decision/intent/result digests.
+
+### S8-D-19 — B01 remediation is non-compensatory with B02
+Passing the S8-B01 implementation/audit closes only the operational Strategy-path gap after canonical integration. It does not adjudicate `PAPER_ELIGIBLE`, freeze a candidate or authorize Paper. S8-B02 remains an independent conjunctive blocker.
