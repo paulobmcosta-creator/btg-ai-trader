@@ -636,6 +636,93 @@ def _approved_unpacking(
     )
 
 
+
+# Decorators execute at definition time. Only the immutable domain's existing,
+# module-level classes and known methods may use their reviewed decorators.
+REVIEWED_DATACLASSES = {
+    "EconomicObjective": False,
+    "StrategyRule": False,
+    "CandidateStrategy": False,
+    "DecisionOpportunity": False,
+    "StrategyDecision": True,
+    "TradeIntent": True,
+    "StrategyEvaluationResult": False,
+}
+REVIEWED_METHOD_DECORATORS = frozenset(
+    {
+        ("EconomicObjective", "objective_digest", "property"),
+        ("StrategyRule", "rule_digest", "property"),
+        ("CandidateStrategy", "required_signals", "property"),
+        ("CandidateStrategy", "candidate_digest", "property"),
+        ("CandidateStrategy", "candidate_id", "property"),
+        ("DecisionOpportunity", "opportunity_digest", "property"),
+        ("StrategyDecision", "is_engine_issued", "property"),
+        ("StrategyDecision", "_issue", "classmethod"),
+        ("TradeIntent", "is_engine_issued", "property"),
+        ("TradeIntent", "_build", "classmethod"),
+    }
+)
+
+
+def _unsafe_decorator_bindings(tree: ast.AST) -> set[str]:
+    protected = {"dataclass", "property", "classmethod"}
+    unsafe: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+            if node.id in protected:
+                unsafe.add(node.id)
+        elif isinstance(node, ast.arg) and node.arg in protected:
+            unsafe.add(node.arg)
+        elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+            if node.name in protected:
+                unsafe.add(node.name)
+    return unsafe
+
+
+def _approved_decorator(
+    node: ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
+    decorator: ast.expr,
+    path: Path,
+    tree: ast.AST,
+    parents: dict[ast.AST, ast.AST],
+    imports: dict[str, str],
+    unsafe_names: set[str],
+) -> bool:
+    if not str(path).replace("\\", "/").endswith("/strategy/domain.py"):
+        return False
+    parent = parents.get(node)
+    if isinstance(node, ast.ClassDef):
+        if parent is not tree or node.name not in REVIEWED_DATACLASSES:
+            return False
+        if "dataclass" in unsafe_names:
+            return False
+        if imports.get("dataclass") != "dataclasses.dataclass":
+            return False
+        if not isinstance(decorator, ast.Call) or decorator.args:
+            return False
+        if not isinstance(decorator.func, ast.Name):
+            return False
+        if decorator.func.id != "dataclass":
+            return False
+        actual = {keyword.arg: keyword.value for keyword in decorator.keywords}
+        expected = {"frozen", "slots"}
+        if REVIEWED_DATACLASSES[node.name]:
+            expected.add("weakref_slot")
+        return set(actual) == expected and all(
+            isinstance(value, ast.Constant) and value.value is True
+            for value in actual.values()
+        )
+    if not isinstance(node, ast.FunctionDef):
+        return False
+    if not isinstance(parent, ast.ClassDef) or parents.get(parent) is not tree:
+        return False
+    if not isinstance(decorator, ast.Name):
+        return False
+    if decorator.id in unsafe_names:
+        return False
+    return (parent.name, node.name, decorator.id) in REVIEWED_METHOD_DECORATORS
+
+
 def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
     findings: list[Finding] = []
     aliases: dict[str, str] = {}
@@ -656,6 +743,7 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
     unsafe_binding_roots = _unsafe_binding_roots(
         tree, parents, imported_aliases, path
     )
+    unsafe_decorator_names = _unsafe_decorator_bindings(tree)
     # Local function/class construction is allowed after scanning their bodies,
     # but a parameter or assignment can shadow that symbol with an injected
     # callback. Exclude such names from this dynamic whitelist.
@@ -884,6 +972,18 @@ def _scan_ast(path: Path, tree: ast.AST) -> list[Finding]:
                     )
                 )
         elif isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
+            for decorator in node.decorator_list:
+                if not _approved_decorator(
+                    node, decorator, path, tree, parents,
+                    imported_aliases, unsafe_decorator_names,
+                ):
+                    findings.append(
+                        Finding(
+                            normalized,
+                            decorator.lineno,
+                            "untrusted or unaudited decorator execution forbidden",
+                        )
+                    )
             if node.name in FORBIDDEN_OPERATIONAL_NAMES:
                 findings.append(
                     Finding(

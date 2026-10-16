@@ -947,3 +947,59 @@ def test_scanner_allows_regular_pure_if_without_context_manager(tmp_path: Path) 
         encoding="utf-8",
     )
     assert _scan_file(target) == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "def f(callback):\n    @callback\n    def helper():\n        return 1\n    return helper\n",
+        "def f(client):\n    @client.decorate\n    def helper():\n        pass\n",
+        "def f(callback):\n    @callback()\n    def helper():\n        pass\n",
+        "def f(callback):\n    @callback\n    class Helper:\n        pass\n",
+        "def f(callback):\n    @callback[0]\n    def helper():\n        pass\n",
+        "def f(callback):\n    @property\n    @callback\n    def value():\n        return 1\n",
+        "async def f(callback):\n    @callback\n    async def helper():\n        return 1\n",
+        "from dataclasses import dataclass\n@dataclass(frozen=True, slots=True)\nclass Injected:\n    pass\n",
+        "class Injected:\n    @property\n    def value(self):\n        return 1\n",
+    ],
+)
+def test_scanner_rejects_injected_decorators(tmp_path: Path, source: str) -> None:
+    target = tmp_path / "probe.py"
+    target.write_text(source, encoding="utf-8")
+    assert any(
+        "untrusted or unaudited decorator execution forbidden" in str(item)
+        for item in _scan_file(target)
+    )
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        (
+            "from dataclasses import dataclass\n"
+            "dataclass = callback\n"
+            "@dataclass(frozen=True, slots=True)\n"
+            "class EconomicObjective:\n    pass\n"
+        ),
+        (
+            "property = callback\n"
+            "class EconomicObjective:\n"
+            "    @property\n"
+            "    def objective_digest(self):\n        return 1\n"
+        ),
+        (
+            "def outer(callback):\n"
+            "    class EconomicObjective:\n"
+            "        @callback\n"
+            "        def objective_digest(self):\n            return 1\n"
+        ),
+    ],
+)
+def test_scanner_rejects_forged_decorator_origin(tmp_path: Path, source: str) -> None:
+    target = tmp_path / "strategy" / "domain.py"
+    target.parent.mkdir()
+    target.write_text(source, encoding="utf-8")
+    assert any(
+        "untrusted or unaudited decorator execution forbidden" in str(item)
+        for item in _scan_file(target)
+    )

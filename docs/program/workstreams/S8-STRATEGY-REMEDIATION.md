@@ -441,3 +441,18 @@ The scanner is static defense in depth, not a general Python
 sandbox. Exact-head CI and independent re-review are required
 before any S8-B01 closure; Paper, Live, money and merges remain
 unauthorized.
+
+## 19. 2026-10-16 — Independent Codex P2 injected decorator execution
+
+Codex's exact-head review of `197dd6e4` identified implicitly executable
+decorator expressions (`@callback`, `@client.decorate`) that escaped the AST
+call allowlist and can trigger arbitrary operational effects at definition time.
+The Strategy scanner now denies all decorators outside the reviewed
+module-level immutable domain classes and known `@property` or
+`@classmethod` members. It validates `dataclass` import provenance,
+`frozen=True`/`slots=True` and appropriate `weakref_slot=True`, and
+rejects shadowing/rebinding of approved decorator names. Negative tests
+cover callbacks, methods, decorator factories, class/async functions,
+stacking, aliasing and forged names. Existing Strategy decorators remain
+subject to the full exact-head boundary scan. No new Paper/Live authority,
+broker capabilities, costs or merge authorized.
