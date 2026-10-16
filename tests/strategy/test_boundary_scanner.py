@@ -959,7 +959,11 @@ def test_scanner_allows_regular_pure_if_without_context_manager(tmp_path: Path) 
         "def f(callback):\n    @callback[0]\n    def helper():\n        pass\n",
         "def f(callback):\n    @property\n    @callback\n    def value():\n        return 1\n",
         "async def f(callback):\n    @callback\n    async def helper():\n        return 1\n",
-        "from dataclasses import dataclass\n@dataclass(frozen=True, slots=True)\nclass Injected:\n    pass\n",
+        (
+            "from dataclasses import dataclass\n"
+            "@dataclass(frozen=True, slots=True)\n"
+            "class Injected:\n    pass\n"
+        ),
         "class Injected:\n    @property\n    def value(self):\n        return 1\n",
     ],
 )
