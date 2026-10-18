@@ -1,0 +1,9 @@
+{
+  "id": "s8-b01-inventory",
+  "base_sha": "3c485edc99649d6eafece1357d26ffc4437c7f21",
+  "reference_sha": "7fce78b02d03cc8140bc021217a0230776cc53ff",
+  "authorization": "Solicitação do usuário nesta conversa para executar o piloto de semiautomação; inventário somente leitura de S8-B01, sob os limites da issue #95.",
+  "objective": "Verificar o checkpoint atual de S8-B01, relacionar os últimos achados documentados aos testes existentes e identificar a próxima ação concreta de verificação. Examinar apenas AGENTS.md, PROGRAM_EXECUTION.md, S8-STRATEGY-REMEDIATION.md, src/btg_ai_trader/strategy, tests/strategy e scripts/check_s8_strategy_boundary.py. Limitar a leitura aos trechos pertinentes; não tentar auditar todo o repositório. Distinguir evidência local de CI remota/revisão independente. Não fechar S8-B01 nem iniciar S8-B02/Paper.",
+  "allowed_paths": [],
+  "profile": "s8-inventory"
+}
