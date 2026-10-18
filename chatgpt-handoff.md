@@ -9,8 +9,8 @@ Atue como coordenador deste sprint. Diga o próximo passo concreto e mínimo, pr
   "workflow_version": "0.3.0",
   "sprint": "Sprint 8 — lote autorizado S8-B01; S8-B02 permanece aberto",
   "task_id": "s8-b01-sprint-ag",
-  "status": "READY",
-  "reason": "Sprint preparado; nenhuma chamada de modelo realizada.",
+  "status": "NEEDS_ATTENTION",
+  "reason": "Antigravity: houve ação negada pelas permissões; resposta não pode ser aprovada. Para o inventário, usar o pedido sem ferramentas fornecido pelo coordenador.",
   "base_sha": "3c485edc99649d6eafece1357d26ffc4437c7f21",
   "snapshot_hash": "a33483928bce28dee2cf84bbb7892a6789e138a80b5b44e3c605627a858c82d8",
   "authorization": "Continuação da semiautomação solicitada pelo usuário; remediação restrita de S8-B01 sob a Issue #95. Não autoriza integração, fechamento canônico ou execução financeira.",
@@ -23,7 +23,7 @@ Atue como coordenador deste sprint. Diga o próximo passo concreto e mínimo, pr
     {
       "id": "implicit-dispatch",
       "phase": "PENDING",
-      "attempts": 0
+      "attempts": 1
     }
   ],
   "work_items": [
@@ -37,7 +37,7 @@ Atue como coordenador deste sprint. Diga o próximo passo concreto e mínimo, pr
     }
   ],
   "calls_reserved": {
-    "antigravity": 0,
+    "antigravity": 1,
     "codex": 0
   },
   "policy": {
@@ -49,7 +49,7 @@ Atue como coordenador deste sprint. Diga o próximo passo concreto e mínimo, pr
     "max_codex_calls": 1
   },
   "critical_review_current": false,
-  "updated_at": 1792305604.8871408,
+  "updated_at": 1792335218.4144938,
   "github_sync_enabled": true,
   "github_sync_error": "",
   "github_status_branch": "workflow-status/s8-b01-sprint-ag",
