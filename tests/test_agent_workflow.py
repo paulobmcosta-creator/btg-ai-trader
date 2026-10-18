@@ -356,6 +356,15 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
         self.assertEqual(int(result.stdout.strip()), len(packet["message"]["content"]))
 
+    def test_git_protocol_stdin_preserves_lf_on_windows(self) -> None:
+        result = flow.command(
+            [sys.executable, "-c", "import sys; print(repr(sys.stdin.buffer.read()))"],
+            self.worktree,
+            input_text="README.md\nSTATE.json\n",
+        )
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stdout.strip(), "b'README.md\\nSTATE.json\\n'")
+
     def test_stream_requires_one_complete_result_and_preserves_denials(self) -> None:
         envelope: dict[str, Any] = {
             "event": "result",
@@ -400,7 +409,7 @@ class WorkflowTests(unittest.TestCase):
         for task_id in ("../other", "-option", "a/b"):
             with self.assertRaises(flow.WorkflowError):
                 flow.task_paths(self.repo, task_id)
-        for name in ("../other", "/root", ".git/config", "a\\b"):
+        for name in ("../other", "/root", ".git/config", "a\\b", "C:/outside", "C:relative"):
             with self.assertRaises(flow.WorkflowError):
                 flow.validate_spec({**self.spec, "allowed_paths": [name]})
 

@@ -1,14 +1,7 @@
 name: Agent workflow tooling CI
 
 on:
-  push:
-    branches: [automation/antigravity-sprints]
-    paths:
-      - scripts/agent_workflow.py
-      - scripts/start_agent_workflow.ps1
-      - tests/test_agent_*.py
-      - config/agent-*.json
-      - .github/workflows/agent-workflow-ci.yml
+  workflow_dispatch:
   pull_request:
     paths:
       - scripts/agent_workflow.py

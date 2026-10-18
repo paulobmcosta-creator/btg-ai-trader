@@ -134,3 +134,9 @@ reais. Foram verificados orçamento entre retomadas, proibição de bypass pela
 CLI avulsa, diagnóstico sem aprovação, alterações de revisores, escopo por item,
 preservação de patches cumulativos e publicação sem staging do candidato.
 A CI de tooling inclui Linux e Windows e não chama modelos.
+
+A primeira execução nativa no Windows encontrou tradução de LF para CRLF na
+entrada de `git mktree`, que incorporava CR ao nome dos arquivos publicados,
+e validação incompleta de caminhos absolutos. O transporte comum passou a usar
+bytes UTF-8, e o escopo agora rejeita caminhos com raiz ou drive em ambas as
+plataformas. Uma regressão com subprocesso real verifica a preservação de LF.

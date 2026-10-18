@@ -67,17 +67,21 @@ def command(
     env["PYTHONDONTWRITEBYTECODE"] = "1"
     env.update(extra_env or {})
     try:
-        return subprocess.run(
+        result = subprocess.run(
             argv,
             cwd=cwd,
             env=env,
-            input=input_text,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
+            # Binary stdin prevents Windows from turning mktree's LF into filename CRs.
+            input=input_text.encode("utf-8") if input_text is not None else None,
             capture_output=True,
             timeout=timeout,
             check=False,
+        )
+        return subprocess.CompletedProcess(
+            argv,
+            result.returncode,
+            result.stdout.decode("utf-8", errors="replace").replace("\r\n", "\n"),
+            result.stderr.decode("utf-8", errors="replace").replace("\r\n", "\n"),
         )
     except subprocess.TimeoutExpired as exc:
         raise WorkflowError(f"Timeout ({timeout}s): {argv[0]}; etapa não concluída.") from exc
@@ -145,7 +149,12 @@ def validate_spec(spec: dict[str, Any]) -> None:
     for path in spec["allowed_paths"]:
         if not isinstance(path, str) or not path or "\\" in path:
             raise WorkflowError("Caminho de escopo inválido.")
-        if Path(path).is_absolute() or ".." in Path(path).parts or path.startswith(".git"):
+        if (
+            path.startswith("/")
+            or ":" in path
+            or ".." in Path(path).parts
+            or path.startswith(".git")
+        ):
             raise WorkflowError("Caminho de escopo fora do repositório.")
     if spec.get("profile", "s8-inventory") not in ("s8-inventory", "s8-b01"):
         raise WorkflowError("Perfil de verificações desconhecido.")
